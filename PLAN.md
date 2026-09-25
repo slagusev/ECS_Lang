@@ -5,10 +5,11 @@
 | Компонент | Решение | Описание |
 |---|---|---|
 | **Синтаксис** | Rust + Odin hybrid | Лаконичный, строгий, с ключевыми словами `component`, `system`, `resource`, `query`, `fn`, `pipeline`, `stage`, `commands` |
+| **ECS Контексты** | Изолированные миры (`World`) | ECS — это первоклассная изолированная структура данных (`let mut world = ecs::create_world()`). Поддержка множества независимых миров (Game, UI, Physics) в одном процессе без глобального состояния |
 | **ECS Модель памяти** | Archetype-based (SoA) | Сущности с одинаковым набором компонентов объединяются в архетипы. Данные хранятся непрерывными массивами (столбцами) в чанках для SIMD-векторизации и кеш-локальности |
-| **Мутации мира** | Command Buffer (Отложенные) | Добавление/удаление компонентов и спавн сущностей буферизируются (`cmd.spawn(...)`, `cmd.despawn(e)`) и безопасно накатываются на барьерах синхронизации (`sync`) |
-| **Глобальные данные** | `resource` (Синглтоны) | Уникальные ресурсы уровня мира (`resource Time`, `resource Input`), доступные системам по ссылке или мутабельно (`mut res: Time`) |
-| **Оркестрация** | Явные стадии (Pipeline Stages) | Конвейер с именованными стадиями (`Startup`, `Update`, `Render`) и блоками `parallel { ... }` / `sync` |
+| **Мутации мира** | Методы мира и Command Buffer | Прямые мутации через методы мира (`world.spawn()`, `world.set_*()`, `world.add_*()`, `world.remove_*()`, `world.has_*()`) и отложенные через Command Buffer на барьерах |
+| **Ресурсы (Синглтоны)** | Ресурсы уровня инстанса мира (`resource Time`) | Встроены в структуру соответствующего мира, передаются в системы автоматически через контекст мира |
+| **Оркестрация** | Явные стадии (Pipeline Stages) | Конвейер с именованными стадиями (`Startup`, `Update`, `Render`) и блоками `parallel { ... }` / `sync`, принимающий целевой контекст мира (`MyPipeline(world)`) |
 | **Компилятор** | C# (.NET 9) + LLVMSharp / libLLVM | Фронтенд (Lexer, Parser, AST, Semantic Type Checker) + LLVM IR Generator |
 | **Таргет линковки** | MSVC `link.exe` / `lld-link` | Автопоиск Visual Studio SDK через `vswhere` -> генерация нативного `.exe` (PE/COFF x64) |
 | **Первый рабочий рубеж** | **MVP: Hello World** | Сквозная цепочка: компиляция `fn main()` с вызовом `printf`/`puts` через LLVMSharp в рабочий нативный `.exe` |
@@ -32,7 +33,7 @@ component Velocity {
     vz: f32,
 }
 
-// Глобальный синглтон-ресурс
+// Ресурс, изолированный внутри конкретного инстанса мира
 resource Time {
     delta_time: f32,
     elapsed: f64,
@@ -49,32 +50,33 @@ system MovementSystem {
         pos.z += vel.vz * time.delta_time;
     }
 }
-
-system SpawnerSystem {
-    // Доступ к буферу команд для отложенных структурных изменений
-    query(cmd: Commands) {
-        let e = cmd.spawn();
-        cmd.add(e, Position { x: 0.0, y: 0.0, z: 0.0 });
-        cmd.add(e, Velocity { vx: 1.0, vy: 2.0, vz: 0.0 });
-    }
-}
 ```
 
 ### 2.3. Пайплайн выполнения
 ```rust
 pipeline MainGameLoop {
-    stage Startup {
-        SpawnerSystem;
-    }
-
     stage Update {
-        parallel {
-            MovementSystem;
-            // Другие независимые системы
-        }
-        sync; // Накатывание буфера команд и барьер синхронизации
+        MovementSystem;
     }
 }
+```
+
+### 2.4. Инициализация и исполнение изолированных миров
+```rust
+fn main(): i32 {
+    // Создание изолированного игрового мира
+    let mut game_world = ecs::create_world();
+    game_world.set_Time(0.016, 0.0);
+
+    let player = game_world.spawn();
+    game_world.set_Position(player, 0.0, 0.0, 0.0);
+    game_world.set_Velocity(player, 1.0, 2.0, 3.0);
+
+    // Запуск пайплайна над конкретным миром
+    MainGameLoop(game_world);
+    return 0;
+}
+```
 ```
 
 ---
@@ -160,7 +162,8 @@ pipeline MainGameLoop {
 - [x] Добавлена декларация стандартной Си-функции CRT `declare i32 @getchar()` в LLVM IR генератор.
 - [x] Поддержка встроенных функций `wait_key()` и `readln()` в семантическом анализаторе (`TypeChecker`) и компиляторе (`LlvmCodeGenerator`).
 - [x] Добавлен алиас `--emit-llvm` наряду с `--emit-ir` в CLI компилятора.
-- [x] Обновлены все примеры (`hello.ecs`, `variables_math.ecs`, `ecs_simulation.ecs`, `particles_100k.ecs`, `gui_hierarchy.ecs`): добавлено приглашение `"Press Enter to exit..."` и вызов `wait_key();` перед `return 0;`.
+- [x] Обновлены все примеры (`hello.ecs`, `variables_math.ecs`, `ecs_simulation.ecs`, `particles_100k.ecs`, `gui_hierarchy.ecs`, `multi_archetype.ecs`, `multi_world.ecs`): добавлено приглашение `"Press Enter to exit..."` и вызов `wait_key();` перед `return 0;`.
+- [x] В кодогенератор внедрен автоматический предохранитель (`ContainsWaitKey`): если пользователь забыл вызвать `wait_key()` в `main()`, компилятор автоматически вставляет печать `"Press Enter to exit..."` и вызов Си-функции `getchar()` перед возвратом из `main()`, гарантируя сохранение окна консоли открытым.
 
 ---
 
@@ -180,21 +183,36 @@ pipeline MainGameLoop {
 - [x] Сквозной тест: симуляция [`examples/multi_archetype.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/multi_archetype.ecs) с разнородными типами сущностей (`Position + Velocity + PlayerTag`, `Position + Obstacle`, `Position + Velocity`). Динамическое добавление и удаление скорости проверено нативно.
 - [x] Полная обратная совместимость со всеми существующими тестами и бенчмарком 100k частиц.
 
-### [ ] Этап 10: Расширение синтаксиса и выразительности языка
+### [x] Этап 10: Универсальные изолированные контексты миров (`World`) и синтаксис методов
+- [x] Архитектурный переход от монолитного глобального ECS к универсальным изолированным структурам данных `World`.
+- [x] Расширение синтаксиса языка:
+  - Оператор доступа к модулям `::` (`TokenType.ColonColon`) для `ecs::create_world()`.
+  - AST-узел `MethodCallExpression` и парсинг вызова методов: `world.spawn()`, `world.set_Position(...)`, `world.add_Velocity(...)`, `world.remove_Velocity(...)`, `world.has_Velocity(...)`, `world.sort_hierarchy()`.
+- [x] Семантика и типизация:
+  - Новый примитивный тип `TypeSymbol.World`.
+  - Валидация методов над `World` и передача инстансов миров в конвейеры (`GamePipeline(game_world)`).
+- [x] Машинный код LLVM:
+  - Динамическое выделение структуры `%struct.EcsWorld` в `malloc`.
+  - Передача указателя `worldPtr` (`ptr %world`) первым параметром во все ECS функции, системы (`@system_*`) и пайплайны (`@pipeline_*`).
+  - Встраивание ресурсов (`struct.res.*`) внутрь структуры соответствующего мира с динамическим вычислением смещения, исключающее глобальные синглтоны.
+- [x] Сквозной тест: [`examples/multi_world.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/multi_world.ecs) — одновременная изолированная работа игрового мира (`game_world`) и графического интерфейса (`ui_world`) в одном процессе.
+- [x] Миграция всех существующих тестов и примеров на синтаксис методов мира.
+
+### [ ] Этап 11: Расширение синтаксиса и выразительности языка
 - [ ] Массивы и слайсы фиксированного и динамического размера `[T; N]` и `[T]`.
 - [ ] Конструкции циклов `for element in array` и циклы по диапазону `for i in 0..10`.
 - [ ] Пользовательские структуры данных (`struct Vector2 { x: f32, y: f32 }`) и методы.
 - [ ] Перечисления `enum` и сопоставление с образцом `match`.
 - [ ] Пользовательские функции с несколькими аргументами и возвращаемыми значениями.
 
-### [ ] Этап 11: События и реактивность (Events & Observers)
+### [ ] Этап 12: События и реактивность (Events & Observers)
 - [ ] Декларация событий: `event OnClick { target: i32, mouse_x: f32, mouse_y: f32 }`.
 - [ ] Генерация очередей событий в рантайме (двойной буфер кадров Event Buffer).
 - [ ] Отправка событий из систем или пользовательского кода: `emit OnClick(btn, 100.0, 50.0);`.
 - [ ] Подписка систем на события: `system HandleClick { read(e: OnClick) { ... } }`.
 - [ ] Сквозной тест: интерактивная обработка событий в GUI.
 
-### [ ] Этап 12: Многопоточность и Job System (Multithreaded Systems)
+### [ ] Этап 13: Многопоточность и Job System (Multithreaded Systems)
 - [ ] Анализ графа зависимостей систем на этапе семантики (DAG):
   - Системы, читающие одни и те же компоненты (`const`), могут выполняться параллельно.
   - Системы с записью (`mut`) в непересекающиеся компоненты также выполняются параллельно.
@@ -202,7 +220,7 @@ pipeline MainGameLoop {
 - [ ] Автоматическое распараллеливание стадий пайплайна: диспетчеризация независимых систем в пул потоков без необходимости ручной синхронизации.
 - [ ] Бенчмарк: параллельная обработка сотен тысяч сущностей на всех ядрах CPU.
 
-### [ ] Этап 13: Графика, окно и ввод (Raylib / Window Integration)
+### [ ] Этап 14: Графика, окно и ввод (Raylib / Window Integration)
 - [ ] Интеграция с нативной библиотекой создания окон и графики (Raylib C ABI).
 - [ ] Встроенные ресурсы `Window { width: i32, height: i32, title: string }` и `Input`.
 - [ ] Встроенные функции рендеринга: `draw_rect(...)`, `draw_circle(...)`, `draw_text(...)`, `draw_sprite(...)`.
