@@ -1,0 +1,16 @@
+## .NET build artifacts
+[Bb]in/
+[Oo]bj/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+.vs/
+.idea/
+.vscode/
+
+## Native compilation binaries in examples
+examples/*.exe
+examples/*.obj
+examples/*.pdb
+examples/*.ilk
