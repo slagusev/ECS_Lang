@@ -43,6 +43,7 @@ target triple = "x86_64-pc-windows-msvc"
 @str_lit.26 = private unnamed_addr constant [51 x i8] c"==================================================\00", align 1
 @str_lit.27 = private unnamed_addr constant [41 x i8] c"Multi-Archetype verification successful!\00", align 1
 @str_lit.28 = private unnamed_addr constant [51 x i8] c"==================================================\00", align 1
+@str_lit.29 = private unnamed_addr constant [23 x i8] c"Press Enter to exit...\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -4371,5 +4372,7 @@ entry:
   %puts_call73 = call i32 @puts(ptr @str_lit.26)
   %puts_call74 = call i32 @puts(ptr @str_lit.27)
   %puts_call75 = call i32 @puts(ptr @str_lit.28)
+  %puts_call76 = call i32 @puts(ptr @str_lit.29)
+  %key_input = call i32 @getchar()
   ret i32 0
 }

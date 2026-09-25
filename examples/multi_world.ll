@@ -22,6 +22,7 @@ target triple = "x86_64-pc-windows-msvc"
 @str_lit.8 = private unnamed_addr constant [43 x i8] c"--- Running GamePipeline on game_world ---\00", align 1
 @str_lit.9 = private unnamed_addr constant [39 x i8] c"--- Running UiPipeline on ui_world ---\00", align 1
 @str_lit.10 = private unnamed_addr constant [74 x i8] c"Universal Contexts: Game and UI Worlds executed completely independently!\00", align 1
+@str_lit.11 = private unnamed_addr constant [23 x i8] c"Press Enter to exit...\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -3153,5 +3154,7 @@ entry:
   %ui_world28 = load ptr, ptr %ui_world, align 8
   call void @pipeline_UiPipeline(ptr %ui_world28)
   %puts_call29 = call i32 @puts(ptr @str_lit.10)
+  %puts_call30 = call i32 @puts(ptr @str_lit.11)
+  %key_input = call i32 @getchar()
   ret i32 0
 }

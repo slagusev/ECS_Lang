@@ -64,5 +64,7 @@ fn main(): i32 {
     println("==============================================");
     println("GUI hierarchy layout successfully verified!");
     println("==============================================");
+    println("Press Enter to exit...");
+    wait_key();
     return 0;
 }

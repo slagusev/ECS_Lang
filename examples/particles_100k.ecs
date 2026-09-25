@@ -56,5 +56,7 @@ fn main(): i32 {
 
     println("Simulation finished 10 frames successfully!");
     println("==================================================");
+    println("Press Enter to exit...");
+    wait_key();
     return 0;
 }

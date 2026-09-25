@@ -121,5 +121,7 @@ fn main(): i32 {
     println("==================================================");
     println("Multi-Archetype verification successful!");
     println("==================================================");
+    println("Press Enter to exit...");
+    wait_key();
     return 0;
 }

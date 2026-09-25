@@ -59,5 +59,7 @@ fn main(): i32 {
     GameLoop(world);
 
     println("--- Simulation Finished Successfully! ---");
+    println("Press Enter to exit...");
+    wait_key();
     return 0;
 }

@@ -73,5 +73,7 @@ fn main(): i32 {
     UiPipeline(ui_world);
 
     println("Universal Contexts: Game and UI Worlds executed completely independently!");
+    println("Press Enter to exit...");
+    wait_key();
     return 0;
 }

@@ -29,6 +29,7 @@ target triple = "x86_64-pc-windows-msvc"
 @str_lit.15 = private unnamed_addr constant [47 x i8] c"==============================================\00", align 1
 @str_lit.16 = private unnamed_addr constant [44 x i8] c"GUI hierarchy layout successfully verified!\00", align 1
 @str_lit.17 = private unnamed_addr constant [47 x i8] c"==============================================\00", align 1
+@str_lit.18 = private unnamed_addr constant [23 x i8] c"Press Enter to exit...\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -2193,5 +2194,7 @@ entry:
   %puts_call29 = call i32 @puts(ptr @str_lit.15)
   %puts_call30 = call i32 @puts(ptr @str_lit.16)
   %puts_call31 = call i32 @puts(ptr @str_lit.17)
+  %puts_call32 = call i32 @puts(ptr @str_lit.18)
+  %key_input = call i32 @getchar()
   ret i32 0
 }

@@ -19,6 +19,7 @@ target triple = "x86_64-pc-windows-msvc"
 @str_lit.5 = private unnamed_addr constant [62 x i8] c"Running 10 physics simulation frames over 100,000 entities...\00", align 1
 @str_lit.6 = private unnamed_addr constant [44 x i8] c"Simulation finished 10 frames successfully!\00", align 1
 @str_lit.7 = private unnamed_addr constant [51 x i8] c"==================================================\00", align 1
+@str_lit.8 = private unnamed_addr constant [23 x i8] c"Press Enter to exit...\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -2199,5 +2200,7 @@ while_body15:                                     ; preds = %while_cond14
 while_exit16:                                     ; preds = %while_cond14
   %puts_call21 = call i32 @puts(ptr @str_lit.6)
   %puts_call22 = call i32 @puts(ptr @str_lit.7)
+  %puts_call23 = call i32 @puts(ptr @str_lit.8)
+  %key_input = call i32 @getchar()
   ret i32 0
 }

@@ -17,6 +17,7 @@ target triple = "x86_64-pc-windows-msvc"
 @str_lit.3 = private unnamed_addr constant [16 x i8] c"=== Frame 1 ===\00", align 1
 @str_lit.4 = private unnamed_addr constant [16 x i8] c"=== Frame 2 ===\00", align 1
 @str_lit.5 = private unnamed_addr constant [42 x i8] c"--- Simulation Finished Successfully! ---\00", align 1
+@str_lit.6 = private unnamed_addr constant [23 x i8] c"Press Enter to exit...\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -2221,5 +2222,7 @@ entry:
   %world16 = load ptr, ptr %world, align 8
   call void @pipeline_GameLoop(ptr %world16)
   %puts_call17 = call i32 @puts(ptr @str_lit.5)
+  %puts_call18 = call i32 @puts(ptr @str_lit.6)
+  %key_input = call i32 @getchar()
   ret i32 0
 }

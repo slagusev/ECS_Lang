@@ -388,17 +388,44 @@ public sealed class LlvmCodeGenerator
             varTypes[p.Name] = p.TypeName;
         }
 
-        CompileBlock(context, module, builder, function, fnDecl.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+        bool isMain = fnDecl.Name == "main";
+        bool hasWaitKey = isMain && ContainsWaitKey(fnDecl.Body);
+
+        CompileBlock(context, module, builder, function, fnDecl.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
 
         // Ensure terminating return if not explicitly present
         var lastBlock = builder.InsertBlock;
         if (lastBlock.Terminator.Handle == IntPtr.Zero)
         {
+            if (isMain && !hasWaitKey)
+            {
+                var msg = builder.BuildGlobalStringPtr("Press Enter to exit...", "prompt_exit");
+                builder.BuildCall2(putsType, putsFunc, new[] { msg }, "puts_exit");
+                var getcharFunc = module.GetNamedFunction("getchar");
+                var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
+            }
             if (returnType == context.VoidType)
                 builder.BuildRetVoid();
             else
                 builder.BuildRet(LLVMValueRef.CreateConstInt(context.Int32Type, 0, false));
         }
+    }
+
+    private static bool ContainsWaitKey(BlockStatement block)
+    {
+        foreach (var s in block.Statements)
+        {
+            if (s is ExpressionStatement es && es.Expression is CallExpression c && c.Callee is "wait_key" or "readln")
+                return true;
+            if (s is IfStatement ifStmt)
+            {
+                if (ContainsWaitKey(ifStmt.ThenBranch)) return true;
+                if (ifStmt.ElseBranch is BlockStatement eb && ContainsWaitKey(eb)) return true;
+            }
+            if (s is WhileStatement ws && ContainsWaitKey(ws.Body)) return true;
+        }
+        return false;
     }
 
     private void CompileBlock(
@@ -413,7 +440,9 @@ public sealed class LlvmCodeGenerator
         LLVMTypeRef putsType,
         LLVMValueRef putsFunc,
         LLVMTypeRef printfType,
-        LLVMValueRef printfFunc)
+        LLVMValueRef printfFunc,
+        bool isMain = false,
+        bool hasWaitKey = false)
     {
         foreach (var stmt in block.Statements)
         {
@@ -509,7 +538,7 @@ public sealed class LlvmCodeGenerator
                     builder.BuildCondBr(condVal, thenBlock, falseDest);
 
                     builder.PositionAtEnd(thenBlock);
-                    CompileBlock(context, module, builder, function, ifStmt.ThenBranch, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    CompileBlock(context, module, builder, function, ifStmt.ThenBranch, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
                     if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
                         builder.BuildBr(mergeBlock);
 
@@ -517,7 +546,7 @@ public sealed class LlvmCodeGenerator
                     {
                         builder.PositionAtEnd(elseBlock);
                         if (ifStmt.ElseBranch is BlockStatement elseStmtBlock)
-                            CompileBlock(context, module, builder, function, elseStmtBlock, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                            CompileBlock(context, module, builder, function, elseStmtBlock, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
 
                         if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
                             builder.BuildBr(mergeBlock);
@@ -538,7 +567,7 @@ public sealed class LlvmCodeGenerator
                     builder.BuildCondBr(loopCondVal, whileBodyBB, whileExitBB);
 
                     builder.PositionAtEnd(whileBodyBB);
-                    CompileBlock(context, module, builder, function, whileStmt.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    CompileBlock(context, module, builder, function, whileStmt.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
                     if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
                         builder.BuildBr(whileCondBB);
 
@@ -546,6 +575,14 @@ public sealed class LlvmCodeGenerator
                     break;
 
                 case ReturnStatement retStmt:
+                    if (isMain && !hasWaitKey)
+                    {
+                        var msg = builder.BuildGlobalStringPtr("Press Enter to exit...", "prompt_exit");
+                        builder.BuildCall2(putsType, putsFunc, new[] { msg }, "puts_exit");
+                        var getcharFunc = module.GetNamedFunction("getchar");
+                        var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                        builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
+                    }
                     if (retStmt.Value != null)
                     {
                         var retVal = CompileExpression(context, module, builder, retStmt.Value, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
