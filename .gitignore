@@ -14,3 +14,5 @@ examples/*.exe
 examples/*.obj
 examples/*.pdb
 examples/*.ilk
+examples/*.exp
+examples/*.lib

@@ -55,6 +55,8 @@ public sealed class MsvcLinker
             args.Add("winmm.lib");
             args.Add("shell32.lib");
             args.Add("opengl32.lib");
+            args.Add("/EXPORT:NvOptimusEnablement");
+            args.Add("/EXPORT:AmdPowerXpressRequestHighPerformance");
         }
 
         var startInfo = new ProcessStartInfo

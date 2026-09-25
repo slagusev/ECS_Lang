@@ -116,6 +116,15 @@ public sealed class LlvmCodeGenerator
         module.AddFunction("IsMouseButtonDown", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
         module.AddFunction("IsMouseButtonPressed", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
 
+        // Export NVIDIA Optimus and AMD PowerXpress enablement flags to force dedicated GPU
+        var nvOptimus = module.AddGlobal(context.Int32Type, "NvOptimusEnablement");
+        nvOptimus.Initializer = LLVMValueRef.CreateConstInt(context.Int32Type, 1);
+        nvOptimus.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
+
+        var amdPower = module.AddGlobal(context.Int32Type, "AmdPowerXpressRequestHighPerformance");
+        amdPower.Initializer = LLVMValueRef.CreateConstInt(context.Int32Type, 1);
+        amdPower.DLLStorageClass = LLVMDLLStorageClass.LLVMDLLExportStorageClass;
+
         // Run type checker first
         _typeChecker.CheckProgram(program);
         if (_diagnostics.HasErrors)
