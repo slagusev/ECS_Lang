@@ -33,12 +33,14 @@ public sealed class TypeChecker
     private readonly Dictionary<string, ComponentSymbol> _components = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ResourceSymbol> _resources = new(StringComparer.Ordinal);
     private readonly Dictionary<string, SystemSymbol> _systems = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, FunctionDeclaration> _functions = new(StringComparer.Ordinal);
     private readonly List<PipelineDeclaration> _pipelines = new();
     private Scope _currentScope = new();
 
     public IReadOnlyDictionary<string, ComponentSymbol> Components => _components;
     public IReadOnlyDictionary<string, ResourceSymbol> Resources => _resources;
     public IReadOnlyDictionary<string, SystemSymbol> Systems => _systems;
+    public IReadOnlyDictionary<string, FunctionDeclaration> Functions => _functions;
     public IReadOnlyList<PipelineDeclaration> Pipelines => _pipelines;
 
     public TypeChecker(DiagnosticsBag diagnostics)
@@ -53,7 +55,7 @@ public sealed class TypeChecker
     {
         RegisterBuiltinComponents();
 
-        // Pass 1: Register all Components and Resources
+        // Pass 1: Register all Components, Resources, and Functions
         foreach (var decl in program.Declarations)
         {
             if (decl is ComponentDeclaration comp)
@@ -63,6 +65,10 @@ public sealed class TypeChecker
             else if (decl is ResourceDeclaration res)
             {
                 RegisterResource(res);
+            }
+            else if (decl is FunctionDeclaration fn)
+            {
+                _functions[fn.Name] = fn;
             }
         }
 
@@ -472,6 +478,28 @@ public sealed class TypeChecker
         if (call.Callee is "readln" or "wait_key")
         {
             return TypeSymbol.I32;
+        }
+
+        if (call.Callee == "world_spawn")
+        {
+            return TypeSymbol.I32;
+        }
+
+        if (call.Callee.StartsWith("world_has_"))
+        {
+            return TypeSymbol.Bool;
+        }
+
+        if (call.Callee.StartsWith("world_add_") ||
+            call.Callee.StartsWith("world_remove_") ||
+            call.Callee.StartsWith("world_set_"))
+        {
+            return TypeSymbol.Void;
+        }
+
+        if (_functions.TryGetValue(call.Callee, out var fnDecl))
+        {
+            return TypeSymbol.FromName(fnDecl.ReturnType);
         }
 
         return TypeSymbol.I32;

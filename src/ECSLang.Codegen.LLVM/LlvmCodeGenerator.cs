@@ -76,6 +76,18 @@ public sealed class LlvmCodeGenerator
         var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
         var getcharFunc = module.AddFunction("getchar", getcharType);
 
+        // void* memcpy(void* dest, const void* src, size_t count)
+        var memcpyType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i8PtrType, context.Int64Type }, false);
+        var memcpyFunc = module.AddFunction("memcpy", memcpyType);
+
+        // void* malloc(size_t size)
+        var mallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int64Type }, false);
+        var mallocFunc = module.AddFunction("malloc", mallocType);
+
+        // void free(void* ptr)
+        var freeType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType }, false);
+        var freeFunc = module.AddFunction("free", freeType);
+
         // Run type checker first
         _typeChecker.CheckProgram(program);
         if (_diagnostics.HasErrors)
@@ -83,12 +95,12 @@ public sealed class LlvmCodeGenerator
             return false;
         }
 
-        // Initialize ECS Runtime declarations
+        // Initialize ECS Multi-Archetype Runtime declarations
         var ecsEmitter = new EcsRuntimeEmitter(context, module, builder, _typeChecker, _diagnostics);
-        ecsEmitter.EmitEcsDeclarations();
+        ecsEmitter.EmitEcsDeclarations(dataLayout);
 
-        // Emit ECS World Helpers (spawn, setters)
-        EmitWorldHelpers(context, module, builder, ecsEmitter, reallocType, reallocFunc);
+        // Emit Multi-Archetype Runtime (spawn, add, remove, has, setters, sort)
+        ecsEmitter.EmitMultiArchetypeRuntime(dataLayout, reallocType, reallocFunc, memcpyType, memcpyFunc, mallocType, mallocFunc, freeType, freeFunc);
 
         // Compile ECS Systems
         foreach (var decl in program.Declarations)
@@ -140,258 +152,6 @@ public sealed class LlvmCodeGenerator
         return true;
     }
 
-    private void EmitWorldHelpers(
-        LLVMContextRef context,
-        LLVMModuleRef module,
-        LLVMBuilderRef builder,
-        EcsRuntimeEmitter ecs,
-        LLVMTypeRef reallocType,
-        LLVMValueRef reallocFunc)
-    {
-        // 1. world_spawn(): returns new entity index (i32)
-        var spawnFuncType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
-        var spawnFunc = module.AddFunction("world_spawn", spawnFuncType);
-        var spawnBB = spawnFunc.AppendBasicBlock("entry");
-        builder.PositionAtEnd(spawnBB);
-
-        var curCount = builder.BuildLoad2(context.Int32Type, ecs.GetArchetypeCountGlobal(), "cur_count");
-        var curCap = builder.BuildLoad2(context.Int32Type, ecs.GetArchetypeCapGlobal(), "cur_cap");
-
-        var needGrow = builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curCount, curCap, "need_grow");
-        var growBB = spawnFunc.AppendBasicBlock("grow");
-        var afterGrowBB = spawnFunc.AppendBasicBlock("after_grow");
-        builder.BuildCondBr(needGrow, growBB, afterGrowBB);
-
-        // Grow block
-        builder.PositionAtEnd(growBB);
-        var capIsZero = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curCap, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "cap_is_zero");
-        var doubleCap = builder.BuildMul(curCap, LLVMValueRef.CreateConstInt(context.Int32Type, 2), "double_cap");
-        var newCap = builder.BuildSelect(capIsZero, LLVMValueRef.CreateConstInt(context.Int32Type, 32), doubleCap, "new_cap");
-        builder.BuildStore(newCap, ecs.GetArchetypeCapGlobal());
-
-        var newCap64 = builder.BuildZExt(newCap, context.Int64Type, "new_cap64");
-
-        // Reallocate each column
-        foreach (var (compName, _) in _typeChecker.Components)
-        {
-            var compStructType = ecs.GetComponentStructType(compName);
-            var colGlobal = ecs.GetArchetypeColGlobal(compName);
-            var colPtr = builder.BuildLoad2(LLVMTypeRef.CreatePointer(compStructType, 0), colGlobal, $"{compName}_ptr");
-            var colPtrI8 = builder.BuildBitCast(colPtr, LLVMTypeRef.CreatePointer(context.Int8Type, 0), $"{compName}_i8");
-
-            // sizeof(compStruct) * newCap
-            // We approximate struct size or use 64 bytes
-            var structSize = LLVMValueRef.CreateConstInt(context.Int64Type, 32);
-            var allocBytes = builder.BuildMul(newCap64, structSize, "alloc_bytes");
-            var reallocCall = builder.BuildCall2(reallocType, reallocFunc, new[] { colPtrI8, allocBytes }, "realloc_call");
-            var newTypedPtr = builder.BuildBitCast(reallocCall, LLVMTypeRef.CreatePointer(compStructType, 0), "new_typed_ptr");
-            builder.BuildStore(newTypedPtr, colGlobal);
-        }
-        builder.BuildBr(afterGrowBB);
-
-        // After grow: increment count and return old count
-        builder.PositionAtEnd(afterGrowBB);
-        var newCount = builder.BuildAdd(curCount, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "new_count");
-        builder.BuildStore(newCount, ecs.GetArchetypeCountGlobal());
-        builder.BuildRet(curCount);
-
-        // 2. Setters for each component: world_set_Position(index, x, y)
-        foreach (var (compName, compSym) in _typeChecker.Components)
-        {
-            var structType = ecs.GetComponentStructType(compName);
-            var paramTypes = new List<LLVMTypeRef> { context.Int32Type };
-            foreach (var f in compSym.Fields)
-            {
-                paramTypes.Add(MapType(context, f.Type.Name));
-            }
-
-            var setterType = LLVMTypeRef.CreateFunction(context.VoidType, paramTypes.ToArray(), false);
-            var setterFunc = module.AddFunction($"world_set_{compName}", setterType);
-            var bb = setterFunc.AppendBasicBlock("entry");
-            builder.PositionAtEnd(bb);
-
-            var indexParam = setterFunc.GetParam(0);
-            var colGlobal = ecs.GetArchetypeColGlobal(compName);
-            var colBasePtr = builder.BuildLoad2(LLVMTypeRef.CreatePointer(structType, 0), colGlobal, "col_base");
-            var elemPtr = builder.BuildInBoundsGEP2(structType, colBasePtr, new[] { indexParam }, "elem_ptr");
-
-            for (int i = 0; i < compSym.Fields.Count; i++)
-            {
-                var fieldVal = setterFunc.GetParam((uint)(i + 1));
-                var fieldGEP = builder.BuildStructGEP2(structType, elemPtr, (uint)i, $"{compSym.Fields[i].Name}_gep");
-                builder.BuildStore(fieldVal, fieldGEP);
-            }
-            builder.BuildRetVoid();
-        }
-
-        // 3. Setters for resources: world_set_Time(dt)
-        foreach (var (resName, resSym) in _typeChecker.Resources)
-        {
-            var structType = ecs.GetComponentStructType(resName);
-            var paramTypes = resSym.Fields.Select(f => MapType(context, f.Type.Name)).ToArray();
-            var setterType = LLVMTypeRef.CreateFunction(context.VoidType, paramTypes, false);
-            var setterFunc = module.AddFunction($"world_set_{resName}", setterType);
-            var bb = setterFunc.AppendBasicBlock("entry");
-            builder.PositionAtEnd(bb);
-
-            var resGlobal = ecs.GetResourceGlobal(resName);
-            for (int i = 0; i < resSym.Fields.Count; i++)
-            {
-                var fieldVal = setterFunc.GetParam((uint)i);
-                var fieldGEP = builder.BuildStructGEP2(structType, resGlobal, (uint)i, $"{resSym.Fields[i].Name}_gep");
-                builder.BuildStore(fieldVal, fieldGEP);
-            }
-            builder.BuildRetVoid();
-        }
-
-        // 4. world_sort_hierarchy(): sorts entities so parents appear before children
-        if (_typeChecker.Components.ContainsKey("ChildOf"))
-        {
-            var sortType = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
-            var sortFunc = module.AddFunction("world_sort_hierarchy", sortType);
-            var sortEntryBB = sortFunc.AppendBasicBlock("entry");
-            builder.PositionAtEnd(sortEntryBB);
-
-            var totalCount = builder.BuildLoad2(context.Int32Type, ecs.GetArchetypeCountGlobal(), "total_count");
-            var canSort = builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, totalCount, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "can_sort");
-            var doSortBB = sortFunc.AppendBasicBlock("do_sort");
-            var exitSortBB = sortFunc.AppendBasicBlock("exit_sort");
-            builder.BuildCondBr(canSort, doSortBB, exitSortBB);
-
-            builder.PositionAtEnd(doSortBB);
-            var count64 = builder.BuildZExt(totalCount, context.Int64Type, "count64");
-            var bytesNeeded = builder.BuildMul(count64, LLVMValueRef.CreateConstInt(context.Int64Type, 4), "bytes_needed");
-
-            var i8PtrType = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
-            var mallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int64Type }, false);
-            var mallocFunc = module.GetNamedFunction("malloc");
-            if (mallocFunc.Handle == IntPtr.Zero)
-                mallocFunc = module.AddFunction("malloc", mallocType);
-
-            var freeType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType }, false);
-            var freeFunc = module.GetNamedFunction("free");
-            if (freeFunc.Handle == IntPtr.Zero)
-                freeFunc = module.AddFunction("free", freeType);
-
-            var depthsRaw = builder.BuildCall2(mallocType, mallocFunc, new[] { bytesNeeded }, "depths_raw");
-            var depthsPtr = depthsRaw;
-
-            var childOfStruct = ecs.GetComponentStructType("ChildOf");
-            var childOfColGlobal = ecs.GetArchetypeColGlobal("ChildOf");
-            var childOfCol = builder.BuildLoad2(LLVMTypeRef.CreatePointer(childOfStruct, 0), childOfColGlobal, "child_of_col");
-
-            // Fill initial depths
-            var dInitCondBB = sortFunc.AppendBasicBlock("d_init_cond");
-            var dInitBodyBB = sortFunc.AppendBasicBlock("d_init_body");
-            var dInitExitBB = sortFunc.AppendBasicBlock("d_init_exit");
-
-            var initIdx = builder.BuildAlloca(context.Int32Type, "init_i");
-            builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), initIdx);
-            builder.BuildBr(dInitCondBB);
-
-            builder.PositionAtEnd(dInitCondBB);
-            var curInitI = builder.BuildLoad2(context.Int32Type, initIdx, "cur_init_i");
-            var hasInitMore = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curInitI, totalCount, "has_init_more");
-            builder.BuildCondBr(hasInitMore, dInitBodyBB, dInitExitBB);
-
-            builder.PositionAtEnd(dInitBodyBB);
-            var childOfElem = builder.BuildInBoundsGEP2(childOfStruct, childOfCol, new[] { curInitI }, "child_elem");
-            var parentGEP = builder.BuildStructGEP2(childOfStruct, childOfElem, 0, "parent_gep");
-            var parentId = builder.BuildLoad2(context.Int32Type, parentGEP, "parent_id");
-            var isRoot = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, parentId, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "is_root");
-            var depthVal = builder.BuildSelect(isRoot, LLVMValueRef.CreateConstInt(context.Int32Type, 0), LLVMValueRef.CreateConstInt(context.Int32Type, 1), "depth_val");
-
-            var curDepthSlot = builder.BuildInBoundsGEP2(context.Int32Type, depthsPtr, new[] { curInitI }, "depth_slot");
-            builder.BuildStore(depthVal, curDepthSlot);
-
-            var nextInitI = builder.BuildAdd(curInitI, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "next_init_i");
-            builder.BuildStore(nextInitI, initIdx);
-            builder.BuildBr(dInitCondBB);
-
-            builder.PositionAtEnd(dInitExitBB);
-
-            // Simple Sort: outer loop i from 0 to totalCount - 2
-            var outerCondBB = sortFunc.AppendBasicBlock("sort_outer_cond");
-            var outerBodyBB = sortFunc.AppendBasicBlock("sort_outer_body");
-            var outerExitBB = sortFunc.AppendBasicBlock("sort_outer_exit");
-
-            var sortIAlloca = builder.BuildAlloca(context.Int32Type, "sort_i");
-            var sortJAlloca = builder.BuildAlloca(context.Int32Type, "sort_j");
-            builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), sortIAlloca);
-            builder.BuildBr(outerCondBB);
-
-            builder.PositionAtEnd(outerCondBB);
-            var curSortI = builder.BuildLoad2(context.Int32Type, sortIAlloca, "cur_sort_i");
-            var outerLimit = builder.BuildSub(totalCount, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "outer_limit");
-            var outerMore = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curSortI, outerLimit, "outer_more");
-            builder.BuildCondBr(outerMore, outerBodyBB, outerExitBB);
-
-            builder.PositionAtEnd(outerBodyBB);
-            var innerStart = builder.BuildAdd(curSortI, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "inner_start");
-            builder.BuildStore(innerStart, sortJAlloca);
-
-            var innerCondBB = sortFunc.AppendBasicBlock("sort_inner_cond");
-            var innerBodyBB = sortFunc.AppendBasicBlock("sort_inner_body");
-            var innerStepBB = sortFunc.AppendBasicBlock("sort_inner_step");
-
-            builder.BuildBr(innerCondBB);
-
-            builder.PositionAtEnd(innerCondBB);
-            var curSortJ = builder.BuildLoad2(context.Int32Type, sortJAlloca, "cur_sort_j");
-            var innerMore = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curSortJ, totalCount, "inner_more");
-            builder.BuildCondBr(innerMore, innerBodyBB, innerStepBB);
-
-            builder.PositionAtEnd(innerBodyBB);
-            var depthISlot = builder.BuildInBoundsGEP2(context.Int32Type, depthsPtr, new[] { curSortI }, "di_slot");
-            var depthJSlot = builder.BuildInBoundsGEP2(context.Int32Type, depthsPtr, new[] { curSortJ }, "dj_slot");
-            var di = builder.BuildLoad2(context.Int32Type, depthISlot, "di");
-            var dj = builder.BuildLoad2(context.Int32Type, depthJSlot, "dj");
-
-            var needSwap = builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, di, dj, "need_swap");
-            var doSwapBB = sortFunc.AppendBasicBlock("do_swap");
-            var skipSwapBB = sortFunc.AppendBasicBlock("skip_swap");
-            builder.BuildCondBr(needSwap, doSwapBB, skipSwapBB);
-
-            // Swap block
-            builder.PositionAtEnd(doSwapBB);
-            builder.BuildStore(dj, depthISlot);
-            builder.BuildStore(di, depthJSlot);
-
-            // Swap all component columns at index i and j
-            foreach (var (compName, _) in _typeChecker.Components)
-            {
-                var compStruct = ecs.GetComponentStructType(compName);
-                var colGlob = ecs.GetArchetypeColGlobal(compName);
-                var col = builder.BuildLoad2(LLVMTypeRef.CreatePointer(compStruct, 0), colGlob, $"{compName}_col_swap");
-                var slotI = builder.BuildInBoundsGEP2(compStruct, col, new[] { curSortI }, $"{compName}_i");
-                var slotJ = builder.BuildInBoundsGEP2(compStruct, col, new[] { curSortJ }, $"{compName}_j");
-
-                var valI = builder.BuildLoad2(compStruct, slotI, $"{compName}_val_i");
-                var valJ = builder.BuildLoad2(compStruct, slotJ, $"{compName}_val_j");
-                builder.BuildStore(valJ, slotI);
-                builder.BuildStore(valI, slotJ);
-            }
-            builder.BuildBr(skipSwapBB);
-
-            builder.PositionAtEnd(skipSwapBB);
-            var nextJ = builder.BuildAdd(curSortJ, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "next_j");
-            builder.BuildStore(nextJ, sortJAlloca);
-            builder.BuildBr(innerCondBB);
-
-            builder.PositionAtEnd(innerStepBB);
-            var nextI = builder.BuildAdd(curSortI, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "next_i");
-            builder.BuildStore(nextI, sortIAlloca);
-            builder.BuildBr(outerCondBB);
-
-            builder.PositionAtEnd(outerExitBB);
-            builder.BuildCall2(freeType, freeFunc, new[] { depthsRaw }, "");
-            builder.BuildBr(exitSortBB);
-
-            builder.PositionAtEnd(exitSortBB);
-            builder.BuildRetVoid();
-        }
-    }
-
     private void CompileSystem(
         LLVMContextRef context,
         LLVMModuleRef module,
@@ -408,26 +168,81 @@ public sealed class LlvmCodeGenerator
         var entryBB = sysFunc.AppendBasicBlock("entry");
         builder.PositionAtEnd(entryBB);
 
-        var totalCount = builder.BuildLoad2(context.Int32Type, ecs.GetArchetypeCountGlobal(), "total_count");
-        var hasEntities = builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, totalCount, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "has_entities");
+        var i8PtrType = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
 
-        var loopCondBB = sysFunc.AppendBasicBlock("loop_cond");
-        var loopBodyBB = sysFunc.AppendBasicBlock("loop_body");
-        var exitBB = sysFunc.AppendBasicBlock("exit");
+        // Compute required query component mask
+        ulong requiredMask = 0;
+        foreach (var qp in sys.QueryParams)
+        {
+            if (_typeChecker.Components.ContainsKey(qp.TypeName))
+            {
+                requiredMask |= ecs.GetComponentMask(qp.TypeName);
+            }
+        }
+        var reqMaskVal = LLVMValueRef.CreateConstInt(context.Int64Type, requiredMask);
 
-        builder.BuildCondBr(hasEntities, loopCondBB, exitBB);
+        // Outer loop: iterate over all archetypes
+        var numArchs = builder.BuildLoad2(context.Int32Type, ecs.GetArchetypeCountGlobal(), "num_archs");
+        var archIdxAlloca = builder.BuildAlloca(context.Int32Type, "arch_idx");
+        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), archIdxAlloca);
 
-        // Loop header
-        builder.PositionAtEnd(loopCondBB);
-        var idxAlloca = builder.BuildAlloca(context.Int32Type, "i");
-        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), idxAlloca);
-        builder.BuildBr(loopBodyBB);
+        var archCondBB = sysFunc.AppendBasicBlock("arch_cond");
+        var archBodyBB = sysFunc.AppendBasicBlock("arch_body");
+        var nextArchBB = sysFunc.AppendBasicBlock("next_arch");
+        var sysExitBB = sysFunc.AppendBasicBlock("sys_exit");
 
-        // Loop body
-        builder.PositionAtEnd(loopBodyBB);
-        var curIdx = builder.BuildLoad2(context.Int32Type, idxAlloca, "cur_i");
+        builder.BuildBr(archCondBB);
 
-        // Map query parameters to pointers inside the loop
+        // arch_cond: while (arch_idx < num_archs)
+        builder.PositionAtEnd(archCondBB);
+        var curArchIdx = builder.BuildLoad2(context.Int32Type, archIdxAlloca, "cur_arch_idx");
+        var hasMoreArchs = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curArchIdx, numArchs, "has_more_archs");
+        builder.BuildCondBr(hasMoreArchs, archBodyBB, sysExitBB);
+
+        // arch_body: check if archetype matches requiredMask
+        builder.PositionAtEnd(archBodyBB);
+        var archPtrType = LLVMTypeRef.CreatePointer(ecs.GetArchetypeStructType(), 0);
+        var tablesBase = builder.BuildLoad2(archPtrType, ecs.GetArchetypeTablesGlobal(), "tables_base");
+        var curArchPtr = builder.BuildInBoundsGEP2(ecs.GetArchetypeStructType(), tablesBase, new[] { curArchIdx }, "cur_arch_ptr");
+
+        var maskSlot = builder.BuildStructGEP2(ecs.GetArchetypeStructType(), curArchPtr, 0, "mask_slot");
+        var archMask = builder.BuildLoad2(context.Int64Type, maskSlot, "arch_mask");
+
+        var andMask = builder.BuildAnd(archMask, reqMaskVal, "and_mask");
+        var isMatch = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, andMask, reqMaskVal, "is_match");
+
+        var checkCountBB = sysFunc.AppendBasicBlock("check_count");
+        builder.BuildCondBr(isMatch, checkCountBB, nextArchBB);
+
+        // check_count: if (arch.count > 0)
+        builder.PositionAtEnd(checkCountBB);
+        var cntSlot = builder.BuildStructGEP2(ecs.GetArchetypeStructType(), curArchPtr, 1, "cnt_slot");
+        var archCount = builder.BuildLoad2(context.Int32Type, cntSlot, "arch_count");
+        var hasEntities = builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, archCount, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "has_entities");
+
+        var entLoopHeaderBB = sysFunc.AppendBasicBlock("ent_loop_header");
+        builder.BuildCondBr(hasEntities, entLoopHeaderBB, nextArchBB);
+
+        // entLoopHeaderBB: setup row = 0
+        builder.PositionAtEnd(entLoopHeaderBB);
+        var rowAlloca = builder.BuildAlloca(context.Int32Type, "row");
+        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), rowAlloca);
+
+        var entLoopCondBB = sysFunc.AppendBasicBlock("ent_loop_cond");
+        var entLoopBodyBB = sysFunc.AppendBasicBlock("ent_loop_body");
+
+        builder.BuildBr(entLoopCondBB);
+
+        // ent_loop_cond: while (row < arch.count)
+        builder.PositionAtEnd(entLoopCondBB);
+        var curRow = builder.BuildLoad2(context.Int32Type, rowAlloca, "cur_row");
+        var hasMoreRows = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curRow, archCount, "has_more_rows");
+        builder.BuildCondBr(hasMoreRows, entLoopBodyBB, nextArchBB);
+
+        // ent_loop_body
+        builder.PositionAtEnd(entLoopBodyBB);
+        var colsArrGEP = builder.BuildStructGEP2(ecs.GetArchetypeStructType(), curArchPtr, 4, "cols_arr");
+
         var locals = new Dictionary<string, LLVMValueRef>(StringComparer.Ordinal);
         var varTypes = new Dictionary<string, string>(StringComparer.Ordinal);
 
@@ -436,10 +251,16 @@ public sealed class LlvmCodeGenerator
             varTypes[qp.Name] = qp.TypeName;
             if (_typeChecker.Components.ContainsKey(qp.TypeName))
             {
-                var structType = ecs.GetComponentStructType(qp.TypeName);
-                var colGlobal = ecs.GetArchetypeColGlobal(qp.TypeName);
-                var colBase = builder.BuildLoad2(LLVMTypeRef.CreatePointer(structType, 0), colGlobal, $"{qp.Name}_col");
-                var elemPtr = builder.BuildInBoundsGEP2(structType, colBase, new[] { curIdx }, $"{qp.Name}_ptr");
+                int compId = ecs.GetComponentId(qp.TypeName);
+                var compStructType = ecs.GetComponentStructType(qp.TypeName);
+                var colSlot = builder.BuildInBoundsGEP2(ecs.GetColumnsArrayType(), colsArrGEP, new[]
+                {
+                    LLVMValueRef.CreateConstInt(context.Int32Type, 0),
+                    LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)compId)
+                }, $"{qp.Name}_col_slot");
+                var colRaw = builder.BuildLoad2(i8PtrType, colSlot, $"{qp.Name}_raw");
+                var colTyped = builder.BuildBitCast(colRaw, LLVMTypeRef.CreatePointer(compStructType, 0), $"{qp.Name}_col");
+                var elemPtr = builder.BuildInBoundsGEP2(compStructType, colTyped, new[] { curRow }, $"{qp.Name}_elem");
                 locals[qp.Name] = elemPtr;
             }
             else if (_typeChecker.Resources.ContainsKey(qp.TypeName))
@@ -452,15 +273,19 @@ public sealed class LlvmCodeGenerator
         // Compile statements inside system body
         CompileBlock(context, module, builder, sysFunc, sys.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
 
-        // Increment loop index
-        var nextIdx = builder.BuildAdd(curIdx, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "next_i");
-        builder.BuildStore(nextIdx, idxAlloca);
+        // Advance row: row++
+        var nextRow = builder.BuildAdd(curRow, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "next_row");
+        builder.BuildStore(nextRow, rowAlloca);
+        builder.BuildBr(entLoopCondBB);
 
-        var continueCond = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, nextIdx, totalCount, "loop_more");
-        builder.BuildCondBr(continueCond, loopBodyBB, exitBB);
+        // next_arch: arch_idx++
+        builder.PositionAtEnd(nextArchBB);
+        var nextArchIdx = builder.BuildAdd(curArchIdx, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "next_arch_idx");
+        builder.BuildStore(nextArchIdx, archIdxAlloca);
+        builder.BuildBr(archCondBB);
 
-        // Exit block
-        builder.PositionAtEnd(exitBB);
+        // sys_exit
+        builder.PositionAtEnd(sysExitBB);
         builder.BuildRetVoid();
     }
 
