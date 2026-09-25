@@ -39,10 +39,23 @@ public sealed class MsvcLinker
         }
 
         // Standard C Runtime and Windows libraries
-        args.Add("libcmt.lib");
-        args.Add("libvcruntime.lib");
-        args.Add("libucrt.lib");
+        args.Add("msvcrt.lib");
+        args.Add("vcruntime.lib");
+        args.Add("ucrt.lib");
         args.Add("kernel32.lib");
+
+        // Native Raylib & Win32 graphics libraries
+        string? raylibDir = FindNativeRaylibDir();
+        if (!string.IsNullOrEmpty(raylibDir))
+        {
+            args.Add($"/LIBPATH:\"{raylibDir}\"");
+            args.Add("raylib.lib");
+            args.Add("user32.lib");
+            args.Add("gdi32.lib");
+            args.Add("winmm.lib");
+            args.Add("shell32.lib");
+            args.Add("opengl32.lib");
+        }
 
         var startInfo = new ProcessStartInfo
         {
@@ -157,5 +170,28 @@ public sealed class MsvcLinker
         // Common default fallback
         string defaultVs = @"C:\Program Files\Microsoft Visual Studio\2022\Community";
         return Directory.Exists(defaultVs) ? defaultVs : "";
+    }
+
+    private static string? FindNativeRaylibDir()
+    {
+        var candidates = new List<string?>
+        {
+            AppContext.BaseDirectory,
+            Directory.GetCurrentDirectory()
+        };
+
+        foreach (var startDir in candidates)
+        {
+            string? current = startDir;
+            while (!string.IsNullOrEmpty(current))
+            {
+                string candidate = Path.Combine(current, "native", "raylib", "lib");
+                if (Directory.Exists(candidate))
+                    return candidate;
+                current = Path.GetDirectoryName(current);
+            }
+        }
+
+        return null;
     }
 }

@@ -543,6 +543,44 @@ public sealed class TypeChecker
             return TypeSymbol.I32;
         }
 
+        // Raylib Window & Drawing built-ins
+        if (call.Callee is "init_window" or "rl_init_window" or "close_window" or "rl_close_window" or
+            "set_target_fps" or "rl_set_target_fps" or "begin_drawing" or "rl_begin_drawing" or
+            "end_drawing" or "rl_end_drawing" or "clear_background" or "rl_clear_background" or
+            "draw_rectangle" or "rl_draw_rectangle" or "draw_circle" or "rl_draw_circle" or
+            "draw_text" or "rl_draw_text" or "draw_line" or "rl_draw_line")
+        {
+            return TypeSymbol.Void;
+        }
+
+        // Raylib Input & Query built-ins
+        if (call.Callee is "window_should_close" or "rl_window_should_close" or
+            "is_key_down" or "rl_is_key_down" or "is_key_pressed" or "rl_is_key_pressed" or
+            "is_key_released" or "rl_is_key_released" or "is_key_up" or "rl_is_key_up" or
+            "is_mouse_button_down" or "rl_is_mouse_button_down" or
+            "is_mouse_button_pressed" or "rl_is_mouse_button_pressed")
+        {
+            return TypeSymbol.Bool;
+        }
+
+        if (call.Callee is "get_fps" or "rl_get_fps" or
+            "get_mouse_x" or "rl_get_mouse_x" or
+            "get_mouse_y" or "rl_get_mouse_y" or
+            "rl_color")
+        {
+            return TypeSymbol.I32;
+        }
+
+        if (call.Callee is "get_frame_time" or "rl_get_frame_time")
+        {
+            return TypeSymbol.F32;
+        }
+
+        if (call.Callee is "get_time" or "rl_get_time")
+        {
+            return TypeSymbol.F64;
+        }
+
         if (call.Callee is "ecs::create_world" or "create_world")
         {
             return TypeSymbol.World;

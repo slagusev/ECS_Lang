@@ -216,26 +216,28 @@ fn main(): i32 {
 - [ ] Массивы и слайсы `[T; N]` и `[T]`.
 - [ ] Перечисления `enum` и сопоставление с образцом `match`.
 
-### [ ] Этап 12: События и реактивность (Events & Observers)
-- [ ] Декларация событий: `event OnClick { target: i32, mouse_x: f32, mouse_y: f32 }`.
-- [ ] Генерация очередей событий в рантайме (двойной буфер кадров Event Buffer).
-- [ ] Отправка событий из систем или пользовательского кода: `emit OnClick(btn, 100.0, 50.0);`.
-- [ ] Подписка систем на события: `system HandleClick { read(e: OnClick) { ... } }`.
-- [ ] Сквозной тест: интерактивная обработка событий в GUI.
+### [x] Этап 12: Графика, окно и ввод (Raylib / Window Integration)
+- [x] Подключение библиотеки Raylib (C ABI, static `raylib.lib` под Windows x64) в `MsvcLinker` с динамическим UCRT (`msvcrt.lib`, `vcruntime.lib`, `ucrt.lib`) и Win32 подсистемами (`user32.lib`, `gdi32.lib`, `winmm.lib`, `shell32.lib`, `opengl32.lib`).
+- [x] Встроенные функции управления окном: `init_window(w, h, title)`, `window_should_close()`, `close_window()`, `set_target_fps(60)`, `get_fps()`, `get_frame_time()`, `get_time()`.
+- [x] Встроенные функции рендеринга 2D: `begin_drawing()`, `end_drawing()`, `clear_background(...)`, `draw_rectangle(...)`, `draw_circle(...)`, `draw_text(...)`, `draw_line(...)`, упаковка цветов RGBA `rl_color(r, g, b, a)`.
+- [x] Автоматическое приведение координат и радиусов (`EnsureInt32`, `EnsureFloat`), позволяющее передавать `f32` поля компонентов напрямую в функции рендеринга без явных кастов.
+- [x] Встроенные функции опроса ввода: `is_key_down(key)`, `is_key_pressed(key)`, `is_key_released(key)`, `is_key_up(key)`, `get_mouse_x()`, `get_mouse_y()`, `is_mouse_button_down(btn)`, `is_mouse_button_pressed(btn)`.
+- [x] Интеграция рендеринга и ввода с ECS-пайплайнами: игровой цикл 60 FPS, обновление позиций через системы движения и отрисовка через системы рендера.
+- [x] Сквозная интерактивная игра: [`examples/raylib_game.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/raylib_game.ecs) — 60 FPS окно, цветные прыгающие шары в ECS-архетипах и перемещаемая ракетка под управлением стрелочек или клавиш A/D. Скомпилировано в автономный `.exe` размером ~600 КБ.
 
-### [ ] Этап 13: Многопоточность и Job System (Multithreaded Systems)
+### [ ] Этап 13: События и реактивность (Events & Observers)
+- [ ] Декларация событий: `event OnClick { target: i32, mouse_x: f32, mouse_y: f32 }`, `event OnCollision { a: i32, b: i32 }`.
+- [ ] Генерация очередей событий в структуре мира (двойной буфер кадров Event Buffer).
+- [ ] Отправка событий из систем или пользовательского кода: `world.emit(...)`.
+- [ ] Подписка систем на события: `system HandleClick { read(e: OnClick) { ... } }`.
+- [ ] Сквозной тест: интерактивная обработка кликов мыши и столкновений в графическом окне Raylib.
+
+### [ ] Этап 14: Многопоточность и Job System (Multithreaded Systems)
 - [ ] Анализ графа зависимостей систем на этапе семантики (DAG):
   - Системы, читающие одни и те же компоненты (`const`), могут выполняться параллельно.
   - Системы с записью (`mut`) в непересекающиеся компоненты также выполняются параллельно.
 - [ ] Легковесный нативный ThreadPool (Win32 Thread Pool API / pthreads).
 - [ ] Автоматическое распараллеливание стадий пайплайна: диспетчеризация независимых систем в пул потоков без необходимости ручной синхронизации.
 - [ ] Бенчмарк: параллельная обработка сотен тысяч сущностей на всех ядрах CPU.
-
-### [ ] Этап 14: Графика, окно и ввод (Raylib / Window Integration)
-- [ ] Интеграция с нативной библиотекой создания окон и графики (Raylib C ABI).
-- [ ] Встроенные ресурсы `Window { width: i32, height: i32, title: string }` и `Input`.
-- [ ] Встроенные функции рендеринга: `draw_rect(...)`, `draw_circle(...)`, `draw_text(...)`, `draw_sprite(...)`.
-- [ ] Системы рендеринга и обработки ввода клавиатуры/мыши прямо внутри конвейера `pipeline`.
-- [ ] Демо-игра: полноценная нативная 2D игра (например, Space Invaders или Asteroids) на ECS-Lang с окном 60 FPS.
 
 

@@ -92,6 +92,30 @@ public sealed class LlvmCodeGenerator
         var freeType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType }, false);
         var freeFunc = module.AddFunction("free", freeType);
 
+        // Raylib C ABI declarations
+        module.AddFunction("InitWindow", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, i8PtrType }, false));
+        module.AddFunction("WindowShouldClose", LLVMTypeRef.CreateFunction(context.Int1Type, Array.Empty<LLVMTypeRef>(), false));
+        module.AddFunction("CloseWindow", LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false));
+        module.AddFunction("SetTargetFPS", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type }, false));
+        module.AddFunction("GetFPS", LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false));
+        module.AddFunction("GetFrameTime", LLVMTypeRef.CreateFunction(context.FloatType, Array.Empty<LLVMTypeRef>(), false));
+        module.AddFunction("GetTime", LLVMTypeRef.CreateFunction(context.DoubleType, Array.Empty<LLVMTypeRef>(), false));
+        module.AddFunction("BeginDrawing", LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false));
+        module.AddFunction("EndDrawing", LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false));
+        module.AddFunction("ClearBackground", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type }, false));
+        module.AddFunction("DrawText", LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false));
+        module.AddFunction("DrawRectangle", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false));
+        module.AddFunction("DrawCircle", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.FloatType, context.Int32Type }, false));
+        module.AddFunction("DrawLine", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false));
+        module.AddFunction("IsKeyDown", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
+        module.AddFunction("IsKeyPressed", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
+        module.AddFunction("IsKeyReleased", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
+        module.AddFunction("IsKeyUp", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
+        module.AddFunction("GetMouseX", LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false));
+        module.AddFunction("GetMouseY", LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false));
+        module.AddFunction("IsMouseButtonDown", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
+        module.AddFunction("IsMouseButtonPressed", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
+
         // Run type checker first
         _typeChecker.CheckProgram(program);
         if (_diagnostics.HasErrors)
@@ -427,7 +451,7 @@ public sealed class LlvmCodeGenerator
     {
         foreach (var s in block.Statements)
         {
-            if (s is ExpressionStatement es && es.Expression is CallExpression c && c.Callee is "wait_key" or "readln")
+            if (s is ExpressionStatement es && es.Expression is CallExpression c && c.Callee is "wait_key" or "readln" or "init_window" or "rl_init_window")
                 return true;
             if (s is IfStatement ifStmt)
             {
@@ -681,6 +705,7 @@ public sealed class LlvmCodeGenerator
         LLVMTypeRef printfType,
         LLVMValueRef printfFunc)
     {
+        var i8PtrType = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
         switch (expr)
         {
             case NumberLiteralExpression num:
@@ -851,6 +876,231 @@ public sealed class LlvmCodeGenerator
                     var createWorldType = LLVMTypeRef.CreateFunction(LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0), Array.Empty<LLVMTypeRef>(), false);
                     return builder.BuildCall2(createWorldType, createWorldFunc, Array.Empty<LLVMValueRef>(), "new_world");
                 }
+                else if (call.Callee is "init_window" or "rl_init_window")
+                {
+                    var f = module.GetNamedFunction("InitWindow");
+                    var ft = LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, i8PtrType }, false);
+                    var w = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var h = CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var title = CompileExpression(context, module, builder, function, call.Arguments[2], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    return builder.BuildCall2(ft, f, new[] { w, h, title }, "");
+                }
+                else if (call.Callee is "window_should_close" or "rl_window_should_close")
+                {
+                    var f = module.GetNamedFunction("WindowShouldClose");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int1Type, Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "should_close");
+                }
+                else if (call.Callee is "close_window" or "rl_close_window")
+                {
+                    var f = module.GetNamedFunction("CloseWindow");
+                    var ft = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "");
+                }
+                else if (call.Callee is "set_target_fps" or "rl_set_target_fps")
+                {
+                    var f = module.GetNamedFunction("SetTargetFPS");
+                    var ft = LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type }, false);
+                    var fps = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    return builder.BuildCall2(ft, f, new[] { fps }, "");
+                }
+                else if (call.Callee is "get_fps" or "rl_get_fps")
+                {
+                    var f = module.GetNamedFunction("GetFPS");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "fps");
+                }
+                else if (call.Callee is "get_frame_time" or "rl_get_frame_time")
+                {
+                    var f = module.GetNamedFunction("GetFrameTime");
+                    var ft = LLVMTypeRef.CreateFunction(context.FloatType, Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "frame_time");
+                }
+                else if (call.Callee is "get_time" or "rl_get_time")
+                {
+                    var f = module.GetNamedFunction("GetTime");
+                    var ft = LLVMTypeRef.CreateFunction(context.DoubleType, Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "cur_time");
+                }
+                else if (call.Callee is "begin_drawing" or "rl_begin_drawing")
+                {
+                    var f = module.GetNamedFunction("BeginDrawing");
+                    var ft = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "");
+                }
+                else if (call.Callee is "end_drawing" or "rl_end_drawing")
+                {
+                    var f = module.GetNamedFunction("EndDrawing");
+                    var ft = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "");
+                }
+                else if (call.Callee is "clear_background" or "rl_clear_background")
+                {
+                    var f = module.GetNamedFunction("ClearBackground");
+                    var ft = LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type }, false);
+                    LLVMValueRef colorVal;
+                    if (call.Arguments.Count >= 3)
+                    {
+                        var r = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var g = CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var b = CompileExpression(context, module, builder, function, call.Arguments[2], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        colorVal = PackRgbaColor(context, builder, r, g, b);
+                    }
+                    else
+                    {
+                        colorVal = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    }
+                    return builder.BuildCall2(ft, f, new[] { colorVal }, "");
+                }
+                else if (call.Callee is "draw_rectangle" or "rl_draw_rectangle")
+                {
+                    var f = module.GetNamedFunction("DrawRectangle");
+                    var ft = LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false);
+                    var x = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var y = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var w = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[2], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var h = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[3], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    LLVMValueRef colorVal;
+                    if (call.Arguments.Count >= 7)
+                    {
+                        var r = CompileExpression(context, module, builder, function, call.Arguments[4], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var g = CompileExpression(context, module, builder, function, call.Arguments[5], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var b = CompileExpression(context, module, builder, function, call.Arguments[6], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        colorVal = PackRgbaColor(context, builder, r, g, b);
+                    }
+                    else
+                    {
+                        colorVal = CompileExpression(context, module, builder, function, call.Arguments[4], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    }
+                    return builder.BuildCall2(ft, f, new[] { x, y, w, h, colorVal }, "");
+                }
+                else if (call.Callee is "draw_circle" or "rl_draw_circle")
+                {
+                    var f = module.GetNamedFunction("DrawCircle");
+                    var ft = LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.FloatType, context.Int32Type }, false);
+                    var cx = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var cy = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var rad = EnsureFloat(context, builder, CompileExpression(context, module, builder, function, call.Arguments[2], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    LLVMValueRef colorVal;
+                    if (call.Arguments.Count >= 6)
+                    {
+                        var r = CompileExpression(context, module, builder, function, call.Arguments[3], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var g = CompileExpression(context, module, builder, function, call.Arguments[4], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var b = CompileExpression(context, module, builder, function, call.Arguments[5], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        colorVal = PackRgbaColor(context, builder, r, g, b);
+                    }
+                    else
+                    {
+                        colorVal = CompileExpression(context, module, builder, function, call.Arguments[3], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    }
+                    return builder.BuildCall2(ft, f, new[] { cx, cy, rad, colorVal }, "");
+                }
+                else if (call.Callee is "draw_text" or "rl_draw_text")
+                {
+                    var f = module.GetNamedFunction("DrawText");
+                    var ft = LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false);
+                    var txt = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var x = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var y = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[2], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var sz = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[3], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    LLVMValueRef colorVal;
+                    if (call.Arguments.Count >= 7)
+                    {
+                        var r = CompileExpression(context, module, builder, function, call.Arguments[4], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var g = CompileExpression(context, module, builder, function, call.Arguments[5], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var b = CompileExpression(context, module, builder, function, call.Arguments[6], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        colorVal = PackRgbaColor(context, builder, r, g, b);
+                    }
+                    else
+                    {
+                        colorVal = CompileExpression(context, module, builder, function, call.Arguments[4], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    }
+                    return builder.BuildCall2(ft, f, new[] { txt, x, y, sz, colorVal }, "");
+                }
+                else if (call.Callee is "draw_line" or "rl_draw_line")
+                {
+                    var f = module.GetNamedFunction("DrawLine");
+                    var ft = LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false);
+                    var x1 = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var y1 = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var x2 = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[2], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var y2 = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[3], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    LLVMValueRef colorVal;
+                    if (call.Arguments.Count >= 7)
+                    {
+                        var r = CompileExpression(context, module, builder, function, call.Arguments[4], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var g = CompileExpression(context, module, builder, function, call.Arguments[5], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var b = CompileExpression(context, module, builder, function, call.Arguments[6], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        colorVal = PackRgbaColor(context, builder, r, g, b);
+                    }
+                    else
+                    {
+                        colorVal = CompileExpression(context, module, builder, function, call.Arguments[4], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    }
+                    return builder.BuildCall2(ft, f, new[] { x1, y1, x2, y2, colorVal }, "");
+                }
+                else if (call.Callee is "is_key_down" or "rl_is_key_down")
+                {
+                    var f = module.GetNamedFunction("IsKeyDown");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false);
+                    var k = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    return builder.BuildCall2(ft, f, new[] { k }, "key_down");
+                }
+                else if (call.Callee is "is_key_pressed" or "rl_is_key_pressed")
+                {
+                    var f = module.GetNamedFunction("IsKeyPressed");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false);
+                    var k = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    return builder.BuildCall2(ft, f, new[] { k }, "key_pressed");
+                }
+                else if (call.Callee is "is_key_released" or "rl_is_key_released")
+                {
+                    var f = module.GetNamedFunction("IsKeyReleased");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false);
+                    var k = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    return builder.BuildCall2(ft, f, new[] { k }, "key_rel");
+                }
+                else if (call.Callee is "is_key_up" or "rl_is_key_up")
+                {
+                    var f = module.GetNamedFunction("IsKeyUp");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false);
+                    var k = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    return builder.BuildCall2(ft, f, new[] { k }, "key_up");
+                }
+                else if (call.Callee is "get_mouse_x" or "rl_get_mouse_x")
+                {
+                    var f = module.GetNamedFunction("GetMouseX");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "mouse_x");
+                }
+                else if (call.Callee is "get_mouse_y" or "rl_get_mouse_y")
+                {
+                    var f = module.GetNamedFunction("GetMouseY");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "mouse_y");
+                }
+                else if (call.Callee is "is_mouse_button_down" or "rl_is_mouse_button_down")
+                {
+                    var f = module.GetNamedFunction("IsMouseButtonDown");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false);
+                    var btn = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    return builder.BuildCall2(ft, f, new[] { btn }, "btn_down");
+                }
+                else if (call.Callee is "is_mouse_button_pressed" or "rl_is_mouse_button_pressed")
+                {
+                    var f = module.GetNamedFunction("IsMouseButtonPressed");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false);
+                    var btn = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    return builder.BuildCall2(ft, f, new[] { btn }, "btn_pressed");
+                }
+                else if (call.Callee == "rl_color")
+                {
+                    var r = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var g = CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var b = CompileExpression(context, module, builder, function, call.Arguments[2], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var a = call.Arguments.Count > 3 ? CompileExpression(context, module, builder, function, call.Arguments[3], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc) : null;
+                    return PackRgbaColor(context, builder, r, g, b, a);
+                }
                 else if (_typeChecker.Structs.TryGetValue(call.Callee, out var stSym))
                 {
                     var stType = ecs.GetComponentStructType(call.Callee);
@@ -927,5 +1177,40 @@ public sealed class LlvmCodeGenerator
             tempBuilder.PositionAtEnd(entryBB);
         }
         return tempBuilder.BuildAlloca(type, name);
+    }
+
+    private static LLVMValueRef PackRgbaColor(LLVMContextRef context, LLVMBuilderRef builder, LLVMValueRef r, LLVMValueRef g, LLVMValueRef b, LLVMValueRef? a = null)
+    {
+        var rMask = builder.BuildAnd(r, LLVMValueRef.CreateConstInt(context.Int32Type, 0xFF), "r_byte");
+        var gMask = builder.BuildAnd(g, LLVMValueRef.CreateConstInt(context.Int32Type, 0xFF), "g_byte");
+        var bMask = builder.BuildAnd(b, LLVMValueRef.CreateConstInt(context.Int32Type, 0xFF), "b_byte");
+        var aVal = a ?? LLVMValueRef.CreateConstInt(context.Int32Type, 0xFF);
+        var aMask = builder.BuildAnd(aVal, LLVMValueRef.CreateConstInt(context.Int32Type, 0xFF), "a_byte");
+
+        var gShl = builder.BuildShl(gMask, LLVMValueRef.CreateConstInt(context.Int32Type, 8), "g_shl");
+        var bShl = builder.BuildShl(bMask, LLVMValueRef.CreateConstInt(context.Int32Type, 16), "b_shl");
+        var aShl = builder.BuildShl(aMask, LLVMValueRef.CreateConstInt(context.Int32Type, 24), "a_shl");
+
+        var rg = builder.BuildOr(rMask, gShl, "rg");
+        var rgb = builder.BuildOr(rg, bShl, "rgb");
+        return builder.BuildOr(rgb, aShl, "rgba_packed");
+    }
+
+    private static LLVMValueRef EnsureInt32(LLVMContextRef context, LLVMBuilderRef builder, LLVMValueRef val, string name = "to_i32")
+    {
+        if (val.TypeOf == context.FloatType || val.TypeOf == context.DoubleType)
+            return builder.BuildFPToSI(val, context.Int32Type, name);
+        if (val.TypeOf == context.Int64Type)
+            return builder.BuildTrunc(val, context.Int32Type, name);
+        return val;
+    }
+
+    private static LLVMValueRef EnsureFloat(LLVMContextRef context, LLVMBuilderRef builder, LLVMValueRef val, string name = "to_f32")
+    {
+        if (val.TypeOf == context.Int32Type || val.TypeOf == context.Int64Type)
+            return builder.BuildSIToFP(val, context.FloatType, name);
+        if (val.TypeOf == context.DoubleType)
+            return builder.BuildFPTrunc(val, context.FloatType, name);
+        return val;
     }
 }
