@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ECSLang.Core\ECSLang.Core.csproj" />
+    <ProjectReference Include="..\ECSLang.Frontend\ECSLang.Frontend.csproj" />
+    <ProjectReference Include="..\ECSLang.Semantics\ECSLang.Semantics.csproj" />
+    <ProjectReference Include="..\ECSLang.Codegen.LLVM\ECSLang.Codegen.LLVM.csproj" />
+    <ProjectReference Include="..\ECSLang.Toolchain\ECSLang.Toolchain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="libLLVM.runtime.win-x64" Version="20.1.2" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

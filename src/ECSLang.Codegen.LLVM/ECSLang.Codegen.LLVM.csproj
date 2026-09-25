@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\ECSLang.Core\ECSLang.Core.csproj" />
+    <ProjectReference Include="..\ECSLang.Semantics\ECSLang.Semantics.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="libLLVM" Version="20.1.2" />
+    <PackageReference Include="libLLVM.runtime.win-x64" Version="20.1.2" />
+    <PackageReference Include="LLVMSharp" Version="20.1.2" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>
