@@ -16,6 +16,12 @@ public sealed record ResourceSymbol(
     SourceSpan Span
 );
 
+public sealed record StructSymbol(
+    string Name,
+    IReadOnlyList<ComponentFieldSymbol> Fields,
+    SourceSpan Span
+);
+
 public sealed record QueryParamSymbol(
     bool IsMutable,
     string ParameterName,

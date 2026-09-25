@@ -32,6 +32,9 @@ public enum TokenType
     If,
     Else,
     While,
+    For,
+    In,
+    Struct,
 
     // Punctuation & Delimiters
     OpenParen,    // (
@@ -43,6 +46,7 @@ public enum TokenType
     Semicolon,    // ;
     Comma,        // ,
     Dot,          // .
+    DotDot,       // ..
 
     // Operators
     Plus,         // +

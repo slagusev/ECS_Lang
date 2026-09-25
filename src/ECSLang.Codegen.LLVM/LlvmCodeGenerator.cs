@@ -124,6 +124,18 @@ public sealed class LlvmCodeGenerator
             }
         }
 
+        // Forward-declare regular functions so any function or system can call any function
+        foreach (var decl in program.Declarations)
+        {
+            if (decl is FunctionDeclaration fnDecl)
+            {
+                var returnType = MapType(context, fnDecl.ReturnType, ecsEmitter);
+                var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName, ecsEmitter)).ToArray();
+                var funcType = LLVMTypeRef.CreateFunction(returnType, paramTypes, false);
+                module.AddFunction(fnDecl.Name, funcType);
+            }
+        }
+
         // Compile regular functions
         foreach (var decl in program.Declarations)
         {
@@ -368,8 +380,7 @@ public sealed class LlvmCodeGenerator
     {
         var returnType = MapType(context, fnDecl.ReturnType, ecs);
         var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName, ecs)).ToArray();
-        var funcType = LLVMTypeRef.CreateFunction(returnType, paramTypes, false);
-        var function = module.AddFunction(fnDecl.Name, funcType);
+        var function = module.GetNamedFunction(fnDecl.Name);
 
         var entryBlock = function.AppendBasicBlock("entry");
         builder.PositionAtEnd(entryBlock);
@@ -424,6 +435,7 @@ public sealed class LlvmCodeGenerator
                 if (ifStmt.ElseBranch is BlockStatement eb && ContainsWaitKey(eb)) return true;
             }
             if (s is WhileStatement ws && ContainsWaitKey(ws.Body)) return true;
+            if (s is ForStatement fs && ContainsWaitKey(fs.Body)) return true;
         }
         return false;
     }
@@ -459,7 +471,7 @@ public sealed class LlvmCodeGenerator
                         alloca = CreateEntryBlockAlloca(context, function, varType, varDecl.Name);
                         locals[varDecl.Name] = alloca;
                     }
-                    var initVal = CompileExpression(context, module, builder, varDecl.Initializer, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var initVal = CompileExpression(context, module, builder, function, varDecl.Initializer, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     builder.BuildStore(initVal, alloca);
                     varTypes[varDecl.Name] = tName;
                     break;
@@ -467,7 +479,7 @@ public sealed class LlvmCodeGenerator
                 case AssignmentStatement assign:
                     if (locals.TryGetValue(assign.TargetName, out var targetPtr))
                     {
-                        var newVal = CompileExpression(context, module, builder, assign.Value, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var newVal = CompileExpression(context, module, builder, function, assign.Value, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
 
                         if (assign.MemberName != null && varTypes.TryGetValue(assign.TargetName, out var targetTypeName))
                         {
@@ -529,7 +541,7 @@ public sealed class LlvmCodeGenerator
                     break;
 
                 case IfStatement ifStmt:
-                    var condVal = CompileExpression(context, module, builder, ifStmt.Condition, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var condVal = CompileExpression(context, module, builder, function, ifStmt.Condition, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     var thenBlock = function.AppendBasicBlock("then");
                     var elseBlock = ifStmt.ElseBranch != null ? function.AppendBasicBlock("else") : default;
                     var mergeBlock = function.AppendBasicBlock("if_merge");
@@ -563,7 +575,7 @@ public sealed class LlvmCodeGenerator
                     builder.BuildBr(whileCondBB);
 
                     builder.PositionAtEnd(whileCondBB);
-                    var loopCondVal = CompileExpression(context, module, builder, whileStmt.Condition, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var loopCondVal = CompileExpression(context, module, builder, function, whileStmt.Condition, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     builder.BuildCondBr(loopCondVal, whileBodyBB, whileExitBB);
 
                     builder.PositionAtEnd(whileBodyBB);
@@ -572,6 +584,60 @@ public sealed class LlvmCodeGenerator
                         builder.BuildBr(whileCondBB);
 
                     builder.PositionAtEnd(whileExitBB);
+                    break;
+
+                case ForStatement forStmt:
+                    var startVal = CompileExpression(context, module, builder, function, forStmt.Start, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var endVal = CompileExpression(context, module, builder, function, forStmt.End, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+
+                    var loopVarAlloca = CreateEntryBlockAlloca(context, function, context.Int32Type, forStmt.VariableName);
+                    builder.BuildStore(startVal, loopVarAlloca);
+
+                    var oldLocal = locals.TryGetValue(forStmt.VariableName, out var prevLocal) ? prevLocal : default;
+                    var oldType = varTypes.TryGetValue(forStmt.VariableName, out var prevType) ? prevType : null;
+
+                    locals[forStmt.VariableName] = loopVarAlloca;
+                    varTypes[forStmt.VariableName] = "i32";
+
+                    var forCondBB = function.AppendBasicBlock("for_cond");
+                    var forBodyBB = function.AppendBasicBlock("for_body");
+                    var forIncBB = function.AppendBasicBlock("for_inc");
+                    var forExitBB = function.AppendBasicBlock("for_exit");
+
+                    builder.BuildBr(forCondBB);
+
+                    // for_cond: while (i < end)
+                    builder.PositionAtEnd(forCondBB);
+                    var curVal = builder.BuildLoad2(context.Int32Type, loopVarAlloca, forStmt.VariableName);
+                    var cmpVal = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curVal, endVal, "for_cmp");
+                    builder.BuildCondBr(cmpVal, forBodyBB, forExitBB);
+
+                    // for_body
+                    builder.PositionAtEnd(forBodyBB);
+                    CompileBlock(context, module, builder, function, forStmt.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+                    if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
+                        builder.BuildBr(forIncBB);
+
+                    // for_inc: i++
+                    builder.PositionAtEnd(forIncBB);
+                    var curValInc = builder.BuildLoad2(context.Int32Type, loopVarAlloca, "for_cur");
+                    var nextVal = builder.BuildAdd(curValInc, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "for_next");
+                    builder.BuildStore(nextVal, loopVarAlloca);
+                    builder.BuildBr(forCondBB);
+
+                    // for_exit
+                    builder.PositionAtEnd(forExitBB);
+
+                    if (oldType != null)
+                    {
+                        locals[forStmt.VariableName] = oldLocal;
+                        varTypes[forStmt.VariableName] = oldType;
+                    }
+                    else
+                    {
+                        locals.Remove(forStmt.VariableName);
+                        varTypes.Remove(forStmt.VariableName);
+                    }
                     break;
 
                 case ReturnStatement retStmt:
@@ -585,7 +651,7 @@ public sealed class LlvmCodeGenerator
                     }
                     if (retStmt.Value != null)
                     {
-                        var retVal = CompileExpression(context, module, builder, retStmt.Value, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var retVal = CompileExpression(context, module, builder, function, retStmt.Value, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                         builder.BuildRet(retVal);
                     }
                     else
@@ -595,7 +661,7 @@ public sealed class LlvmCodeGenerator
                     break;
 
                 case ExpressionStatement exprStmt:
-                    CompileExpression(context, module, builder, exprStmt.Expression, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    CompileExpression(context, module, builder, function, exprStmt.Expression, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     break;
             }
         }
@@ -605,6 +671,7 @@ public sealed class LlvmCodeGenerator
         LLVMContextRef context,
         LLVMModuleRef module,
         LLVMBuilderRef builder,
+        LLVMValueRef function,
         ExpressionNode expr,
         Dictionary<string, LLVMValueRef> locals,
         Dictionary<string, string> varTypes,
@@ -658,7 +725,7 @@ public sealed class LlvmCodeGenerator
                 return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
 
             case MethodCallExpression methodCall:
-                var targetVal = CompileExpression(context, module, builder, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                var targetVal = CompileExpression(context, module, builder, function, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                 string mTargetName = $"world_{methodCall.MethodName}";
                 var mFunc = module.GetNamedFunction(mTargetName);
                 if (mFunc.Handle == IntPtr.Zero)
@@ -670,7 +737,7 @@ public sealed class LlvmCodeGenerator
                 var mArgs = new List<LLVMValueRef> { targetVal };
                 foreach (var arg in methodCall.Arguments)
                 {
-                    mArgs.Add(CompileExpression(context, module, builder, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    mArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
                 }
 
                 var mFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(mFunc);
@@ -678,7 +745,7 @@ public sealed class LlvmCodeGenerator
                 return builder.BuildCall2(mFuncType, mFunc, mArgs.ToArray(), mCallName);
 
             case UnaryExpression un:
-                var operand = CompileExpression(context, module, builder, un.Operand, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                var operand = CompileExpression(context, module, builder, function, un.Operand, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                 return un.Operator switch
                 {
                     UnaryOperator.Negate => operand.TypeOf == context.FloatType
@@ -689,8 +756,8 @@ public sealed class LlvmCodeGenerator
                 };
 
             case BinaryExpression bin:
-                var left = CompileExpression(context, module, builder, bin.Left, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
-                var right = CompileExpression(context, module, builder, bin.Right, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                var left = CompileExpression(context, module, builder, function, bin.Left, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                var right = CompileExpression(context, module, builder, function, bin.Right, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                 bool isFloat = left.TypeOf == context.FloatType || right.TypeOf == context.FloatType;
 
                 return bin.Operator switch
@@ -733,7 +800,7 @@ public sealed class LlvmCodeGenerator
                     {
                         var arg = call.Arguments[0];
                         var argType = _typeChecker.GetNodeType(arg);
-                        var val = CompileExpression(context, module, builder, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var val = CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
 
                         if (argType == TypeSymbol.String)
                         {
@@ -784,6 +851,18 @@ public sealed class LlvmCodeGenerator
                     var createWorldType = LLVMTypeRef.CreateFunction(LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0), Array.Empty<LLVMTypeRef>(), false);
                     return builder.BuildCall2(createWorldType, createWorldFunc, Array.Empty<LLVMValueRef>(), "new_world");
                 }
+                else if (_typeChecker.Structs.TryGetValue(call.Callee, out var stSym))
+                {
+                    var stType = ecs.GetComponentStructType(call.Callee);
+                    var tmpAlloca = CreateEntryBlockAlloca(context, function, stType, $"tmp_{call.Callee}");
+                    for (int i = 0; i < call.Arguments.Count; i++)
+                    {
+                        var argVal = CompileExpression(context, module, builder, function, call.Arguments[i], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var fieldGEP = builder.BuildStructGEP2(stType, tmpAlloca, (uint)i, $"tmp_{call.Callee}_{stSym.Fields[i].Name}");
+                        builder.BuildStore(argVal, fieldGEP);
+                    }
+                    return builder.BuildLoad2(stType, tmpAlloca, $"st_val_{call.Callee}");
+                }
                 else
                 {
                     // Generic function call or ECS call (world_spawn, world_set_*, pipeline_*)
@@ -804,7 +883,7 @@ public sealed class LlvmCodeGenerator
                         return LLVMValueRef.CreateConstInt(context.Int32Type, 0);
                     }
 
-                    var argValues = call.Arguments.Select(a => CompileExpression(context, module, builder, a, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc)).ToArray();
+                    var argValues = call.Arguments.Select(a => CompileExpression(context, module, builder, function, a, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc)).ToArray();
                     var targetFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(targetFunc);
                     string callName = targetFuncType.ReturnType == context.VoidType ? "" : $"{call.Callee}_call";
                     return builder.BuildCall2(targetFuncType, targetFunc, argValues, callName);
@@ -814,18 +893,26 @@ public sealed class LlvmCodeGenerator
         return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
     }
 
-    private static LLVMTypeRef MapType(LLVMContextRef context, string? typeName, EcsRuntimeEmitter? ecs = null) => typeName switch
+    private LLVMTypeRef MapType(LLVMContextRef context, string? typeName, EcsRuntimeEmitter? ecs = null)
     {
-        "f32" or "float" => context.FloatType,
-        "f64" or "double" => context.DoubleType,
-        "i64" or "u64" => context.Int64Type,
-        "i32" or "u32" or "int" => context.Int32Type,
-        "bool" => context.Int1Type,
-        "string" or "str" => LLVMTypeRef.CreatePointer(context.Int8Type, 0),
-        "World" or "world" => ecs != null ? LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0) : LLVMTypeRef.CreatePointer(context.Int8Type, 0),
-        "void" => context.VoidType,
-        _ => context.Int32Type
-    };
+        if (typeName != null && _typeChecker.Structs.ContainsKey(typeName) && ecs != null)
+        {
+            return ecs.GetComponentStructType(typeName);
+        }
+
+        return typeName switch
+        {
+            "f32" or "float" => context.FloatType,
+            "f64" or "double" => context.DoubleType,
+            "i64" or "u64" => context.Int64Type,
+            "i32" or "u32" or "int" => context.Int32Type,
+            "bool" => context.Int1Type,
+            "string" or "str" => LLVMTypeRef.CreatePointer(context.Int8Type, 0),
+            "World" or "world" => ecs != null ? LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0) : LLVMTypeRef.CreatePointer(context.Int8Type, 0),
+            "void" => context.VoidType,
+            _ => context.Int32Type
+        };
+    }
 
     private static LLVMValueRef CreateEntryBlockAlloca(LLVMContextRef context, LLVMValueRef function, LLVMTypeRef type, string name)
     {

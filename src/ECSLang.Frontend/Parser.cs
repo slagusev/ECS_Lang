@@ -54,6 +54,10 @@ public sealed class Parser
             {
                 declarations.Add(ParseComponentDeclaration());
             }
+            else if (Check(TokenType.Struct))
+            {
+                declarations.Add(ParseStructDeclaration());
+            }
             else if (Check(TokenType.Resource))
             {
                 declarations.Add(ParseResourceDeclaration());
@@ -96,6 +100,28 @@ public sealed class Parser
 
         Match(TokenType.CloseBrace, "Expected '}' to close component body.");
         return new ComponentDeclaration(nameTok.Text, fields, compTok.Span);
+    }
+
+    private StructDeclaration ParseStructDeclaration()
+    {
+        var structTok = Match(TokenType.Struct);
+        var nameTok = Match(TokenType.Identifier, "Expected struct name after 'struct'.");
+        Match(TokenType.OpenBrace, "Expected '{' to start struct body.");
+
+        var fields = new List<FieldDefinition>();
+        while (!Check(TokenType.CloseBrace) && !Check(TokenType.EndOfFile))
+        {
+            var fieldName = Match(TokenType.Identifier, "Expected field name.");
+            Match(TokenType.Colon, "Expected ':' after field name.");
+            var fieldType = Match(TokenType.Identifier, "Expected field type.");
+            if (Check(TokenType.Comma)) Advance();
+            else if (Check(TokenType.Semicolon)) Advance();
+
+            fields.Add(new FieldDefinition(fieldName.Text, fieldType.Text, fieldName.Span));
+        }
+
+        Match(TokenType.CloseBrace, "Expected '}' to close struct body.");
+        return new StructDeclaration(nameTok.Text, fields, structTok.Span);
     }
 
     private ResourceDeclaration ParseResourceDeclaration()
@@ -307,6 +333,12 @@ public sealed class Parser
             return ParseWhileStatement();
         }
 
+        // 4.1 For statement: for i in start..end { ... }
+        if (Check(TokenType.For))
+        {
+            return ParseForStatement();
+        }
+
         // 5. Assignment or Expression statement
         if (Check(TokenType.Identifier))
         {
@@ -410,6 +442,18 @@ public sealed class Parser
         var cond = ParseExpression();
         var body = ParseBlockStatement();
         return new WhileStatement(cond, body, whileTok.Span);
+    }
+
+    private ForStatement ParseForStatement()
+    {
+        var forTok = Match(TokenType.For);
+        var varName = Match(TokenType.Identifier, "Expected variable name after 'for'.");
+        Match(TokenType.In, "Expected 'in' after variable name in for-loop.");
+        var startExpr = ParseExpression();
+        Match(TokenType.DotDot, "Expected '..' in range.");
+        var endExpr = ParseExpression();
+        var body = ParseBlockStatement();
+        return new ForStatement(varName.Text, startExpr, endExpr, body, forTok.Span);
     }
 
     // Expression parsing with precedence

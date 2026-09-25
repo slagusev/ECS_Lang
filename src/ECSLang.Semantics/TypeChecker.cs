@@ -32,6 +32,7 @@ public sealed class TypeChecker
     private readonly Dictionary<AstNode, TypeSymbol> _nodeTypes = new();
     private readonly Dictionary<string, ComponentSymbol> _components = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ResourceSymbol> _resources = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, StructSymbol> _structs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, SystemSymbol> _systems = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FunctionDeclaration> _functions = new(StringComparer.Ordinal);
     private readonly List<PipelineDeclaration> _pipelines = new();
@@ -39,6 +40,7 @@ public sealed class TypeChecker
 
     public IReadOnlyDictionary<string, ComponentSymbol> Components => _components;
     public IReadOnlyDictionary<string, ResourceSymbol> Resources => _resources;
+    public IReadOnlyDictionary<string, StructSymbol> Structs => _structs;
     public IReadOnlyDictionary<string, SystemSymbol> Systems => _systems;
     public IReadOnlyDictionary<string, FunctionDeclaration> Functions => _functions;
     public IReadOnlyList<PipelineDeclaration> Pipelines => _pipelines;
@@ -65,6 +67,10 @@ public sealed class TypeChecker
             else if (decl is ResourceDeclaration res)
             {
                 RegisterResource(res);
+            }
+            else if (decl is StructDeclaration st)
+            {
+                RegisterStruct(st);
             }
             else if (decl is FunctionDeclaration fn)
             {
@@ -142,6 +148,29 @@ public sealed class TypeChecker
         }
 
         _resources[res.Name] = new ResourceSymbol(res.Name, fields, res.Span);
+    }
+
+    private void RegisterStruct(StructDeclaration st)
+    {
+        if (_structs.ContainsKey(st.Name))
+        {
+            _diagnostics.ReportError($"Duplicate struct declaration '{st.Name}'.", st.Span);
+            return;
+        }
+
+        var fields = new List<ComponentFieldSymbol>();
+        var fieldNames = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var f in st.Fields)
+        {
+            if (!fieldNames.Add(f.Name))
+            {
+                _diagnostics.ReportError($"Duplicate field '{f.Name}' in struct '{st.Name}'.", f.Span);
+            }
+            fields.Add(new ComponentFieldSymbol(f.Name, TypeSymbol.FromName(f.TypeName), f.Span));
+        }
+
+        _structs[st.Name] = new StructSymbol(st.Name, fields, st.Span);
     }
 
     private void CheckSystem(SystemDeclaration sys)
@@ -273,6 +302,9 @@ public sealed class TypeChecker
             case WhileStatement whileStmt:
                 CheckWhileStatement(whileStmt);
                 break;
+            case ForStatement forStmt:
+                CheckForStatement(forStmt);
+                break;
             case ReturnStatement retStmt:
                 if (retStmt.Value != null)
                 {
@@ -359,6 +391,15 @@ public sealed class TypeChecker
             return TypeSymbol.Unknown;
         }
 
+        if (_structs.TryGetValue(targetType.Name, out var st))
+        {
+            var field = st.Fields.FirstOrDefault(f => f.Name == memberName);
+            if (field != null)
+                return field.Type;
+            _diagnostics.ReportError($"Struct '{targetType.Name}' has no member '{memberName}'.", span);
+            return TypeSymbol.Unknown;
+        }
+
         _diagnostics.ReportError($"Type '{targetType.Name}' has no member '{memberName}'.", span);
         return TypeSymbol.Unknown;
     }
@@ -387,6 +428,27 @@ public sealed class TypeChecker
         }
 
         CheckBlock(whileStmt.Body);
+    }
+
+    private void CheckForStatement(ForStatement forStmt)
+    {
+        var startType = CheckExpression(forStmt.Start);
+        var endType = CheckExpression(forStmt.End);
+
+        if (!startType.IsInteger || !endType.IsInteger)
+        {
+            _diagnostics.ReportError("Range bounds in 'for' loop must be integers.", forStmt.Span);
+        }
+
+        var loopScope = new Scope(_currentScope);
+        _currentScope = loopScope;
+
+        var loopVar = new VariableSymbol(forStmt.VariableName, TypeSymbol.I32, IsMutable: false, forStmt.Span);
+        _currentScope.TryDeclare(loopVar);
+
+        CheckBlock(forStmt.Body);
+
+        _currentScope = _currentScope.Parent!;
     }
 
     public TypeSymbol CheckExpression(ExpressionNode expr)
@@ -513,8 +575,21 @@ public sealed class TypeChecker
             return TypeSymbol.Void;
         }
 
+        if (_structs.TryGetValue(call.Callee, out var stSym))
+        {
+            if (call.Arguments.Count != stSym.Fields.Count)
+            {
+                _diagnostics.ReportError($"Struct '{call.Callee}' constructor expects {stSym.Fields.Count} arguments, but got {call.Arguments.Count}.", call.Span);
+            }
+            return TypeSymbol.FromName(stSym.Name);
+        }
+
         if (_functions.TryGetValue(call.Callee, out var fnDecl))
         {
+            if (call.Arguments.Count != fnDecl.Parameters.Count)
+            {
+                _diagnostics.ReportError($"Function '{call.Callee}' expects {fnDecl.Parameters.Count} arguments, but got {call.Arguments.Count}.", call.Span);
+            }
             return TypeSymbol.FromName(fnDecl.ReturnType);
         }
 

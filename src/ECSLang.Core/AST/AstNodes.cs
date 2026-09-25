@@ -22,6 +22,12 @@ public sealed record ResourceDeclaration(
     SourceSpan Span
 ) : DeclarationNode(Span);
 
+public sealed record StructDeclaration(
+    string Name,
+    IReadOnlyList<FieldDefinition> Fields,
+    SourceSpan Span
+) : DeclarationNode(Span);
+
 public sealed record QueryParameter(
     bool IsMutable,
     string Name,
@@ -107,6 +113,14 @@ public sealed record IfStatement(
 
 public sealed record WhileStatement(
     ExpressionNode Condition,
+    BlockStatement Body,
+    SourceSpan Span
+) : StatementNode(Span);
+
+public sealed record ForStatement(
+    string VariableName,
+    ExpressionNode Start,
+    ExpressionNode End,
     BlockStatement Body,
     SourceSpan Span
 ) : StatementNode(Span);

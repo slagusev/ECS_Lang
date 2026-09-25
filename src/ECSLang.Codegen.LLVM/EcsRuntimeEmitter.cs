@@ -78,6 +78,15 @@ public sealed class EcsRuntimeEmitter
             }
         }
 
+        if (_typeChecker.Structs.TryGetValue(compOrResName, out var st))
+        {
+            for (int i = 0; i < st.Fields.Count; i++)
+            {
+                if (st.Fields[i].Name == fieldName)
+                    return i;
+            }
+        }
+
         return 0;
     }
 
@@ -107,6 +116,15 @@ public sealed class EcsRuntimeEmitter
             var structType = _context.CreateNamedStruct($"struct.res.{resName}");
             structType.StructSetBody(fieldTypes, false);
             _compStructTypes[resName] = structType;
+        }
+
+        // 2.1 Struct types for all user structs
+        foreach (var (stName, stSym) in _typeChecker.Structs)
+        {
+            var fieldTypes = stSym.Fields.Select(f => MapType(f.Type.Name)).ToArray();
+            var structType = _context.CreateNamedStruct($"struct.user.{stName}");
+            structType.StructSetBody(fieldTypes, false);
+            _compStructTypes[stName] = structType;
         }
 
         // 3. Define %struct.Archetype: { i64 mask, i32 count, i32 cap, ptr entities, [N x ptr] columns }
@@ -1227,6 +1245,6 @@ public sealed class EcsRuntimeEmitter
         "bool" => _context.Int1Type,
         "string" or "str" => LLVMTypeRef.CreatePointer(_context.Int8Type, 0),
         "World" or "world" => LLVMTypeRef.CreatePointer(_worldStructType, 0),
-        _ => _context.Int32Type
+        _ => _compStructTypes.TryGetValue(typeName, out var st) ? st : _context.Int32Type
     };
 }

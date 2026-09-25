@@ -30,6 +30,9 @@ public sealed class Lexer
         ["if"] = TokenType.If,
         ["else"] = TokenType.Else,
         ["while"] = TokenType.While,
+        ["for"] = TokenType.For,
+        ["in"] = TokenType.In,
+        ["struct"] = TokenType.Struct,
         ["true"] = TokenType.True,
         ["false"] = TokenType.False,
     };
@@ -217,6 +220,7 @@ public sealed class Lexer
         if (ch == '&' && next == '&') { Advance(); Advance(); return new Token(TokenType.AmpAmp, "&&", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == '|' && next == '|') { Advance(); Advance(); return new Token(TokenType.PipePipe, "||", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == ':' && next == ':') { Advance(); Advance(); return new Token(TokenType.ColonColon, "::", new SourceSpan(_filePath, startLine, startCol, 2)); }
+        if (ch == '.' && next == '.') { Advance(); Advance(); return new Token(TokenType.DotDot, "..", new SourceSpan(_filePath, startLine, startCol, 2)); }
 
         // Single-character tokens
         Advance();
