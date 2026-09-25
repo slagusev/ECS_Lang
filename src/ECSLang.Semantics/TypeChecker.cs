@@ -401,6 +401,7 @@ public sealed class TypeChecker
             BinaryExpression bin => CheckBinaryExpression(bin),
             UnaryExpression un => CheckUnaryExpression(un),
             CallExpression call => CheckCallExpression(call),
+            MethodCallExpression methodCall => CheckMethodCall(methodCall),
             _ => TypeSymbol.Unknown
         };
 
@@ -480,6 +481,11 @@ public sealed class TypeChecker
             return TypeSymbol.I32;
         }
 
+        if (call.Callee is "ecs::create_world" or "create_world")
+        {
+            return TypeSymbol.World;
+        }
+
         if (call.Callee == "world_spawn")
         {
             return TypeSymbol.I32;
@@ -497,11 +503,55 @@ public sealed class TypeChecker
             return TypeSymbol.Void;
         }
 
+        if (_pipelines.Any(p => p.Name == call.Callee))
+        {
+            return TypeSymbol.Void;
+        }
+
+        if (_systems.ContainsKey(call.Callee))
+        {
+            return TypeSymbol.Void;
+        }
+
         if (_functions.TryGetValue(call.Callee, out var fnDecl))
         {
             return TypeSymbol.FromName(fnDecl.ReturnType);
         }
 
         return TypeSymbol.I32;
+    }
+
+    private TypeSymbol CheckMethodCall(MethodCallExpression methodCall)
+    {
+        var targetType = CheckExpression(methodCall.Target);
+
+        foreach (var arg in methodCall.Arguments)
+        {
+            CheckExpression(arg);
+        }
+
+        if (targetType == TypeSymbol.World)
+        {
+            if (methodCall.MethodName == "spawn")
+            {
+                return TypeSymbol.I32;
+            }
+
+            if (methodCall.MethodName.StartsWith("has_"))
+            {
+                return TypeSymbol.Bool;
+            }
+
+            if (methodCall.MethodName.StartsWith("set_") ||
+                methodCall.MethodName.StartsWith("add_") ||
+                methodCall.MethodName.StartsWith("remove_") ||
+                methodCall.MethodName == "sort_hierarchy")
+            {
+                return TypeSymbol.Void;
+            }
+        }
+
+        _diagnostics.ReportError($"Type '{targetType.Name}' does not have a method '{methodCall.MethodName}'.", methodCall.Span);
+        return TypeSymbol.Unknown;
     }
 }

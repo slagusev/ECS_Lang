@@ -466,7 +466,24 @@ public sealed class Parser
             {
                 Advance();
                 var memberTok = Match(TokenType.Identifier, "Expected member name after '.'.");
-                expr = new MemberAccessExpression(expr, memberTok.Text, expr.Span);
+                if (Check(TokenType.OpenParen))
+                {
+                    Advance();
+                    var args = new List<ExpressionNode>();
+                    if (!Check(TokenType.CloseParen))
+                    {
+                        do
+                        {
+                            args.Add(ParseExpression());
+                        } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                    }
+                    Match(TokenType.CloseParen, "Expected ')' after argument list.");
+                    expr = new MethodCallExpression(expr, memberTok.Text, args, expr.Span);
+                }
+                else
+                {
+                    expr = new MemberAccessExpression(expr, memberTok.Text, expr.Span);
+                }
             }
             else
             {
@@ -517,6 +534,15 @@ public sealed class Parser
         if (token.Type == TokenType.Identifier)
         {
             Advance();
+            string identName = token.Text;
+
+            while (Check(TokenType.ColonColon))
+            {
+                Advance();
+                var nextTok = Match(TokenType.Identifier, "Expected identifier after '::'.");
+                identName += "::" + nextTok.Text;
+            }
+
             // Function call: name(arg1, arg2)
             if (Check(TokenType.OpenParen))
             {
@@ -530,10 +556,10 @@ public sealed class Parser
                     } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
                 }
                 Match(TokenType.CloseParen, "Expected ')' after argument list.");
-                return new CallExpression(token.Text, args, token.Span);
+                return new CallExpression(identName, args, token.Span);
             }
 
-            return new IdentifierExpression(token.Text, token.Span);
+            return new IdentifierExpression(identName, token.Span);
         }
 
         _diagnostics.ReportError($"Unexpected expression token '{token.Text}'.", token.Span);

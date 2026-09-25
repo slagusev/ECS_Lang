@@ -37,27 +37,27 @@ pipeline GameLoop {
 fn main(): i32 {
     println("--- Starting ECS Archetype Simulation ---");
 
+    let mut world = ecs::create_world();
+
     // Setup delta time
-    world_set_Time(0.5);
+    world.set_Time(0.5);
 
     // Spawn entity 0: pos = (10, 20), vel = (2, -1)
-    let e0 = world_spawn();
-    world_set_Position(e0, 10.0, 20.0);
-    world_set_Velocity(e0, 2.0, -1.0);
+    let e0 = world.spawn();
+    world.set_Position(e0, 10.0, 20.0);
+    world.set_Velocity(e0, 2.0, -1.0);
 
     // Spawn entity 1: pos = (100, 200), vel = (5, 10)
-    let e1 = world_spawn();
-    world_set_Position(e1, 100.0, 200.0);
-    world_set_Velocity(e1, 5.0, 10.0);
+    let e1 = world.spawn();
+    world.set_Position(e1, 100.0, 200.0);
+    world.set_Velocity(e1, 5.0, 10.0);
 
     println("=== Frame 1 ===");
-    GameLoop();
+    GameLoop(world);
 
     println("=== Frame 2 ===");
-    GameLoop();
+    GameLoop(world);
 
     println("--- Simulation Finished Successfully! ---");
-    println("Press Enter to exit...");
-    wait_key();
     return 0;
 }

@@ -156,6 +156,13 @@ public sealed record MemberAccessExpression(
     SourceSpan Span
 ) : ExpressionNode(Span);
 
+public sealed record MethodCallExpression(
+    ExpressionNode Target,
+    string MethodName,
+    IReadOnlyList<ExpressionNode> Arguments,
+    SourceSpan Span
+) : ExpressionNode(Span);
+
 public sealed record IdentifierExpression(string Name, SourceSpan Span) : ExpressionNode(Span);
 
 public sealed record StringLiteralExpression(string Value, SourceSpan Span) : ExpressionNode(Span);

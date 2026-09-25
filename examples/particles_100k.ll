@@ -3,20 +3,13 @@ source_filename = "ecs_module"
 target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-windows-msvc"
 
+%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, %struct.res.Time }
 %struct.res.Time = type { float }
 %struct.Archetype = type { i64, i32, i32, ptr, [3 x ptr] }
 %struct.ChildOf = type { i32 }
 %struct.Position = type { float, float, float }
 %struct.Velocity = type { float, float, float }
 
-@res_Time = global %struct.res.Time zeroinitializer
-@arch_count = global i32 0
-@arch_cap = global i32 0
-@arch_tables = global ptr null
-@world_entity_count = global i32 0
-@world_entity_cap = global i32 0
-@world_entity_arch = global ptr null
-@world_entity_row = global ptr null
 @str_lit = private unnamed_addr constant [51 x i8] c"==================================================\00", align 1
 @str_lit.1 = private unnamed_addr constant [40 x i8] c"  ECS-Lang: 100,000 Particles Benchmark\00", align 1
 @str_lit.2 = private unnamed_addr constant [51 x i8] c"==================================================\00", align 1
@@ -26,7 +19,6 @@ target triple = "x86_64-pc-windows-msvc"
 @str_lit.5 = private unnamed_addr constant [62 x i8] c"Running 10 physics simulation frames over 100,000 entities...\00", align 1
 @str_lit.6 = private unnamed_addr constant [44 x i8] c"Simulation finished 10 frames successfully!\00", align 1
 @str_lit.7 = private unnamed_addr constant [51 x i8] c"==================================================\00", align 1
-@str_lit.8 = private unnamed_addr constant [23 x i8] c"Press Enter to exit...\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -38,13 +30,18 @@ declare i32 @getchar()
 
 declare ptr @memcpy(ptr, ptr, i64)
 
+declare ptr @memset(ptr, i32, i64)
+
 declare ptr @malloc(i64)
 
 declare void @free(ptr)
 
-define i32 @world_get_or_create_archetype(i64 %0) {
+define i32 @world_get_or_create_archetype(ptr %0, i64 %1) {
 entry:
-  %cur_count = load i32, ptr @arch_count, align 4
+  %arch_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 0
+  %arch_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 1
+  %arch_tables_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %cur_count = load i32, ptr %arch_count_slot, align 4
   %i = alloca i32, align 4
   store i32 0, ptr %i, align 4
   br label %search_cond
@@ -55,15 +52,15 @@ search_cond:                                      ; preds = %search_next, %entry
   br i1 %has_more, label %search_body, label %not_found
 
 search_body:                                      ; preds = %search_cond
-  %tables_base = load ptr, ptr @arch_tables, align 8
+  %tables_base = load ptr, ptr %arch_tables_slot, align 8
   %arch_elem = getelementptr inbounds %struct.Archetype, ptr %tables_base, i32 %cur_i
   %mask_gep = getelementptr inbounds nuw %struct.Archetype, ptr %arch_elem, i32 0, i32 0
   %existing_mask = load i64, ptr %mask_gep, align 8
-  %is_match = icmp eq i64 %existing_mask, %0
+  %is_match = icmp eq i64 %existing_mask, %1
   br i1 %is_match, label %return_found, label %search_next
 
 not_found:                                        ; preds = %search_cond
-  %cur_cap = load i32, ptr @arch_cap, align 4
+  %cur_cap = load i32, ptr %arch_cap_slot, align 4
   %need_grow = icmp sge i32 %cur_count, %cur_cap
   br i1 %need_grow, label %grow_tables, label %init_arch
 
@@ -79,21 +76,21 @@ grow_tables:                                      ; preds = %not_found
   %cap_zero = icmp eq i32 %cur_cap, 0
   %double_cap = mul i32 %cur_cap, 2
   %new_cap = select i1 %cap_zero, i32 8, i32 %double_cap
-  store i32 %new_cap, ptr @arch_cap, align 4
+  store i32 %new_cap, ptr %arch_cap_slot, align 4
   %new_cap64 = zext i32 %new_cap to i64
   %alloc_bytes = mul i64 %new_cap64, 48
-  %cur_tables_raw = load ptr, ptr @arch_tables, align 8
+  %cur_tables_raw = load ptr, ptr %arch_tables_slot, align 8
   %new_tables_i8 = call ptr @realloc(ptr %cur_tables_raw, i64 %alloc_bytes)
-  store ptr %new_tables_i8, ptr @arch_tables, align 8
+  store ptr %new_tables_i8, ptr %arch_tables_slot, align 8
   br label %init_arch
 
 init_arch:                                        ; preds = %grow_tables, %not_found
   %next_count = add i32 %cur_count, 1
-  store i32 %next_count, ptr @arch_count, align 4
-  %latest_tables = load ptr, ptr @arch_tables, align 8
+  store i32 %next_count, ptr %arch_count_slot, align 4
+  %latest_tables = load ptr, ptr %arch_tables_slot, align 8
   %new_arch_elem = getelementptr inbounds %struct.Archetype, ptr %latest_tables, i32 %cur_count
   %m_gep = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_elem, i32 0, i32 0
-  store i64 %0, ptr %m_gep, align 8
+  store i64 %1, ptr %m_gep, align 8
   %cnt_gep = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_elem, i32 0, i32 1
   store i32 0, ptr %cnt_gep, align 4
   %cap_gep = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_elem, i32 0, i32 2
@@ -110,10 +107,11 @@ init_arch:                                        ; preds = %grow_tables, %not_f
   ret i32 %cur_count
 }
 
-define void @world_grow_archetype(i32 %0) {
+define void @world_grow_archetype(ptr %0, i32 %1) {
 entry:
-  %tables_base = load ptr, ptr @arch_tables, align 8
-  %arch_elem = getelementptr inbounds %struct.Archetype, ptr %tables_base, i32 %0
+  %tables_slot_gr = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %tables_base = load ptr, ptr %tables_slot_gr, align 8
+  %arch_elem = getelementptr inbounds %struct.Archetype, ptr %tables_base, i32 %1
   %cap_slot = getelementptr inbounds nuw %struct.Archetype, ptr %arch_elem, i32 0, i32 2
   %cur_cap = load i32, ptr %cap_slot, align 4
   %is_zero = icmp eq i32 %cur_cap, 0
@@ -171,10 +169,22 @@ skip_col_Velocity:                                ; preds = %grow_col_Velocity, 
   ret void
 }
 
-define i32 @world_spawn() {
+define ptr @ecs_create_world() {
 entry:
-  %cur_ent_count = load i32, ptr @world_entity_count, align 4
-  %cur_ent_cap = load i32, ptr @world_entity_cap, align 4
+  %raw_world = call ptr @malloc(i64 64)
+  %0 = call ptr @memset(ptr %raw_world, i32 0, i64 64)
+  %a0_init = call i32 @world_get_or_create_archetype(ptr %raw_world, i64 0)
+  ret ptr %raw_world
+}
+
+define i32 @world_spawn(ptr %0) {
+entry:
+  %ent_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %ent_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 4
+  %ent_arch_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %cur_ent_count = load i32, ptr %ent_count_slot, align 4
+  %cur_ent_cap = load i32, ptr %ent_cap_slot, align 4
   %need_grow_ent = icmp sge i32 %cur_ent_count, %cur_ent_cap
   br i1 %need_grow_ent, label %grow_ent, label %assign_ent
 
@@ -182,22 +192,23 @@ grow_ent:                                         ; preds = %entry
   %ent_cap_zero = icmp eq i32 %cur_ent_cap, 0
   %double_ent_cap = mul i32 %cur_ent_cap, 2
   %new_ent_cap = select i1 %ent_cap_zero, i32 64, i32 %double_ent_cap
-  store i32 %new_ent_cap, ptr @world_entity_cap, align 4
+  store i32 %new_ent_cap, ptr %ent_cap_slot, align 4
   %new_ent_cap64 = zext i32 %new_ent_cap to i64
   %bytes_for_ent = mul i64 %new_ent_cap64, 4
-  %cur_arch_arr = load ptr, ptr @world_entity_arch, align 8
+  %cur_arch_arr = load ptr, ptr %ent_arch_slot, align 8
   %new_arch_i8 = call ptr @realloc(ptr %cur_arch_arr, i64 %bytes_for_ent)
-  store ptr %new_arch_i8, ptr @world_entity_arch, align 8
-  %cur_row_arr = load ptr, ptr @world_entity_row, align 8
+  store ptr %new_arch_i8, ptr %ent_arch_slot, align 8
+  %cur_row_arr = load ptr, ptr %ent_row_slot, align 8
   %new_row_i8 = call ptr @realloc(ptr %cur_row_arr, i64 %bytes_for_ent)
-  store ptr %new_row_i8, ptr @world_entity_row, align 8
+  store ptr %new_row_i8, ptr %ent_row_slot, align 8
   br label %assign_ent
 
 assign_ent:                                       ; preds = %grow_ent, %entry
   %next_ent_cnt = add i32 %cur_ent_count, 1
-  store i32 %next_ent_cnt, ptr @world_entity_count, align 4
-  %a0 = call i32 @world_get_or_create_archetype(i64 0)
-  %tables_sp = load ptr, ptr @arch_tables, align 8
+  store i32 %next_ent_cnt, ptr %ent_count_slot, align 4
+  %a0 = call i32 @world_get_or_create_archetype(ptr %0, i64 0)
+  %tables_slot_sp = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %tables_sp = load ptr, ptr %tables_slot_sp, align 8
   %a0_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_sp, i32 %a0
   %cnt_slot0 = getelementptr inbounds nuw %struct.Archetype, ptr %a0_ptr, i32 0, i32 1
   %cur_cnt0 = load i32, ptr %cnt_slot0, align 4
@@ -207,11 +218,11 @@ assign_ent:                                       ; preds = %grow_ent, %entry
   br i1 %need_grow0, label %grow_a0, label %after_grow_a0
 
 grow_a0:                                          ; preds = %assign_ent
-  call void @world_grow_archetype(i32 %a0)
+  call void @world_grow_archetype(ptr %0, i32 %a0)
   br label %after_grow_a0
 
 after_grow_a0:                                    ; preds = %grow_a0, %assign_ent
-  %tables_sp2 = load ptr, ptr @arch_tables, align 8
+  %tables_sp2 = load ptr, ptr %tables_slot_sp, align 8
   %a0_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_sp2, i32 %a0
   %cnt_slot0_2 = getelementptr inbounds nuw %struct.Archetype, ptr %a0_ptr2, i32 0, i32 1
   %row = load i32, ptr %cnt_slot0_2, align 4
@@ -221,26 +232,29 @@ after_grow_a0:                                    ; preds = %grow_a0, %assign_en
   %ent_raw0 = load ptr, ptr %ent_slot0, align 8
   %ent_elem0 = getelementptr inbounds i32, ptr %ent_raw0, i32 %row
   store i32 %cur_ent_count, ptr %ent_elem0, align 4
-  %arch_arr_sp = load ptr, ptr @world_entity_arch, align 8
+  %arch_arr_sp = load ptr, ptr %ent_arch_slot, align 8
   %e_arch_slot = getelementptr inbounds i32, ptr %arch_arr_sp, i32 %cur_ent_count
   store i32 %a0, ptr %e_arch_slot, align 4
-  %row_arr_sp = load ptr, ptr @world_entity_row, align 8
+  %row_arr_sp = load ptr, ptr %ent_row_slot, align 8
   %e_row_slot = getelementptr inbounds i32, ptr %row_arr_sp, i32 %cur_ent_count
   store i32 %row, ptr %e_row_slot, align 4
   ret i32 %cur_ent_count
 }
 
-define void @world_set_ChildOf(i32 %0, i32 %1) {
+define void @world_set_ChildOf(ptr %0, i32 %1, i32 %2) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
-  %arch_arr = load ptr, ptr @world_entity_arch, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %0
+  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx = load i32, ptr %ent_arch_slot, align 4
-  %row_arr = load ptr, ptr @world_entity_row, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %0
+  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr @arch_tables, align 8
+  %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
   %cur_mask = load i64, ptr %cur_mask_slot, align 8
@@ -255,8 +269,8 @@ in_place_update:                                  ; preds = %entry
 
 transition:                                       ; preds = %entry
   %new_mask = or i64 %cur_mask, 1
-  %new_arch_idx = call i32 @world_get_or_create_archetype(i64 %new_mask)
-  %tables_tr1 = load ptr, ptr @arch_tables, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
   %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
@@ -268,22 +282,22 @@ transition:                                       ; preds = %entry
 store_fields:                                     ; preds = %after_swap_remove, %in_place_update
   %final_arch = load i32, ptr %target_arch, align 4
   %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr @arch_tables, align 8
+  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
   %final_col_slot = getelementptr inbounds [3 x ptr], ptr %final_cols, i32 0, i32 0
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.ChildOf, ptr %final_col_raw, i32 %final_row
   %parent_gep = getelementptr inbounds nuw %struct.ChildOf, ptr %final_elem, i32 0, i32 0
-  store i32 %1, ptr %parent_gep, align 4
+  store i32 %2, ptr %parent_gep, align 4
   ret void
 
 grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(i32 %new_arch_idx)
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
   br label %after_grow_new_arch
 
 after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr @arch_tables, align 8
+  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx
   %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
   %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
@@ -293,7 +307,7 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
   %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
   %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %0, ptr %new_ent_elem2, align 4
+  store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
   %has_ChildOf = and i64 %cur_mask, 1
@@ -307,7 +321,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %2 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -322,7 +336,7 @@ copy_Position:                                    ; preds = %skip_ChildOf
   %dst_col_Position = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %3 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
+  %4 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
@@ -337,7 +351,7 @@ copy_Velocity:                                    ; preds = %skip_Position
   %dst_col_Velocity = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
+  %5 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
@@ -360,11 +374,11 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
 after_swap_remove:                                ; preds = %skip_sw_Velocity, %skip_Velocity
-  %arch_arr_tr = load ptr, ptr @world_entity_arch, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %0
+  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr @world_entity_row, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %0
+  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
   store i32 %new_row, ptr %e_row_slot_tr, align 4
   store i32 %new_arch_idx, ptr %target_arch, align 4
   store i32 %new_row, ptr %target_row, align 4
@@ -375,7 +389,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %5 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %6 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -388,7 +402,7 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %6 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
+  %7 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -401,27 +415,30 @@ swap_Velocity:                                    ; preds = %skip_sw_Position
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %7 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
+  %8 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %row_arr_sr = load ptr, ptr @world_entity_row, align 8
+  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 }
 
-define void @world_add_ChildOf(i32 %0, i32 %1) {
+define void @world_add_ChildOf(ptr %0, i32 %1, i32 %2) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
-  %arch_arr = load ptr, ptr @world_entity_arch, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %0
+  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx = load i32, ptr %ent_arch_slot, align 4
-  %row_arr = load ptr, ptr @world_entity_row, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %0
+  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr @arch_tables, align 8
+  %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
   %cur_mask = load i64, ptr %cur_mask_slot, align 8
@@ -436,8 +453,8 @@ in_place_update:                                  ; preds = %entry
 
 transition:                                       ; preds = %entry
   %new_mask = or i64 %cur_mask, 1
-  %new_arch_idx = call i32 @world_get_or_create_archetype(i64 %new_mask)
-  %tables_tr1 = load ptr, ptr @arch_tables, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
   %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
@@ -449,22 +466,22 @@ transition:                                       ; preds = %entry
 store_fields:                                     ; preds = %after_swap_remove, %in_place_update
   %final_arch = load i32, ptr %target_arch, align 4
   %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr @arch_tables, align 8
+  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
   %final_col_slot = getelementptr inbounds [3 x ptr], ptr %final_cols, i32 0, i32 0
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.ChildOf, ptr %final_col_raw, i32 %final_row
   %parent_gep = getelementptr inbounds nuw %struct.ChildOf, ptr %final_elem, i32 0, i32 0
-  store i32 %1, ptr %parent_gep, align 4
+  store i32 %2, ptr %parent_gep, align 4
   ret void
 
 grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(i32 %new_arch_idx)
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
   br label %after_grow_new_arch
 
 after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr @arch_tables, align 8
+  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx
   %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
   %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
@@ -474,7 +491,7 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
   %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
   %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %0, ptr %new_ent_elem2, align 4
+  store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
   %has_ChildOf = and i64 %cur_mask, 1
@@ -488,7 +505,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %2 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -503,7 +520,7 @@ copy_Position:                                    ; preds = %skip_ChildOf
   %dst_col_Position = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %3 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
+  %4 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
@@ -518,7 +535,7 @@ copy_Velocity:                                    ; preds = %skip_Position
   %dst_col_Velocity = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
+  %5 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
@@ -541,11 +558,11 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
 after_swap_remove:                                ; preds = %skip_sw_Velocity, %skip_Velocity
-  %arch_arr_tr = load ptr, ptr @world_entity_arch, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %0
+  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr @world_entity_row, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %0
+  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
   store i32 %new_row, ptr %e_row_slot_tr, align 4
   store i32 %new_arch_idx, ptr %target_arch, align 4
   store i32 %new_row, ptr %target_row, align 4
@@ -556,7 +573,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %5 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %6 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -569,7 +586,7 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %6 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
+  %7 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -582,25 +599,28 @@ swap_Velocity:                                    ; preds = %skip_sw_Position
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %7 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
+  %8 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %row_arr_sr = load ptr, ptr @world_entity_row, align 8
+  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 }
 
-define void @world_remove_ChildOf(i32 %0) {
+define void @world_remove_ChildOf(ptr %0, i32 %1) {
 entry:
-  %arch_arr_rem = load ptr, ptr @world_entity_arch, align 8
-  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %0
+  %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
+  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
-  %row_arr_rem = load ptr, ptr @world_entity_row, align 8
-  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %0
+  %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
+  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
-  %tables_rem = load ptr, ptr @arch_tables, align 8
+  %tables_rem = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem = getelementptr inbounds %struct.Archetype, ptr %tables_rem, i32 %cur_arch_rem
   %cur_mask_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem, i32 0, i32 0
   %cur_mask_val_rem = load i64, ptr %cur_mask_rem, align 8
@@ -610,8 +630,8 @@ entry:
 
 do_remove:                                        ; preds = %entry
   %new_mask_rem = and i64 %cur_mask_val_rem, -2
-  %new_arch_rem = call i32 @world_get_or_create_archetype(i64 %new_mask_rem)
-  %tables_rem_tr1 = load ptr, ptr @arch_tables, align 8
+  %new_arch_rem = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask_rem)
+  %tables_rem_tr1 = load ptr, ptr %tables_slot_rem, align 8
   %new_arch_ptr_rem1 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr1, i32 %new_arch_rem
   %cnt_slot_rem1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem1, i32 0, i32 1
   %cnt_rem1 = load i32, ptr %cnt_slot_rem1, align 4
@@ -624,11 +644,11 @@ exit_remove:                                      ; preds = %after_swap_rem, %en
   ret void
 
 grow_rem_arch:                                    ; preds = %do_remove
-  call void @world_grow_archetype(i32 %new_arch_rem)
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_rem)
   br label %after_grow_rem_arch
 
 after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_remove
-  %tables_rem_tr2 = load ptr, ptr @arch_tables, align 8
+  %tables_rem_tr2 = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem2 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr2, i32 %cur_arch_rem
   %new_arch_ptr_rem2 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr2, i32 %new_arch_rem
   %cnt_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 1
@@ -638,7 +658,7 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 3
   %new_ent_raw_rem = load ptr, ptr %new_ent_rem, align 8
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
-  store i32 %0, ptr %new_ent_elem_rem, align 4
+  store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %rem_has_Position = and i64 %cur_mask_val_rem, 2
@@ -652,7 +672,7 @@ copy_rem_Position:                                ; preds = %after_grow_rem_arch
   %rem_dst_col_Position = getelementptr inbounds [3 x ptr], ptr %new_cols_rem, i32 0, i32 1
   %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
   %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %1 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 12)
+  %2 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 12)
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %after_grow_rem_arch
@@ -667,7 +687,7 @@ copy_rem_Velocity:                                ; preds = %skip_rem_Position
   %rem_dst_col_Velocity = getelementptr inbounds [3 x ptr], ptr %new_cols_rem, i32 0, i32 2
   %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
   %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 12)
+  %3 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 12)
   br label %skip_rem_Velocity
 
 skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_Position
@@ -690,11 +710,11 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
 after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Velocity
-  %arch_arr_rem_tr = load ptr, ptr @world_entity_arch, align 8
-  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %0
+  %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
+  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
-  %row_arr_rem_tr = load ptr, ptr @world_entity_row, align 8
-  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %0
+  %row_arr_rem_tr = load ptr, ptr %ent_row_slot_rem, align 8
+  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %1
   store i32 %new_row_rem, ptr %rem_row_slot_tr, align 4
   br label %exit_remove
 
@@ -703,7 +723,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %3 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -716,7 +736,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %4 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 12)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 12)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_ChildOf
@@ -729,22 +749,24 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %5 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 12)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 12)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Position
-  %row_arr_rem_sr = load ptr, ptr @world_entity_row, align 8
+  %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
   %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
   store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
   br label %after_swap_rem
 }
 
-define i1 @world_has_ChildOf(i32 %0) {
+define i1 @world_has_ChildOf(ptr %0, i32 %1) {
 entry:
-  %arch_arr_has = load ptr, ptr @world_entity_arch, align 8
-  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %0
+  %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
+  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %1
   %cur_arch_idx_has = load i32, ptr %has_arch_slot, align 4
-  %tables_has = load ptr, ptr @arch_tables, align 8
+  %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
   %arch_mask_has = load i64, ptr %mask_slot_has, align 8
@@ -753,17 +775,20 @@ entry:
   ret i1 %res_has
 }
 
-define void @world_set_Position(i32 %0, float %1, float %2, float %3) {
+define void @world_set_Position(ptr %0, i32 %1, float %2, float %3, float %4) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
-  %arch_arr = load ptr, ptr @world_entity_arch, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %0
+  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx = load i32, ptr %ent_arch_slot, align 4
-  %row_arr = load ptr, ptr @world_entity_row, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %0
+  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr @arch_tables, align 8
+  %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
   %cur_mask = load i64, ptr %cur_mask_slot, align 8
@@ -778,8 +803,8 @@ in_place_update:                                  ; preds = %entry
 
 transition:                                       ; preds = %entry
   %new_mask = or i64 %cur_mask, 2
-  %new_arch_idx = call i32 @world_get_or_create_archetype(i64 %new_mask)
-  %tables_tr1 = load ptr, ptr @arch_tables, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
   %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
@@ -791,26 +816,26 @@ transition:                                       ; preds = %entry
 store_fields:                                     ; preds = %after_swap_remove, %in_place_update
   %final_arch = load i32, ptr %target_arch, align 4
   %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr @arch_tables, align 8
+  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
   %final_col_slot = getelementptr inbounds [3 x ptr], ptr %final_cols, i32 0, i32 1
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.Position, ptr %final_col_raw, i32 %final_row
   %x_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 0
-  store float %1, ptr %x_gep, align 4
+  store float %2, ptr %x_gep, align 4
   %y_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 1
-  store float %2, ptr %y_gep, align 4
+  store float %3, ptr %y_gep, align 4
   %z_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 2
-  store float %3, ptr %z_gep, align 4
+  store float %4, ptr %z_gep, align 4
   ret void
 
 grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(i32 %new_arch_idx)
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
   br label %after_grow_new_arch
 
 after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr @arch_tables, align 8
+  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx
   %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
   %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
@@ -820,7 +845,7 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
   %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
   %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %0, ptr %new_ent_elem2, align 4
+  store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
   %has_ChildOf = and i64 %cur_mask, 1
@@ -834,7 +859,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -849,7 +874,7 @@ copy_Position:                                    ; preds = %skip_ChildOf
   %dst_col_Position = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
@@ -864,7 +889,7 @@ copy_Velocity:                                    ; preds = %skip_Position
   %dst_col_Velocity = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
+  %7 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
@@ -887,11 +912,11 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
 after_swap_remove:                                ; preds = %skip_sw_Velocity, %skip_Velocity
-  %arch_arr_tr = load ptr, ptr @world_entity_arch, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %0
+  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr @world_entity_row, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %0
+  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
   store i32 %new_row, ptr %e_row_slot_tr, align 4
   store i32 %new_arch_idx, ptr %target_arch, align 4
   store i32 %new_row, ptr %target_row, align 4
@@ -902,7 +927,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %7 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -915,7 +940,7 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %8 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
+  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -928,27 +953,30 @@ swap_Velocity:                                    ; preds = %skip_sw_Position
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
+  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %row_arr_sr = load ptr, ptr @world_entity_row, align 8
+  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 }
 
-define void @world_add_Position(i32 %0, float %1, float %2, float %3) {
+define void @world_add_Position(ptr %0, i32 %1, float %2, float %3, float %4) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
-  %arch_arr = load ptr, ptr @world_entity_arch, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %0
+  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx = load i32, ptr %ent_arch_slot, align 4
-  %row_arr = load ptr, ptr @world_entity_row, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %0
+  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr @arch_tables, align 8
+  %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
   %cur_mask = load i64, ptr %cur_mask_slot, align 8
@@ -963,8 +991,8 @@ in_place_update:                                  ; preds = %entry
 
 transition:                                       ; preds = %entry
   %new_mask = or i64 %cur_mask, 2
-  %new_arch_idx = call i32 @world_get_or_create_archetype(i64 %new_mask)
-  %tables_tr1 = load ptr, ptr @arch_tables, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
   %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
@@ -976,26 +1004,26 @@ transition:                                       ; preds = %entry
 store_fields:                                     ; preds = %after_swap_remove, %in_place_update
   %final_arch = load i32, ptr %target_arch, align 4
   %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr @arch_tables, align 8
+  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
   %final_col_slot = getelementptr inbounds [3 x ptr], ptr %final_cols, i32 0, i32 1
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.Position, ptr %final_col_raw, i32 %final_row
   %x_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 0
-  store float %1, ptr %x_gep, align 4
+  store float %2, ptr %x_gep, align 4
   %y_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 1
-  store float %2, ptr %y_gep, align 4
+  store float %3, ptr %y_gep, align 4
   %z_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 2
-  store float %3, ptr %z_gep, align 4
+  store float %4, ptr %z_gep, align 4
   ret void
 
 grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(i32 %new_arch_idx)
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
   br label %after_grow_new_arch
 
 after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr @arch_tables, align 8
+  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx
   %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
   %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
@@ -1005,7 +1033,7 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
   %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
   %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %0, ptr %new_ent_elem2, align 4
+  store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
   %has_ChildOf = and i64 %cur_mask, 1
@@ -1019,7 +1047,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -1034,7 +1062,7 @@ copy_Position:                                    ; preds = %skip_ChildOf
   %dst_col_Position = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
@@ -1049,7 +1077,7 @@ copy_Velocity:                                    ; preds = %skip_Position
   %dst_col_Velocity = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
+  %7 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
@@ -1072,11 +1100,11 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
 after_swap_remove:                                ; preds = %skip_sw_Velocity, %skip_Velocity
-  %arch_arr_tr = load ptr, ptr @world_entity_arch, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %0
+  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr @world_entity_row, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %0
+  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
   store i32 %new_row, ptr %e_row_slot_tr, align 4
   store i32 %new_arch_idx, ptr %target_arch, align 4
   store i32 %new_row, ptr %target_row, align 4
@@ -1087,7 +1115,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %7 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -1100,7 +1128,7 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %8 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
+  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -1113,25 +1141,28 @@ swap_Velocity:                                    ; preds = %skip_sw_Position
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
+  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %row_arr_sr = load ptr, ptr @world_entity_row, align 8
+  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 }
 
-define void @world_remove_Position(i32 %0) {
+define void @world_remove_Position(ptr %0, i32 %1) {
 entry:
-  %arch_arr_rem = load ptr, ptr @world_entity_arch, align 8
-  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %0
+  %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
+  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
-  %row_arr_rem = load ptr, ptr @world_entity_row, align 8
-  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %0
+  %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
+  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
-  %tables_rem = load ptr, ptr @arch_tables, align 8
+  %tables_rem = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem = getelementptr inbounds %struct.Archetype, ptr %tables_rem, i32 %cur_arch_rem
   %cur_mask_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem, i32 0, i32 0
   %cur_mask_val_rem = load i64, ptr %cur_mask_rem, align 8
@@ -1141,8 +1172,8 @@ entry:
 
 do_remove:                                        ; preds = %entry
   %new_mask_rem = and i64 %cur_mask_val_rem, -3
-  %new_arch_rem = call i32 @world_get_or_create_archetype(i64 %new_mask_rem)
-  %tables_rem_tr1 = load ptr, ptr @arch_tables, align 8
+  %new_arch_rem = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask_rem)
+  %tables_rem_tr1 = load ptr, ptr %tables_slot_rem, align 8
   %new_arch_ptr_rem1 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr1, i32 %new_arch_rem
   %cnt_slot_rem1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem1, i32 0, i32 1
   %cnt_rem1 = load i32, ptr %cnt_slot_rem1, align 4
@@ -1155,11 +1186,11 @@ exit_remove:                                      ; preds = %after_swap_rem, %en
   ret void
 
 grow_rem_arch:                                    ; preds = %do_remove
-  call void @world_grow_archetype(i32 %new_arch_rem)
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_rem)
   br label %after_grow_rem_arch
 
 after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_remove
-  %tables_rem_tr2 = load ptr, ptr @arch_tables, align 8
+  %tables_rem_tr2 = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem2 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr2, i32 %cur_arch_rem
   %new_arch_ptr_rem2 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr2, i32 %new_arch_rem
   %cnt_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 1
@@ -1169,7 +1200,7 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 3
   %new_ent_raw_rem = load ptr, ptr %new_ent_rem, align 8
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
-  store i32 %0, ptr %new_ent_elem_rem, align 4
+  store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
@@ -1183,7 +1214,7 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   %rem_dst_col_ChildOf = getelementptr inbounds [3 x ptr], ptr %new_cols_rem, i32 0, i32 0
   %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
   %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %1 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
@@ -1198,7 +1229,7 @@ copy_rem_Velocity:                                ; preds = %skip_rem_ChildOf
   %rem_dst_col_Velocity = getelementptr inbounds [3 x ptr], ptr %new_cols_rem, i32 0, i32 2
   %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
   %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 12)
+  %3 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 12)
   br label %skip_rem_Velocity
 
 skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_ChildOf
@@ -1221,11 +1252,11 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
 after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Velocity
-  %arch_arr_rem_tr = load ptr, ptr @world_entity_arch, align 8
-  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %0
+  %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
+  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
-  %row_arr_rem_tr = load ptr, ptr @world_entity_row, align 8
-  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %0
+  %row_arr_rem_tr = load ptr, ptr %ent_row_slot_rem, align 8
+  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %1
   store i32 %new_row_rem, ptr %rem_row_slot_tr, align 4
   br label %exit_remove
 
@@ -1234,7 +1265,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %3 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -1247,7 +1278,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %4 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 12)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 12)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_ChildOf
@@ -1260,22 +1291,24 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %5 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 12)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 12)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Position
-  %row_arr_rem_sr = load ptr, ptr @world_entity_row, align 8
+  %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
   %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
   store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
   br label %after_swap_rem
 }
 
-define i1 @world_has_Position(i32 %0) {
+define i1 @world_has_Position(ptr %0, i32 %1) {
 entry:
-  %arch_arr_has = load ptr, ptr @world_entity_arch, align 8
-  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %0
+  %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
+  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %1
   %cur_arch_idx_has = load i32, ptr %has_arch_slot, align 4
-  %tables_has = load ptr, ptr @arch_tables, align 8
+  %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
   %arch_mask_has = load i64, ptr %mask_slot_has, align 8
@@ -1284,17 +1317,20 @@ entry:
   ret i1 %res_has
 }
 
-define void @world_set_Velocity(i32 %0, float %1, float %2, float %3) {
+define void @world_set_Velocity(ptr %0, i32 %1, float %2, float %3, float %4) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
-  %arch_arr = load ptr, ptr @world_entity_arch, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %0
+  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx = load i32, ptr %ent_arch_slot, align 4
-  %row_arr = load ptr, ptr @world_entity_row, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %0
+  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr @arch_tables, align 8
+  %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
   %cur_mask = load i64, ptr %cur_mask_slot, align 8
@@ -1309,8 +1345,8 @@ in_place_update:                                  ; preds = %entry
 
 transition:                                       ; preds = %entry
   %new_mask = or i64 %cur_mask, 4
-  %new_arch_idx = call i32 @world_get_or_create_archetype(i64 %new_mask)
-  %tables_tr1 = load ptr, ptr @arch_tables, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
   %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
@@ -1322,26 +1358,26 @@ transition:                                       ; preds = %entry
 store_fields:                                     ; preds = %after_swap_remove, %in_place_update
   %final_arch = load i32, ptr %target_arch, align 4
   %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr @arch_tables, align 8
+  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
   %final_col_slot = getelementptr inbounds [3 x ptr], ptr %final_cols, i32 0, i32 2
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.Velocity, ptr %final_col_raw, i32 %final_row
   %vx_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 0
-  store float %1, ptr %vx_gep, align 4
+  store float %2, ptr %vx_gep, align 4
   %vy_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 1
-  store float %2, ptr %vy_gep, align 4
+  store float %3, ptr %vy_gep, align 4
   %vz_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 2
-  store float %3, ptr %vz_gep, align 4
+  store float %4, ptr %vz_gep, align 4
   ret void
 
 grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(i32 %new_arch_idx)
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
   br label %after_grow_new_arch
 
 after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr @arch_tables, align 8
+  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx
   %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
   %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
@@ -1351,7 +1387,7 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
   %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
   %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %0, ptr %new_ent_elem2, align 4
+  store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
   %has_ChildOf = and i64 %cur_mask, 1
@@ -1365,7 +1401,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -1380,7 +1416,7 @@ copy_Position:                                    ; preds = %skip_ChildOf
   %dst_col_Position = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
@@ -1395,7 +1431,7 @@ copy_Velocity:                                    ; preds = %skip_Position
   %dst_col_Velocity = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
+  %7 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
@@ -1418,11 +1454,11 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
 after_swap_remove:                                ; preds = %skip_sw_Velocity, %skip_Velocity
-  %arch_arr_tr = load ptr, ptr @world_entity_arch, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %0
+  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr @world_entity_row, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %0
+  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
   store i32 %new_row, ptr %e_row_slot_tr, align 4
   store i32 %new_arch_idx, ptr %target_arch, align 4
   store i32 %new_row, ptr %target_row, align 4
@@ -1433,7 +1469,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %7 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -1446,7 +1482,7 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %8 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
+  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -1459,27 +1495,30 @@ swap_Velocity:                                    ; preds = %skip_sw_Position
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
+  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %row_arr_sr = load ptr, ptr @world_entity_row, align 8
+  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 }
 
-define void @world_add_Velocity(i32 %0, float %1, float %2, float %3) {
+define void @world_add_Velocity(ptr %0, i32 %1, float %2, float %3, float %4) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
-  %arch_arr = load ptr, ptr @world_entity_arch, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %0
+  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx = load i32, ptr %ent_arch_slot, align 4
-  %row_arr = load ptr, ptr @world_entity_row, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %0
+  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr @arch_tables, align 8
+  %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
   %cur_mask = load i64, ptr %cur_mask_slot, align 8
@@ -1494,8 +1533,8 @@ in_place_update:                                  ; preds = %entry
 
 transition:                                       ; preds = %entry
   %new_mask = or i64 %cur_mask, 4
-  %new_arch_idx = call i32 @world_get_or_create_archetype(i64 %new_mask)
-  %tables_tr1 = load ptr, ptr @arch_tables, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
   %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
@@ -1507,26 +1546,26 @@ transition:                                       ; preds = %entry
 store_fields:                                     ; preds = %after_swap_remove, %in_place_update
   %final_arch = load i32, ptr %target_arch, align 4
   %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr @arch_tables, align 8
+  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
   %final_col_slot = getelementptr inbounds [3 x ptr], ptr %final_cols, i32 0, i32 2
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.Velocity, ptr %final_col_raw, i32 %final_row
   %vx_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 0
-  store float %1, ptr %vx_gep, align 4
+  store float %2, ptr %vx_gep, align 4
   %vy_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 1
-  store float %2, ptr %vy_gep, align 4
+  store float %3, ptr %vy_gep, align 4
   %vz_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 2
-  store float %3, ptr %vz_gep, align 4
+  store float %4, ptr %vz_gep, align 4
   ret void
 
 grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(i32 %new_arch_idx)
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
   br label %after_grow_new_arch
 
 after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr @arch_tables, align 8
+  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx
   %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
   %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
@@ -1536,7 +1575,7 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
   %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
   %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %0, ptr %new_ent_elem2, align 4
+  store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
   %has_ChildOf = and i64 %cur_mask, 1
@@ -1550,7 +1589,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -1565,7 +1604,7 @@ copy_Position:                                    ; preds = %skip_ChildOf
   %dst_col_Position = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 12)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
@@ -1580,7 +1619,7 @@ copy_Velocity:                                    ; preds = %skip_Position
   %dst_col_Velocity = getelementptr inbounds [3 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
+  %7 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 12)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
@@ -1603,11 +1642,11 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
 after_swap_remove:                                ; preds = %skip_sw_Velocity, %skip_Velocity
-  %arch_arr_tr = load ptr, ptr @world_entity_arch, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %0
+  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr @world_entity_row, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %0
+  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
   store i32 %new_row, ptr %e_row_slot_tr, align 4
   store i32 %new_arch_idx, ptr %target_arch, align 4
   store i32 %new_row, ptr %target_row, align 4
@@ -1618,7 +1657,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %7 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -1631,7 +1670,7 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %8 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
+  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 12)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -1644,25 +1683,28 @@ swap_Velocity:                                    ; preds = %skip_sw_Position
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
+  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 12)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %row_arr_sr = load ptr, ptr @world_entity_row, align 8
+  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 }
 
-define void @world_remove_Velocity(i32 %0) {
+define void @world_remove_Velocity(ptr %0, i32 %1) {
 entry:
-  %arch_arr_rem = load ptr, ptr @world_entity_arch, align 8
-  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %0
+  %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
+  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
-  %row_arr_rem = load ptr, ptr @world_entity_row, align 8
-  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %0
+  %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
+  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
-  %tables_rem = load ptr, ptr @arch_tables, align 8
+  %tables_rem = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem = getelementptr inbounds %struct.Archetype, ptr %tables_rem, i32 %cur_arch_rem
   %cur_mask_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem, i32 0, i32 0
   %cur_mask_val_rem = load i64, ptr %cur_mask_rem, align 8
@@ -1672,8 +1714,8 @@ entry:
 
 do_remove:                                        ; preds = %entry
   %new_mask_rem = and i64 %cur_mask_val_rem, -5
-  %new_arch_rem = call i32 @world_get_or_create_archetype(i64 %new_mask_rem)
-  %tables_rem_tr1 = load ptr, ptr @arch_tables, align 8
+  %new_arch_rem = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask_rem)
+  %tables_rem_tr1 = load ptr, ptr %tables_slot_rem, align 8
   %new_arch_ptr_rem1 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr1, i32 %new_arch_rem
   %cnt_slot_rem1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem1, i32 0, i32 1
   %cnt_rem1 = load i32, ptr %cnt_slot_rem1, align 4
@@ -1686,11 +1728,11 @@ exit_remove:                                      ; preds = %after_swap_rem, %en
   ret void
 
 grow_rem_arch:                                    ; preds = %do_remove
-  call void @world_grow_archetype(i32 %new_arch_rem)
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_rem)
   br label %after_grow_rem_arch
 
 after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_remove
-  %tables_rem_tr2 = load ptr, ptr @arch_tables, align 8
+  %tables_rem_tr2 = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem2 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr2, i32 %cur_arch_rem
   %new_arch_ptr_rem2 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr2, i32 %new_arch_rem
   %cnt_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 1
@@ -1700,7 +1742,7 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 3
   %new_ent_raw_rem = load ptr, ptr %new_ent_rem, align 8
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
-  store i32 %0, ptr %new_ent_elem_rem, align 4
+  store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
@@ -1714,7 +1756,7 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   %rem_dst_col_ChildOf = getelementptr inbounds [3 x ptr], ptr %new_cols_rem, i32 0, i32 0
   %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
   %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %1 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
@@ -1729,7 +1771,7 @@ copy_rem_Position:                                ; preds = %skip_rem_ChildOf
   %rem_dst_col_Position = getelementptr inbounds [3 x ptr], ptr %new_cols_rem, i32 0, i32 1
   %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
   %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 12)
+  %3 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 12)
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_ChildOf
@@ -1752,11 +1794,11 @@ do_swap_rem:                                      ; preds = %skip_rem_Position
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
 after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Position
-  %arch_arr_rem_tr = load ptr, ptr @world_entity_arch, align 8
-  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %0
+  %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
+  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
-  %row_arr_rem_tr = load ptr, ptr @world_entity_row, align 8
-  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %0
+  %row_arr_rem_tr = load ptr, ptr %ent_row_slot_rem, align 8
+  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %1
   store i32 %new_row_rem, ptr %rem_row_slot_tr, align 4
   br label %exit_remove
 
@@ -1765,7 +1807,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %3 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -1778,7 +1820,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %4 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 12)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 12)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_ChildOf
@@ -1791,22 +1833,24 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %5 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 12)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 12)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Position
-  %row_arr_rem_sr = load ptr, ptr @world_entity_row, align 8
+  %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
   %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
   store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
   br label %after_swap_rem
 }
 
-define i1 @world_has_Velocity(i32 %0) {
+define i1 @world_has_Velocity(ptr %0, i32 %1) {
 entry:
-  %arch_arr_has = load ptr, ptr @world_entity_arch, align 8
-  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %0
+  %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
+  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %1
   %cur_arch_idx_has = load i32, ptr %has_arch_slot, align 4
-  %tables_has = load ptr, ptr @arch_tables, align 8
+  %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
   %arch_mask_has = load i64, ptr %mask_slot_has, align 8
@@ -1815,15 +1859,20 @@ entry:
   ret i1 %res_has
 }
 
-define void @world_set_Time(float %0) {
+define void @world_set_Time(ptr %0, float %1) {
 entry:
-  store float %0, ptr @res_Time, align 4
+  %res_Time_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
+  %dt_gep = getelementptr inbounds nuw %struct.res.Time, ptr %res_Time_slot, i32 0, i32 0
+  store float %1, ptr %dt_gep, align 4
   ret void
 }
 
-define void @world_sort_hierarchy() {
+define void @world_sort_hierarchy(ptr %0) {
 entry:
-  %num_archs = load i32, ptr @arch_count, align 4
+  %arch_count_sh = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 0
+  %tables_slot_sh = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %ent_row_slot_sh = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %num_archs = load i32, ptr %arch_count_sh, align 4
   %arch_i = alloca i32, align 4
   store i32 0, ptr %arch_i, align 4
   %init_i = alloca i32, align 4
@@ -1840,7 +1889,7 @@ arch_loop_cond:                                   ; preds = %next_arch, %entry
   br i1 %has_more_archs, label %arch_loop_body, label %arch_loop_exit
 
 arch_loop_body:                                   ; preds = %arch_loop_cond
-  %t_base = load ptr, ptr @arch_tables, align 8
+  %t_base = load ptr, ptr %tables_slot_sh, align 8
   %cur_a = getelementptr inbounds %struct.Archetype, ptr %t_base, i32 %cur_a_idx
   %m_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_a, i32 0, i32 0
   %m_val = load i64, ptr %m_slot, align 8
@@ -1937,7 +1986,7 @@ do_swap_row:                                      ; preds = %sort_inner_body
   %ej = load i32, ptr %ej_slot, align 4
   store i32 %ej, ptr %ei_slot, align 4
   store i32 %ei, ptr %ej_slot, align 4
-  %row_arr_sh = load ptr, ptr @world_entity_row, align 8
+  %row_arr_sh = load ptr, ptr %ent_row_slot_sh, align 8
   %ei_row_slot = getelementptr inbounds i32, ptr %row_arr_sh, i32 %ei
   %ej_row_slot = getelementptr inbounds i32, ptr %row_arr_sh, i32 %ej
   store i32 %cur_sort_j, ptr %ei_row_slot, align 4
@@ -1956,9 +2005,9 @@ sw_sh_ChildOf:                                    ; preds = %do_swap_row
   %sw_sh_raw_ChildOf = load ptr, ptr %sw_sh_col_ChildOf, align 8
   %elem_i_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_sh_raw_ChildOf, i32 %cur_sort_i
   %elem_j_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_sh_raw_ChildOf, i32 %cur_sort_j
-  %0 = call ptr @memcpy(ptr %temp_ChildOf, ptr %elem_i_ChildOf, i64 4)
-  %1 = call ptr @memcpy(ptr %elem_i_ChildOf, ptr %elem_j_ChildOf, i64 4)
-  %2 = call ptr @memcpy(ptr %elem_j_ChildOf, ptr %temp_ChildOf, i64 4)
+  %1 = call ptr @memcpy(ptr %temp_ChildOf, ptr %elem_i_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %elem_i_ChildOf, ptr %elem_j_ChildOf, i64 4)
+  %3 = call ptr @memcpy(ptr %elem_j_ChildOf, ptr %temp_ChildOf, i64 4)
   br label %skip_sw_sh_ChildOf
 
 skip_sw_sh_ChildOf:                               ; preds = %sw_sh_ChildOf, %do_swap_row
@@ -1971,9 +2020,9 @@ sw_sh_Position:                                   ; preds = %skip_sw_sh_ChildOf
   %sw_sh_raw_Position = load ptr, ptr %sw_sh_col_Position, align 8
   %elem_i_Position = getelementptr inbounds %struct.Position, ptr %sw_sh_raw_Position, i32 %cur_sort_i
   %elem_j_Position = getelementptr inbounds %struct.Position, ptr %sw_sh_raw_Position, i32 %cur_sort_j
-  %3 = call ptr @memcpy(ptr %temp_Position, ptr %elem_i_Position, i64 12)
-  %4 = call ptr @memcpy(ptr %elem_i_Position, ptr %elem_j_Position, i64 12)
-  %5 = call ptr @memcpy(ptr %elem_j_Position, ptr %temp_Position, i64 12)
+  %4 = call ptr @memcpy(ptr %temp_Position, ptr %elem_i_Position, i64 12)
+  %5 = call ptr @memcpy(ptr %elem_i_Position, ptr %elem_j_Position, i64 12)
+  %6 = call ptr @memcpy(ptr %elem_j_Position, ptr %temp_Position, i64 12)
   br label %skip_sw_sh_Position
 
 skip_sw_sh_Position:                              ; preds = %sw_sh_Position, %skip_sw_sh_ChildOf
@@ -1986,18 +2035,19 @@ sw_sh_Velocity:                                   ; preds = %skip_sw_sh_Position
   %sw_sh_raw_Velocity = load ptr, ptr %sw_sh_col_Velocity, align 8
   %elem_i_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_sh_raw_Velocity, i32 %cur_sort_i
   %elem_j_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_sh_raw_Velocity, i32 %cur_sort_j
-  %6 = call ptr @memcpy(ptr %temp_Velocity, ptr %elem_i_Velocity, i64 12)
-  %7 = call ptr @memcpy(ptr %elem_i_Velocity, ptr %elem_j_Velocity, i64 12)
-  %8 = call ptr @memcpy(ptr %elem_j_Velocity, ptr %temp_Velocity, i64 12)
+  %7 = call ptr @memcpy(ptr %temp_Velocity, ptr %elem_i_Velocity, i64 12)
+  %8 = call ptr @memcpy(ptr %elem_i_Velocity, ptr %elem_j_Velocity, i64 12)
+  %9 = call ptr @memcpy(ptr %elem_j_Velocity, ptr %temp_Velocity, i64 12)
   br label %skip_sw_sh_Velocity
 
 skip_sw_sh_Velocity:                              ; preds = %sw_sh_Velocity, %skip_sw_sh_Position
   br label %skip_swap_row
 }
 
-define void @system_MovementSystem() {
+define void @system_MovementSystem(ptr %world) {
 entry:
-  %num_archs = load i32, ptr @arch_count, align 4
+  %world_arch_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 0
+  %num_archs = load i32, ptr %world_arch_count_slot, align 4
   %arch_idx = alloca i32, align 4
   store i32 0, ptr %arch_idx, align 4
   br label %arch_cond
@@ -2008,7 +2058,8 @@ arch_cond:                                        ; preds = %next_arch, %entry
   br i1 %has_more_archs, label %arch_body, label %sys_exit
 
 arch_body:                                        ; preds = %arch_cond
-  %tables_base = load ptr, ptr @arch_tables, align 8
+  %world_arch_tables_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 2
+  %tables_base = load ptr, ptr %world_arch_tables_slot, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_base, i32 %cur_arch_idx
   %mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
   %arch_mask = load i64, ptr %mask_slot, align 8
@@ -2048,9 +2099,11 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %vel_col_slot = getelementptr inbounds [3 x ptr], ptr %cols_arr, i32 0, i32 2
   %vel_raw = load ptr, ptr %vel_col_slot, align 8
   %vel_elem = getelementptr inbounds %struct.Velocity, ptr %vel_raw, i32 %cur_row
+  %time_res_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 7
   %vel_vx = getelementptr inbounds nuw %struct.Velocity, ptr %vel_elem, i32 0, i32 0
   %vx_val = load float, ptr %vel_vx, align 4
-  %dt_val = load float, ptr @res_Time, align 4
+  %time_dt = getelementptr inbounds nuw %struct.res.Time, ptr %time_res_slot, i32 0, i32 0
+  %dt_val = load float, ptr %time_dt, align 4
   %fmul = fmul float %vx_val, %dt_val
   %pos_x_gep = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 0
   %cur_fld = load float, ptr %pos_x_gep, align 4
@@ -2058,28 +2111,30 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   store float %fadd, ptr %pos_x_gep, align 4
   %vel_vy = getelementptr inbounds nuw %struct.Velocity, ptr %vel_elem, i32 0, i32 1
   %vy_val = load float, ptr %vel_vy, align 4
-  %dt_val1 = load float, ptr @res_Time, align 4
-  %fmul2 = fmul float %vy_val, %dt_val1
+  %time_dt1 = getelementptr inbounds nuw %struct.res.Time, ptr %time_res_slot, i32 0, i32 0
+  %dt_val2 = load float, ptr %time_dt1, align 4
+  %fmul3 = fmul float %vy_val, %dt_val2
   %pos_y_gep = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 1
-  %cur_fld3 = load float, ptr %pos_y_gep, align 4
-  %fadd4 = fadd float %cur_fld3, %fmul2
-  store float %fadd4, ptr %pos_y_gep, align 4
+  %cur_fld4 = load float, ptr %pos_y_gep, align 4
+  %fadd5 = fadd float %cur_fld4, %fmul3
+  store float %fadd5, ptr %pos_y_gep, align 4
   %vel_vz = getelementptr inbounds nuw %struct.Velocity, ptr %vel_elem, i32 0, i32 2
   %vz_val = load float, ptr %vel_vz, align 4
-  %dt_val5 = load float, ptr @res_Time, align 4
-  %fmul6 = fmul float %vz_val, %dt_val5
+  %time_dt6 = getelementptr inbounds nuw %struct.res.Time, ptr %time_res_slot, i32 0, i32 0
+  %dt_val7 = load float, ptr %time_dt6, align 4
+  %fmul8 = fmul float %vz_val, %dt_val7
   %pos_z_gep = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 2
-  %cur_fld7 = load float, ptr %pos_z_gep, align 4
-  %fadd8 = fadd float %cur_fld7, %fmul6
-  store float %fadd8, ptr %pos_z_gep, align 4
+  %cur_fld9 = load float, ptr %pos_z_gep, align 4
+  %fadd10 = fadd float %cur_fld9, %fmul8
+  store float %fadd10, ptr %pos_z_gep, align 4
   %next_row = add i32 %cur_row, 1
   store i32 %next_row, ptr %row, align 4
   br label %ent_loop_cond
 }
 
-define void @pipeline_PhysicsPipeline() {
+define void @pipeline_PhysicsPipeline(ptr %world) {
 entry:
-  call void @system_MovementSystem()
+  call void @system_MovementSystem(ptr %world)
   ret void
 }
 
@@ -2088,55 +2143,61 @@ entry:
   %frame = alloca i32, align 4
   %e = alloca i32, align 4
   %i = alloca i32, align 4
+  %world = alloca ptr, align 8
   %puts_call = call i32 @puts(ptr @str_lit)
   %puts_call1 = call i32 @puts(ptr @str_lit.1)
   %puts_call2 = call i32 @puts(ptr @str_lit.2)
-  call void @world_set_Time(float 0x3F90624DE0000000)
-  %puts_call3 = call i32 @puts(ptr @str_lit.3)
+  %new_world = call ptr @ecs_create_world()
+  store ptr %new_world, ptr %world, align 8
+  %world3 = load ptr, ptr %world, align 8
+  call void @world_set_Time(ptr %world3, float 0x3F90624DE0000000)
+  %puts_call4 = call i32 @puts(ptr @str_lit.3)
   store i32 0, ptr %i, align 4
   br label %while_cond
 
 while_cond:                                       ; preds = %while_body, %entry
-  %i4 = load i32, ptr %i, align 4
-  %slt = icmp slt i32 %i4, 100000
+  %i5 = load i32, ptr %i, align 4
+  %slt = icmp slt i32 %i5, 100000
   br i1 %slt, label %while_body, label %while_exit
 
 while_body:                                       ; preds = %while_cond
-  %world_spawn_call = call i32 @world_spawn()
-  store i32 %world_spawn_call, ptr %e, align 4
-  %e5 = load i32, ptr %e, align 4
-  call void @world_set_Position(i32 %e5, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00)
-  %e6 = load i32, ptr %e, align 4
-  call void @world_set_Velocity(i32 %e6, float 1.000000e+00, float 2.000000e+00, float 3.000000e+00)
+  %world6 = load ptr, ptr %world, align 8
+  %spawn_call = call i32 @world_spawn(ptr %world6)
+  store i32 %spawn_call, ptr %e, align 4
+  %world7 = load ptr, ptr %world, align 8
+  %e8 = load i32, ptr %e, align 4
+  call void @world_set_Position(ptr %world7, i32 %e8, float 0.000000e+00, float 0.000000e+00, float 0.000000e+00)
+  %world9 = load ptr, ptr %world, align 8
+  %e10 = load i32, ptr %e, align 4
+  call void @world_set_Velocity(ptr %world9, i32 %e10, float 1.000000e+00, float 2.000000e+00, float 3.000000e+00)
   %i_cur = load i32, ptr %i, align 4
   %add = add i32 %i_cur, 1
   store i32 %add, ptr %i, align 4
   br label %while_cond
 
 while_exit:                                       ; preds = %while_cond
-  %puts_call7 = call i32 @puts(ptr @str_lit.4)
-  %i8 = load i32, ptr %i, align 4
-  %printf_call = call i32 (ptr, ...) @printf(ptr @fmt_d, i32 %i8)
-  %puts_call9 = call i32 @puts(ptr @str_lit.5)
+  %puts_call11 = call i32 @puts(ptr @str_lit.4)
+  %i12 = load i32, ptr %i, align 4
+  %printf_call = call i32 (ptr, ...) @printf(ptr @fmt_d, i32 %i12)
+  %puts_call13 = call i32 @puts(ptr @str_lit.5)
   store i32 0, ptr %frame, align 4
-  br label %while_cond10
+  br label %while_cond14
 
-while_cond10:                                     ; preds = %while_body11, %while_exit
-  %frame13 = load i32, ptr %frame, align 4
-  %slt14 = icmp slt i32 %frame13, 10
-  br i1 %slt14, label %while_body11, label %while_exit12
+while_cond14:                                     ; preds = %while_body15, %while_exit
+  %frame17 = load i32, ptr %frame, align 4
+  %slt18 = icmp slt i32 %frame17, 10
+  br i1 %slt18, label %while_body15, label %while_exit16
 
-while_body11:                                     ; preds = %while_cond10
-  call void @pipeline_PhysicsPipeline()
+while_body15:                                     ; preds = %while_cond14
+  %world19 = load ptr, ptr %world, align 8
+  call void @pipeline_PhysicsPipeline(ptr %world19)
   %frame_cur = load i32, ptr %frame, align 4
-  %add15 = add i32 %frame_cur, 1
-  store i32 %add15, ptr %frame, align 4
-  br label %while_cond10
+  %add20 = add i32 %frame_cur, 1
+  store i32 %add20, ptr %frame, align 4
+  br label %while_cond14
 
-while_exit12:                                     ; preds = %while_cond10
-  %puts_call16 = call i32 @puts(ptr @str_lit.6)
-  %puts_call17 = call i32 @puts(ptr @str_lit.7)
-  %puts_call18 = call i32 @puts(ptr @str_lit.8)
-  %key_input = call i32 @getchar()
+while_exit16:                                     ; preds = %while_cond14
+  %puts_call21 = call i32 @puts(ptr @str_lit.6)
+  %puts_call22 = call i32 @puts(ptr @str_lit.7)
   ret i32 0
 }

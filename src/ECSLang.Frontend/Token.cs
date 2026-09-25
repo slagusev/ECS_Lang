@@ -39,6 +39,7 @@ public enum TokenType
     OpenBrace,    // {
     CloseBrace,   // }
     Colon,        // :
+    ColonColon,   // ::
     Semicolon,    // ;
     Comma,        // ,
     Dot,          // .

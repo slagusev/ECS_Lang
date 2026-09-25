@@ -3,46 +3,25 @@ source_filename = "ecs_module"
 target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-windows-msvc"
 
-%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, %struct.res.Time }
-%struct.res.Time = type { float }
-%struct.Archetype = type { i64, i32, i32, ptr, [5 x ptr] }
+%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr }
+%struct.Archetype = type { i64, i32, i32, ptr, [4 x ptr] }
 %struct.ChildOf = type { i32 }
 %struct.Position = type { float, float }
 %struct.Velocity = type { float, float }
-%struct.PlayerTag = type { i32 }
-%struct.Obstacle = type { i1 }
+%struct.Label = type { ptr }
 
-@str_lit = private unnamed_addr constant [17 x i8] c"Player Position:\00", align 1
+@str_lit = private unnamed_addr constant [42 x i8] c"  [Game System] Moved entity to Position:\00", align 1
 @fmt_f = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
 @fmt_f.1 = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
-@str_lit.2 = private unnamed_addr constant [19 x i8] c"Obstacle Position:\00", align 1
+@str_lit.2 = private unnamed_addr constant [43 x i8] c"  [UI System] Rendering Label at Position:\00", align 1
 @fmt_f.3 = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
 @fmt_f.4 = private unnamed_addr constant [4 x i8] c"%f\0A\00", align 1
-@str_lit.5 = private unnamed_addr constant [51 x i8] c"==================================================\00", align 1
-@str_lit.6 = private unnamed_addr constant [51 x i8] c"  ECS-Lang: Multi-Archetype Dynamic ECS Demo      \00", align 1
-@str_lit.7 = private unnamed_addr constant [51 x i8] c"==================================================\00", align 1
-@str_lit.8 = private unnamed_addr constant [38 x i8] c"Verifying initial component presence:\00", align 1
-@str_lit.9 = private unnamed_addr constant [34 x i8] c"Player has Velocity (expected 1):\00", align 1
-@fmt_b = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
-@str_lit.10 = private unnamed_addr constant [32 x i8] c"Rock has Velocity (expected 0):\00", align 1
-@fmt_b.11 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
-@str_lit.12 = private unnamed_addr constant [32 x i8] c"Rock has Obstacle (expected 1):\00", align 1
-@fmt_b.13 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
-@str_lit.14 = private unnamed_addr constant [37 x i8] c"--- Frame 1: Running PhysicsLoop ---\00", align 1
-@str_lit.15 = private unnamed_addr constant [44 x i8] c"Player after frame 1 (expected 15.0, 22.0):\00", align 1
-@str_lit.16 = private unnamed_addr constant [58 x i8] c"Obstacle after frame 1 (expected 100.0, 100.0 - unmoved):\00", align 1
-@str_lit.17 = private unnamed_addr constant [38 x i8] c"--- Removing Velocity from Bullet ---\00", align 1
-@str_lit.18 = private unnamed_addr constant [48 x i8] c"Bullet has Velocity after removal (expected 0):\00", align 1
-@fmt_b.19 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
-@str_lit.20 = private unnamed_addr constant [44 x i8] c"--- Dynamically adding Velocity to Rock ---\00", align 1
-@str_lit.21 = private unnamed_addr constant [47 x i8] c"Rock has Velocity after addition (expected 1):\00", align 1
-@fmt_b.22 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
-@str_lit.23 = private unnamed_addr constant [43 x i8] c"--- Frame 2: Running PhysicsLoop again ---\00", align 1
-@str_lit.24 = private unnamed_addr constant [44 x i8] c"Player after frame 2 (expected 20.0, 24.0):\00", align 1
-@str_lit.25 = private unnamed_addr constant [84 x i8] c"Obstacle after frame 2 (expected 101.0, 102.0 - moved because Velocity was added!):\00", align 1
-@str_lit.26 = private unnamed_addr constant [51 x i8] c"==================================================\00", align 1
-@str_lit.27 = private unnamed_addr constant [41 x i8] c"Multi-Archetype verification successful!\00", align 1
-@str_lit.28 = private unnamed_addr constant [51 x i8] c"==================================================\00", align 1
+@str_lit.5 = private unnamed_addr constant [47 x i8] c"=== ECS Multi-World Universal Context Demo ===\00", align 1
+@str_lit.6 = private unnamed_addr constant [11 x i8] c"Start Game\00", align 1
+@str_lit.7 = private unnamed_addr constant [5 x i8] c"Quit\00", align 1
+@str_lit.8 = private unnamed_addr constant [43 x i8] c"--- Running GamePipeline on game_world ---\00", align 1
+@str_lit.9 = private unnamed_addr constant [39 x i8] c"--- Running UiPipeline on ui_world ---\00", align 1
+@str_lit.10 = private unnamed_addr constant [74 x i8] c"Universal Contexts: Game and UI Worlds executed completely independently!\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -102,7 +81,7 @@ grow_tables:                                      ; preds = %not_found
   %new_cap = select i1 %cap_zero, i32 8, i32 %double_cap
   store i32 %new_cap, ptr %arch_cap_slot, align 4
   %new_cap64 = zext i32 %new_cap to i64
-  %alloc_bytes = mul i64 %new_cap64, 64
+  %alloc_bytes = mul i64 %new_cap64, 56
   %cur_tables_raw = load ptr, ptr %arch_tables_slot, align 8
   %new_tables_i8 = call ptr @realloc(ptr %cur_tables_raw, i64 %alloc_bytes)
   store ptr %new_tables_i8, ptr %arch_tables_slot, align 8
@@ -122,16 +101,14 @@ init_arch:                                        ; preds = %grow_tables, %not_f
   %ent_gep = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_elem, i32 0, i32 3
   store ptr null, ptr %ent_gep, align 8
   %cols_gep = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_elem, i32 0, i32 4
-  %col_slot_0 = getelementptr inbounds [5 x ptr], ptr %cols_gep, i32 0, i32 0
+  %col_slot_0 = getelementptr inbounds [4 x ptr], ptr %cols_gep, i32 0, i32 0
   store ptr null, ptr %col_slot_0, align 8
-  %col_slot_1 = getelementptr inbounds [5 x ptr], ptr %cols_gep, i32 0, i32 1
+  %col_slot_1 = getelementptr inbounds [4 x ptr], ptr %cols_gep, i32 0, i32 1
   store ptr null, ptr %col_slot_1, align 8
-  %col_slot_2 = getelementptr inbounds [5 x ptr], ptr %cols_gep, i32 0, i32 2
+  %col_slot_2 = getelementptr inbounds [4 x ptr], ptr %cols_gep, i32 0, i32 2
   store ptr null, ptr %col_slot_2, align 8
-  %col_slot_3 = getelementptr inbounds [5 x ptr], ptr %cols_gep, i32 0, i32 3
+  %col_slot_3 = getelementptr inbounds [4 x ptr], ptr %cols_gep, i32 0, i32 3
   store ptr null, ptr %col_slot_3, align 8
-  %col_slot_4 = getelementptr inbounds [5 x ptr], ptr %cols_gep, i32 0, i32 4
-  store ptr null, ptr %col_slot_4, align 8
   ret i32 %cur_count
 }
 
@@ -160,7 +137,7 @@ entry:
   br i1 %is_has_ChildOf, label %grow_col_ChildOf, label %skip_col_ChildOf
 
 grow_col_ChildOf:                                 ; preds = %entry
-  %col_slot_ChildOf = getelementptr inbounds [5 x ptr], ptr %cols_arr, i32 0, i32 0
+  %col_slot_ChildOf = getelementptr inbounds [4 x ptr], ptr %cols_arr, i32 0, i32 0
   %cur_col_ChildOf = load ptr, ptr %col_slot_ChildOf, align 8
   %col_bytes_ChildOf = mul i64 %new_cap64, 4
   %new_col_ChildOf = call ptr @realloc(ptr %cur_col_ChildOf, i64 %col_bytes_ChildOf)
@@ -173,7 +150,7 @@ skip_col_ChildOf:                                 ; preds = %grow_col_ChildOf, %
   br i1 %is_has_Position, label %grow_col_Position, label %skip_col_Position
 
 grow_col_Position:                                ; preds = %skip_col_ChildOf
-  %col_slot_Position = getelementptr inbounds [5 x ptr], ptr %cols_arr, i32 0, i32 1
+  %col_slot_Position = getelementptr inbounds [4 x ptr], ptr %cols_arr, i32 0, i32 1
   %cur_col_Position = load ptr, ptr %col_slot_Position, align 8
   %col_bytes_Position = mul i64 %new_cap64, 8
   %new_col_Position = call ptr @realloc(ptr %cur_col_Position, i64 %col_bytes_Position)
@@ -186,7 +163,7 @@ skip_col_Position:                                ; preds = %grow_col_Position, 
   br i1 %is_has_Velocity, label %grow_col_Velocity, label %skip_col_Velocity
 
 grow_col_Velocity:                                ; preds = %skip_col_Position
-  %col_slot_Velocity = getelementptr inbounds [5 x ptr], ptr %cols_arr, i32 0, i32 2
+  %col_slot_Velocity = getelementptr inbounds [4 x ptr], ptr %cols_arr, i32 0, i32 2
   %cur_col_Velocity = load ptr, ptr %col_slot_Velocity, align 8
   %col_bytes_Velocity = mul i64 %new_cap64, 8
   %new_col_Velocity = call ptr @realloc(ptr %cur_col_Velocity, i64 %col_bytes_Velocity)
@@ -194,32 +171,19 @@ grow_col_Velocity:                                ; preds = %skip_col_Position
   br label %skip_col_Velocity
 
 skip_col_Velocity:                                ; preds = %grow_col_Velocity, %skip_col_Position
-  %has_PlayerTag = and i64 %arch_mask, 8
-  %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
-  br i1 %is_has_PlayerTag, label %grow_col_PlayerTag, label %skip_col_PlayerTag
+  %has_Label = and i64 %arch_mask, 8
+  %is_has_Label = icmp ne i64 %has_Label, 0
+  br i1 %is_has_Label, label %grow_col_Label, label %skip_col_Label
 
-grow_col_PlayerTag:                               ; preds = %skip_col_Velocity
-  %col_slot_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cols_arr, i32 0, i32 3
-  %cur_col_PlayerTag = load ptr, ptr %col_slot_PlayerTag, align 8
-  %col_bytes_PlayerTag = mul i64 %new_cap64, 4
-  %new_col_PlayerTag = call ptr @realloc(ptr %cur_col_PlayerTag, i64 %col_bytes_PlayerTag)
-  store ptr %new_col_PlayerTag, ptr %col_slot_PlayerTag, align 8
-  br label %skip_col_PlayerTag
+grow_col_Label:                                   ; preds = %skip_col_Velocity
+  %col_slot_Label = getelementptr inbounds [4 x ptr], ptr %cols_arr, i32 0, i32 3
+  %cur_col_Label = load ptr, ptr %col_slot_Label, align 8
+  %col_bytes_Label = mul i64 %new_cap64, 8
+  %new_col_Label = call ptr @realloc(ptr %cur_col_Label, i64 %col_bytes_Label)
+  store ptr %new_col_Label, ptr %col_slot_Label, align 8
+  br label %skip_col_Label
 
-skip_col_PlayerTag:                               ; preds = %grow_col_PlayerTag, %skip_col_Velocity
-  %has_Obstacle = and i64 %arch_mask, 16
-  %is_has_Obstacle = icmp ne i64 %has_Obstacle, 0
-  br i1 %is_has_Obstacle, label %grow_col_Obstacle, label %skip_col_Obstacle
-
-grow_col_Obstacle:                                ; preds = %skip_col_PlayerTag
-  %col_slot_Obstacle = getelementptr inbounds [5 x ptr], ptr %cols_arr, i32 0, i32 4
-  %cur_col_Obstacle = load ptr, ptr %col_slot_Obstacle, align 8
-  %col_bytes_Obstacle = mul i64 %new_cap64, 1
-  %new_col_Obstacle = call ptr @realloc(ptr %cur_col_Obstacle, i64 %col_bytes_Obstacle)
-  store ptr %new_col_Obstacle, ptr %col_slot_Obstacle, align 8
-  br label %skip_col_Obstacle
-
-skip_col_Obstacle:                                ; preds = %grow_col_Obstacle, %skip_col_PlayerTag
+skip_col_Label:                                   ; preds = %grow_col_Label, %skip_col_Velocity
   ret void
 }
 
@@ -339,7 +303,7 @@ store_fields:                                     ; preds = %after_swap_remove, 
   %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [5 x ptr], ptr %final_cols, i32 0, i32 0
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 0
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.ChildOf, ptr %final_col_raw, i32 %final_row
   %parent_gep = getelementptr inbounds nuw %struct.ChildOf, ptr %final_elem, i32 0, i32 0
@@ -369,10 +333,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
 copy_ChildOf:                                     ; preds = %after_grow_new_arch
-  %src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %src_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %src_raw_ChildOf = load ptr, ptr %src_col_ChildOf, align 8
   %src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %src_raw_ChildOf, i32 %cur_row
-  %dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 0
+  %dst_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
   %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
@@ -384,10 +348,10 @@ skip_ChildOf:                                     ; preds = %copy_ChildOf, %afte
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
 copy_Position:                                    ; preds = %skip_ChildOf
-  %src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %src_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %src_raw_Position = load ptr, ptr %src_col_Position, align 8
   %src_elem_Position = getelementptr inbounds %struct.Position, ptr %src_raw_Position, i32 %cur_row
-  %dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 1
+  %dst_col_Position = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
   %4 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
@@ -399,46 +363,31 @@ skip_Position:                                    ; preds = %copy_Position, %ski
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
 copy_Velocity:                                    ; preds = %skip_Position
-  %src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %src_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %src_raw_Velocity = load ptr, ptr %src_col_Velocity, align 8
   %src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %src_raw_Velocity, i32 %cur_row
-  %dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 2
+  %dst_col_Velocity = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
   %5 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
-  %has_PlayerTag = and i64 %cur_mask, 8
-  %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
-  br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
+  %has_Label = and i64 %cur_mask, 8
+  %is_has_Label = icmp ne i64 %has_Label, 0
+  br i1 %is_has_Label, label %copy_Label, label %skip_Label
 
-copy_PlayerTag:                                   ; preds = %skip_Velocity
-  %src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %src_raw_PlayerTag = load ptr, ptr %src_col_PlayerTag, align 8
-  %src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %src_raw_PlayerTag, i32 %cur_row
-  %dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 3
-  %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
-  %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
-  br label %skip_PlayerTag
+copy_Label:                                       ; preds = %skip_Velocity
+  %src_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %src_raw_Label = load ptr, ptr %src_col_Label, align 8
+  %src_elem_Label = getelementptr inbounds %struct.Label, ptr %src_raw_Label, i32 %cur_row
+  %dst_col_Label = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 3
+  %dst_raw_Label = load ptr, ptr %dst_col_Label, align 8
+  %dst_elem_Label = getelementptr inbounds %struct.Label, ptr %dst_raw_Label, i32 %new_row
+  %6 = call ptr @memcpy(ptr %dst_elem_Label, ptr %src_elem_Label, i64 8)
+  br label %skip_Label
 
-skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Velocity
-  %has_Obstacle = and i64 %cur_mask, 16
-  %is_has_Obstacle = icmp ne i64 %has_Obstacle, 0
-  br i1 %is_has_Obstacle, label %copy_Obstacle, label %skip_Obstacle
-
-copy_Obstacle:                                    ; preds = %skip_PlayerTag
-  %src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %src_raw_Obstacle = load ptr, ptr %src_col_Obstacle, align 8
-  %src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %src_raw_Obstacle, i32 %cur_row
-  %dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 4
-  %dst_raw_Obstacle = load ptr, ptr %dst_col_Obstacle, align 8
-  %dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %dst_raw_Obstacle, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Obstacle, ptr %src_elem_Obstacle, i64 1)
-  br label %skip_Obstacle
-
-skip_Obstacle:                                    ; preds = %copy_Obstacle, %skip_PlayerTag
+skip_Label:                                       ; preds = %copy_Label, %skip_Velocity
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
   %last_row = sub i32 %cur_arch_count, 1
@@ -446,7 +395,7 @@ skip_Obstacle:                                    ; preds = %copy_Obstacle, %ski
   %is_last_row = icmp eq i32 %cur_row, %last_row
   br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
 
-do_swap_remove:                                   ; preds = %skip_Obstacle
+do_swap_remove:                                   ; preds = %skip_Label
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
   %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
@@ -457,7 +406,7 @@ do_swap_remove:                                   ; preds = %skip_Obstacle
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
-after_swap_remove:                                ; preds = %skip_sw_Obstacle, %skip_Obstacle
+after_swap_remove:                                ; preds = %skip_sw_Label, %skip_Label
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
   %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
@@ -469,11 +418,11 @@ after_swap_remove:                                ; preds = %skip_sw_Obstacle, %
   br label %store_fields
 
 swap_ChildOf:                                     ; preds = %do_swap_remove
-  %sw_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %sw_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %7 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -482,11 +431,11 @@ skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_s
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
 swap_Position:                                    ; preds = %skip_sw_ChildOf
-  %sw_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %sw_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %8 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -495,40 +444,27 @@ skip_sw_Position:                                 ; preds = %swap_Position, %ski
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
 swap_Velocity:                                    ; preds = %skip_sw_Position
-  %sw_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %sw_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %9 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %has_sw_PlayerTag = and i64 %cur_mask, 8
-  %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
-  br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
+  %has_sw_Label = and i64 %cur_mask, 8
+  %is_has_sw_Label = icmp ne i64 %has_sw_Label, 0
+  br i1 %is_has_sw_Label, label %swap_Label, label %skip_sw_Label
 
-swap_PlayerTag:                                   ; preds = %skip_sw_Velocity
-  %sw_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
-  %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
-  %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
-  br label %skip_sw_PlayerTag
+swap_Label:                                       ; preds = %skip_sw_Velocity
+  %sw_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %sw_raw_Label = load ptr, ptr %sw_col_Label, align 8
+  %sw_src_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %last_row
+  %sw_dst_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %cur_row
+  %10 = call ptr @memcpy(ptr %sw_dst_Label, ptr %sw_src_Label, i64 8)
+  br label %skip_sw_Label
 
-skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Velocity
-  %has_sw_Obstacle = and i64 %cur_mask, 16
-  %is_has_sw_Obstacle = icmp ne i64 %has_sw_Obstacle, 0
-  br i1 %is_has_sw_Obstacle, label %swap_Obstacle, label %skip_sw_Obstacle
-
-swap_Obstacle:                                    ; preds = %skip_sw_PlayerTag
-  %sw_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %sw_raw_Obstacle = load ptr, ptr %sw_col_Obstacle, align 8
-  %sw_src_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %last_row
-  %sw_dst_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_Obstacle, ptr %sw_src_Obstacle, i64 1)
-  br label %skip_sw_Obstacle
-
-skip_sw_Obstacle:                                 ; preds = %swap_Obstacle, %skip_sw_PlayerTag
+skip_sw_Label:                                    ; preds = %swap_Label, %skip_sw_Velocity
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
@@ -579,7 +515,7 @@ store_fields:                                     ; preds = %after_swap_remove, 
   %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [5 x ptr], ptr %final_cols, i32 0, i32 0
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 0
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.ChildOf, ptr %final_col_raw, i32 %final_row
   %parent_gep = getelementptr inbounds nuw %struct.ChildOf, ptr %final_elem, i32 0, i32 0
@@ -609,10 +545,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
 copy_ChildOf:                                     ; preds = %after_grow_new_arch
-  %src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %src_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %src_raw_ChildOf = load ptr, ptr %src_col_ChildOf, align 8
   %src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %src_raw_ChildOf, i32 %cur_row
-  %dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 0
+  %dst_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
   %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
@@ -624,10 +560,10 @@ skip_ChildOf:                                     ; preds = %copy_ChildOf, %afte
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
 copy_Position:                                    ; preds = %skip_ChildOf
-  %src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %src_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %src_raw_Position = load ptr, ptr %src_col_Position, align 8
   %src_elem_Position = getelementptr inbounds %struct.Position, ptr %src_raw_Position, i32 %cur_row
-  %dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 1
+  %dst_col_Position = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
   %4 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
@@ -639,46 +575,31 @@ skip_Position:                                    ; preds = %copy_Position, %ski
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
 copy_Velocity:                                    ; preds = %skip_Position
-  %src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %src_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %src_raw_Velocity = load ptr, ptr %src_col_Velocity, align 8
   %src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %src_raw_Velocity, i32 %cur_row
-  %dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 2
+  %dst_col_Velocity = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
   %5 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
-  %has_PlayerTag = and i64 %cur_mask, 8
-  %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
-  br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
+  %has_Label = and i64 %cur_mask, 8
+  %is_has_Label = icmp ne i64 %has_Label, 0
+  br i1 %is_has_Label, label %copy_Label, label %skip_Label
 
-copy_PlayerTag:                                   ; preds = %skip_Velocity
-  %src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %src_raw_PlayerTag = load ptr, ptr %src_col_PlayerTag, align 8
-  %src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %src_raw_PlayerTag, i32 %cur_row
-  %dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 3
-  %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
-  %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
-  br label %skip_PlayerTag
+copy_Label:                                       ; preds = %skip_Velocity
+  %src_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %src_raw_Label = load ptr, ptr %src_col_Label, align 8
+  %src_elem_Label = getelementptr inbounds %struct.Label, ptr %src_raw_Label, i32 %cur_row
+  %dst_col_Label = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 3
+  %dst_raw_Label = load ptr, ptr %dst_col_Label, align 8
+  %dst_elem_Label = getelementptr inbounds %struct.Label, ptr %dst_raw_Label, i32 %new_row
+  %6 = call ptr @memcpy(ptr %dst_elem_Label, ptr %src_elem_Label, i64 8)
+  br label %skip_Label
 
-skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Velocity
-  %has_Obstacle = and i64 %cur_mask, 16
-  %is_has_Obstacle = icmp ne i64 %has_Obstacle, 0
-  br i1 %is_has_Obstacle, label %copy_Obstacle, label %skip_Obstacle
-
-copy_Obstacle:                                    ; preds = %skip_PlayerTag
-  %src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %src_raw_Obstacle = load ptr, ptr %src_col_Obstacle, align 8
-  %src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %src_raw_Obstacle, i32 %cur_row
-  %dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 4
-  %dst_raw_Obstacle = load ptr, ptr %dst_col_Obstacle, align 8
-  %dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %dst_raw_Obstacle, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Obstacle, ptr %src_elem_Obstacle, i64 1)
-  br label %skip_Obstacle
-
-skip_Obstacle:                                    ; preds = %copy_Obstacle, %skip_PlayerTag
+skip_Label:                                       ; preds = %copy_Label, %skip_Velocity
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
   %last_row = sub i32 %cur_arch_count, 1
@@ -686,7 +607,7 @@ skip_Obstacle:                                    ; preds = %copy_Obstacle, %ski
   %is_last_row = icmp eq i32 %cur_row, %last_row
   br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
 
-do_swap_remove:                                   ; preds = %skip_Obstacle
+do_swap_remove:                                   ; preds = %skip_Label
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
   %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
@@ -697,7 +618,7 @@ do_swap_remove:                                   ; preds = %skip_Obstacle
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
-after_swap_remove:                                ; preds = %skip_sw_Obstacle, %skip_Obstacle
+after_swap_remove:                                ; preds = %skip_sw_Label, %skip_Label
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
   %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
@@ -709,11 +630,11 @@ after_swap_remove:                                ; preds = %skip_sw_Obstacle, %
   br label %store_fields
 
 swap_ChildOf:                                     ; preds = %do_swap_remove
-  %sw_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %sw_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %7 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -722,11 +643,11 @@ skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_s
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
 swap_Position:                                    ; preds = %skip_sw_ChildOf
-  %sw_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %sw_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %8 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -735,40 +656,27 @@ skip_sw_Position:                                 ; preds = %swap_Position, %ski
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
 swap_Velocity:                                    ; preds = %skip_sw_Position
-  %sw_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %sw_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %9 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %has_sw_PlayerTag = and i64 %cur_mask, 8
-  %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
-  br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
+  %has_sw_Label = and i64 %cur_mask, 8
+  %is_has_sw_Label = icmp ne i64 %has_sw_Label, 0
+  br i1 %is_has_sw_Label, label %swap_Label, label %skip_sw_Label
 
-swap_PlayerTag:                                   ; preds = %skip_sw_Velocity
-  %sw_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
-  %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
-  %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
-  br label %skip_sw_PlayerTag
+swap_Label:                                       ; preds = %skip_sw_Velocity
+  %sw_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %sw_raw_Label = load ptr, ptr %sw_col_Label, align 8
+  %sw_src_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %last_row
+  %sw_dst_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %cur_row
+  %10 = call ptr @memcpy(ptr %sw_dst_Label, ptr %sw_src_Label, i64 8)
+  br label %skip_sw_Label
 
-skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Velocity
-  %has_sw_Obstacle = and i64 %cur_mask, 16
-  %is_has_sw_Obstacle = icmp ne i64 %has_sw_Obstacle, 0
-  br i1 %is_has_sw_Obstacle, label %swap_Obstacle, label %skip_sw_Obstacle
-
-swap_Obstacle:                                    ; preds = %skip_sw_PlayerTag
-  %sw_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %sw_raw_Obstacle = load ptr, ptr %sw_col_Obstacle, align 8
-  %sw_src_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %last_row
-  %sw_dst_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_Obstacle, ptr %sw_src_Obstacle, i64 1)
-  br label %skip_sw_Obstacle
-
-skip_sw_Obstacle:                                 ; preds = %swap_Obstacle, %skip_sw_PlayerTag
+skip_sw_Label:                                    ; preds = %swap_Label, %skip_sw_Velocity
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
@@ -832,10 +740,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
 
 copy_rem_Position:                                ; preds = %after_grow_rem_arch
-  %rem_src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
+  %rem_src_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 1
   %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
   %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 1
+  %rem_dst_col_Position = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 1
   %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
   %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
   %2 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
@@ -847,46 +755,31 @@ skip_rem_Position:                                ; preds = %copy_rem_Position, 
   br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
 
 copy_rem_Velocity:                                ; preds = %skip_rem_Position
-  %rem_src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
+  %rem_src_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 2
   %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
   %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 2
+  %rem_dst_col_Velocity = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 2
   %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
   %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
   %3 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
   br label %skip_rem_Velocity
 
 skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_Position
-  %rem_has_PlayerTag = and i64 %cur_mask_val_rem, 8
-  %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
-  br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
+  %rem_has_Label = and i64 %cur_mask_val_rem, 8
+  %is_has_rem_Label = icmp ne i64 %rem_has_Label, 0
+  br i1 %is_has_rem_Label, label %copy_rem_Label, label %skip_rem_Label
 
-copy_rem_PlayerTag:                               ; preds = %skip_rem_Velocity
-  %rem_src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_PlayerTag = load ptr, ptr %rem_src_col_PlayerTag, align 8
-  %rem_src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_src_raw_PlayerTag, i32 %cur_row_rem
-  %rem_dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
-  %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
-  br label %skip_rem_PlayerTag
+copy_rem_Label:                                   ; preds = %skip_rem_Velocity
+  %rem_src_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 3
+  %rem_src_raw_Label = load ptr, ptr %rem_src_col_Label, align 8
+  %rem_src_elem_Label = getelementptr inbounds %struct.Label, ptr %rem_src_raw_Label, i32 %cur_row_rem
+  %rem_dst_col_Label = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 3
+  %rem_dst_raw_Label = load ptr, ptr %rem_dst_col_Label, align 8
+  %rem_dst_elem_Label = getelementptr inbounds %struct.Label, ptr %rem_dst_raw_Label, i32 %new_row_rem
+  %4 = call ptr @memcpy(ptr %rem_dst_elem_Label, ptr %rem_src_elem_Label, i64 8)
+  br label %skip_rem_Label
 
-skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Velocity
-  %rem_has_Obstacle = and i64 %cur_mask_val_rem, 16
-  %is_has_rem_Obstacle = icmp ne i64 %rem_has_Obstacle, 0
-  br i1 %is_has_rem_Obstacle, label %copy_rem_Obstacle, label %skip_rem_Obstacle
-
-copy_rem_Obstacle:                                ; preds = %skip_rem_PlayerTag
-  %rem_src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_Obstacle = load ptr, ptr %rem_src_col_Obstacle, align 8
-  %rem_src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %rem_src_raw_Obstacle, i32 %cur_row_rem
-  %rem_dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_Obstacle = load ptr, ptr %rem_dst_col_Obstacle, align 8
-  %rem_dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %rem_dst_raw_Obstacle, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Obstacle, ptr %rem_src_elem_Obstacle, i64 1)
-  br label %skip_rem_Obstacle
-
-skip_rem_Obstacle:                                ; preds = %copy_rem_Obstacle, %skip_rem_PlayerTag
+skip_rem_Label:                                   ; preds = %copy_rem_Label, %skip_rem_Velocity
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -894,7 +787,7 @@ skip_rem_Obstacle:                                ; preds = %copy_rem_Obstacle, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Obstacle
+do_swap_rem:                                      ; preds = %skip_rem_Label
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -905,7 +798,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Obstacle
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Obstacle, %skip_rem_Obstacle
+after_swap_rem:                                   ; preds = %skip_sw_rem_Label, %skip_rem_Label
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -915,11 +808,11 @@ after_swap_rem:                                   ; preds = %skip_sw_rem_Obstacl
   br label %exit_remove
 
 swap_rem_ChildOf:                                 ; preds = %do_swap_rem
-  %sw_col_rem_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
+  %sw_col_rem_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 0
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %6 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -928,11 +821,11 @@ skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
 swap_rem_Position:                                ; preds = %skip_sw_rem_ChildOf
-  %sw_col_rem_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
+  %sw_col_rem_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 1
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_ChildOf
@@ -941,40 +834,27 @@ skip_sw_rem_Position:                             ; preds = %swap_rem_Position, 
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 
 swap_rem_Velocity:                                ; preds = %skip_sw_rem_Position
-  %sw_col_rem_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
+  %sw_col_rem_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 2
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Position
-  %sw_rem_has_PlayerTag = and i64 %cur_mask_val_rem, 8
-  %is_sw_rem_PlayerTag = icmp ne i64 %sw_rem_has_PlayerTag, 0
-  br i1 %is_sw_rem_PlayerTag, label %swap_rem_PlayerTag, label %skip_sw_rem_PlayerTag
+  %sw_rem_has_Label = and i64 %cur_mask_val_rem, 8
+  %is_sw_rem_Label = icmp ne i64 %sw_rem_has_Label, 0
+  br i1 %is_sw_rem_Label, label %swap_rem_Label, label %skip_sw_rem_Label
 
-swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Velocity
-  %sw_col_rem_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
-  %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
-  %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
-  br label %skip_sw_rem_PlayerTag
+swap_rem_Label:                                   ; preds = %skip_sw_rem_Velocity
+  %sw_col_rem_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 3
+  %sw_raw_rem_Label = load ptr, ptr %sw_col_rem_Label, align 8
+  %sw_src_rem_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_rem_Label, i32 %last_row_rem
+  %sw_dst_rem_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_rem_Label, i32 %cur_row_rem
+  %8 = call ptr @memcpy(ptr %sw_dst_rem_Label, ptr %sw_src_rem_Label, i64 8)
+  br label %skip_sw_rem_Label
 
-skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Velocity
-  %sw_rem_has_Obstacle = and i64 %cur_mask_val_rem, 16
-  %is_sw_rem_Obstacle = icmp ne i64 %sw_rem_has_Obstacle, 0
-  br i1 %is_sw_rem_Obstacle, label %swap_rem_Obstacle, label %skip_sw_rem_Obstacle
-
-swap_rem_Obstacle:                                ; preds = %skip_sw_rem_PlayerTag
-  %sw_col_rem_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %sw_raw_rem_Obstacle = load ptr, ptr %sw_col_rem_Obstacle, align 8
-  %sw_src_rem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_rem_Obstacle, i32 %last_row_rem
-  %sw_dst_rem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_rem_Obstacle, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Obstacle, ptr %sw_src_rem_Obstacle, i64 1)
-  br label %skip_sw_rem_Obstacle
-
-skip_sw_rem_Obstacle:                             ; preds = %swap_rem_Obstacle, %skip_sw_rem_PlayerTag
+skip_sw_rem_Label:                                ; preds = %swap_rem_Label, %skip_sw_rem_Velocity
   %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
   %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
   store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
@@ -1041,7 +921,7 @@ store_fields:                                     ; preds = %after_swap_remove, 
   %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [5 x ptr], ptr %final_cols, i32 0, i32 1
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 1
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.Position, ptr %final_col_raw, i32 %final_row
   %x_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 0
@@ -1073,10 +953,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
 copy_ChildOf:                                     ; preds = %after_grow_new_arch
-  %src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %src_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %src_raw_ChildOf = load ptr, ptr %src_col_ChildOf, align 8
   %src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %src_raw_ChildOf, i32 %cur_row
-  %dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 0
+  %dst_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
   %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
@@ -1088,10 +968,10 @@ skip_ChildOf:                                     ; preds = %copy_ChildOf, %afte
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
 copy_Position:                                    ; preds = %skip_ChildOf
-  %src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %src_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %src_raw_Position = load ptr, ptr %src_col_Position, align 8
   %src_elem_Position = getelementptr inbounds %struct.Position, ptr %src_raw_Position, i32 %cur_row
-  %dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 1
+  %dst_col_Position = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
   %5 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
@@ -1103,46 +983,31 @@ skip_Position:                                    ; preds = %copy_Position, %ski
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
 copy_Velocity:                                    ; preds = %skip_Position
-  %src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %src_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %src_raw_Velocity = load ptr, ptr %src_col_Velocity, align 8
   %src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %src_raw_Velocity, i32 %cur_row
-  %dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 2
+  %dst_col_Velocity = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
   %6 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
-  %has_PlayerTag = and i64 %cur_mask, 8
-  %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
-  br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
+  %has_Label = and i64 %cur_mask, 8
+  %is_has_Label = icmp ne i64 %has_Label, 0
+  br i1 %is_has_Label, label %copy_Label, label %skip_Label
 
-copy_PlayerTag:                                   ; preds = %skip_Velocity
-  %src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %src_raw_PlayerTag = load ptr, ptr %src_col_PlayerTag, align 8
-  %src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %src_raw_PlayerTag, i32 %cur_row
-  %dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 3
-  %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
-  %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
-  br label %skip_PlayerTag
+copy_Label:                                       ; preds = %skip_Velocity
+  %src_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %src_raw_Label = load ptr, ptr %src_col_Label, align 8
+  %src_elem_Label = getelementptr inbounds %struct.Label, ptr %src_raw_Label, i32 %cur_row
+  %dst_col_Label = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 3
+  %dst_raw_Label = load ptr, ptr %dst_col_Label, align 8
+  %dst_elem_Label = getelementptr inbounds %struct.Label, ptr %dst_raw_Label, i32 %new_row
+  %7 = call ptr @memcpy(ptr %dst_elem_Label, ptr %src_elem_Label, i64 8)
+  br label %skip_Label
 
-skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Velocity
-  %has_Obstacle = and i64 %cur_mask, 16
-  %is_has_Obstacle = icmp ne i64 %has_Obstacle, 0
-  br i1 %is_has_Obstacle, label %copy_Obstacle, label %skip_Obstacle
-
-copy_Obstacle:                                    ; preds = %skip_PlayerTag
-  %src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %src_raw_Obstacle = load ptr, ptr %src_col_Obstacle, align 8
-  %src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %src_raw_Obstacle, i32 %cur_row
-  %dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 4
-  %dst_raw_Obstacle = load ptr, ptr %dst_col_Obstacle, align 8
-  %dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %dst_raw_Obstacle, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_Obstacle, ptr %src_elem_Obstacle, i64 1)
-  br label %skip_Obstacle
-
-skip_Obstacle:                                    ; preds = %copy_Obstacle, %skip_PlayerTag
+skip_Label:                                       ; preds = %copy_Label, %skip_Velocity
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
   %last_row = sub i32 %cur_arch_count, 1
@@ -1150,7 +1015,7 @@ skip_Obstacle:                                    ; preds = %copy_Obstacle, %ski
   %is_last_row = icmp eq i32 %cur_row, %last_row
   br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
 
-do_swap_remove:                                   ; preds = %skip_Obstacle
+do_swap_remove:                                   ; preds = %skip_Label
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
   %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
@@ -1161,7 +1026,7 @@ do_swap_remove:                                   ; preds = %skip_Obstacle
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
-after_swap_remove:                                ; preds = %skip_sw_Obstacle, %skip_Obstacle
+after_swap_remove:                                ; preds = %skip_sw_Label, %skip_Label
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
   %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
@@ -1173,11 +1038,11 @@ after_swap_remove:                                ; preds = %skip_sw_Obstacle, %
   br label %store_fields
 
 swap_ChildOf:                                     ; preds = %do_swap_remove
-  %sw_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %sw_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -1186,11 +1051,11 @@ skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_s
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
 swap_Position:                                    ; preds = %skip_sw_ChildOf
-  %sw_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %sw_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -1199,40 +1064,27 @@ skip_sw_Position:                                 ; preds = %swap_Position, %ski
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
 swap_Velocity:                                    ; preds = %skip_sw_Position
-  %sw_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %sw_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %has_sw_PlayerTag = and i64 %cur_mask, 8
-  %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
-  br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
+  %has_sw_Label = and i64 %cur_mask, 8
+  %is_has_sw_Label = icmp ne i64 %has_sw_Label, 0
+  br i1 %is_has_sw_Label, label %swap_Label, label %skip_sw_Label
 
-swap_PlayerTag:                                   ; preds = %skip_sw_Velocity
-  %sw_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
-  %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
-  %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
-  br label %skip_sw_PlayerTag
+swap_Label:                                       ; preds = %skip_sw_Velocity
+  %sw_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %sw_raw_Label = load ptr, ptr %sw_col_Label, align 8
+  %sw_src_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %last_row
+  %sw_dst_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %cur_row
+  %11 = call ptr @memcpy(ptr %sw_dst_Label, ptr %sw_src_Label, i64 8)
+  br label %skip_sw_Label
 
-skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Velocity
-  %has_sw_Obstacle = and i64 %cur_mask, 16
-  %is_has_sw_Obstacle = icmp ne i64 %has_sw_Obstacle, 0
-  br i1 %is_has_sw_Obstacle, label %swap_Obstacle, label %skip_sw_Obstacle
-
-swap_Obstacle:                                    ; preds = %skip_sw_PlayerTag
-  %sw_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %sw_raw_Obstacle = load ptr, ptr %sw_col_Obstacle, align 8
-  %sw_src_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %last_row
-  %sw_dst_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Obstacle, ptr %sw_src_Obstacle, i64 1)
-  br label %skip_sw_Obstacle
-
-skip_sw_Obstacle:                                 ; preds = %swap_Obstacle, %skip_sw_PlayerTag
+skip_sw_Label:                                    ; preds = %swap_Label, %skip_sw_Velocity
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
@@ -1283,7 +1135,7 @@ store_fields:                                     ; preds = %after_swap_remove, 
   %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [5 x ptr], ptr %final_cols, i32 0, i32 1
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 1
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.Position, ptr %final_col_raw, i32 %final_row
   %x_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 0
@@ -1315,10 +1167,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
 copy_ChildOf:                                     ; preds = %after_grow_new_arch
-  %src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %src_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %src_raw_ChildOf = load ptr, ptr %src_col_ChildOf, align 8
   %src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %src_raw_ChildOf, i32 %cur_row
-  %dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 0
+  %dst_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
   %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
@@ -1330,10 +1182,10 @@ skip_ChildOf:                                     ; preds = %copy_ChildOf, %afte
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
 copy_Position:                                    ; preds = %skip_ChildOf
-  %src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %src_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %src_raw_Position = load ptr, ptr %src_col_Position, align 8
   %src_elem_Position = getelementptr inbounds %struct.Position, ptr %src_raw_Position, i32 %cur_row
-  %dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 1
+  %dst_col_Position = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
   %5 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
@@ -1345,46 +1197,31 @@ skip_Position:                                    ; preds = %copy_Position, %ski
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
 copy_Velocity:                                    ; preds = %skip_Position
-  %src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %src_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %src_raw_Velocity = load ptr, ptr %src_col_Velocity, align 8
   %src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %src_raw_Velocity, i32 %cur_row
-  %dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 2
+  %dst_col_Velocity = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
   %6 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
-  %has_PlayerTag = and i64 %cur_mask, 8
-  %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
-  br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
+  %has_Label = and i64 %cur_mask, 8
+  %is_has_Label = icmp ne i64 %has_Label, 0
+  br i1 %is_has_Label, label %copy_Label, label %skip_Label
 
-copy_PlayerTag:                                   ; preds = %skip_Velocity
-  %src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %src_raw_PlayerTag = load ptr, ptr %src_col_PlayerTag, align 8
-  %src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %src_raw_PlayerTag, i32 %cur_row
-  %dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 3
-  %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
-  %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
-  br label %skip_PlayerTag
+copy_Label:                                       ; preds = %skip_Velocity
+  %src_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %src_raw_Label = load ptr, ptr %src_col_Label, align 8
+  %src_elem_Label = getelementptr inbounds %struct.Label, ptr %src_raw_Label, i32 %cur_row
+  %dst_col_Label = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 3
+  %dst_raw_Label = load ptr, ptr %dst_col_Label, align 8
+  %dst_elem_Label = getelementptr inbounds %struct.Label, ptr %dst_raw_Label, i32 %new_row
+  %7 = call ptr @memcpy(ptr %dst_elem_Label, ptr %src_elem_Label, i64 8)
+  br label %skip_Label
 
-skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Velocity
-  %has_Obstacle = and i64 %cur_mask, 16
-  %is_has_Obstacle = icmp ne i64 %has_Obstacle, 0
-  br i1 %is_has_Obstacle, label %copy_Obstacle, label %skip_Obstacle
-
-copy_Obstacle:                                    ; preds = %skip_PlayerTag
-  %src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %src_raw_Obstacle = load ptr, ptr %src_col_Obstacle, align 8
-  %src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %src_raw_Obstacle, i32 %cur_row
-  %dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 4
-  %dst_raw_Obstacle = load ptr, ptr %dst_col_Obstacle, align 8
-  %dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %dst_raw_Obstacle, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_Obstacle, ptr %src_elem_Obstacle, i64 1)
-  br label %skip_Obstacle
-
-skip_Obstacle:                                    ; preds = %copy_Obstacle, %skip_PlayerTag
+skip_Label:                                       ; preds = %copy_Label, %skip_Velocity
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
   %last_row = sub i32 %cur_arch_count, 1
@@ -1392,7 +1229,7 @@ skip_Obstacle:                                    ; preds = %copy_Obstacle, %ski
   %is_last_row = icmp eq i32 %cur_row, %last_row
   br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
 
-do_swap_remove:                                   ; preds = %skip_Obstacle
+do_swap_remove:                                   ; preds = %skip_Label
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
   %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
@@ -1403,7 +1240,7 @@ do_swap_remove:                                   ; preds = %skip_Obstacle
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
-after_swap_remove:                                ; preds = %skip_sw_Obstacle, %skip_Obstacle
+after_swap_remove:                                ; preds = %skip_sw_Label, %skip_Label
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
   %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
@@ -1415,11 +1252,11 @@ after_swap_remove:                                ; preds = %skip_sw_Obstacle, %
   br label %store_fields
 
 swap_ChildOf:                                     ; preds = %do_swap_remove
-  %sw_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %sw_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -1428,11 +1265,11 @@ skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_s
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
 swap_Position:                                    ; preds = %skip_sw_ChildOf
-  %sw_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %sw_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -1441,40 +1278,27 @@ skip_sw_Position:                                 ; preds = %swap_Position, %ski
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
 swap_Velocity:                                    ; preds = %skip_sw_Position
-  %sw_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %sw_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %has_sw_PlayerTag = and i64 %cur_mask, 8
-  %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
-  br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
+  %has_sw_Label = and i64 %cur_mask, 8
+  %is_has_sw_Label = icmp ne i64 %has_sw_Label, 0
+  br i1 %is_has_sw_Label, label %swap_Label, label %skip_sw_Label
 
-swap_PlayerTag:                                   ; preds = %skip_sw_Velocity
-  %sw_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
-  %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
-  %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
-  br label %skip_sw_PlayerTag
+swap_Label:                                       ; preds = %skip_sw_Velocity
+  %sw_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %sw_raw_Label = load ptr, ptr %sw_col_Label, align 8
+  %sw_src_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %last_row
+  %sw_dst_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %cur_row
+  %11 = call ptr @memcpy(ptr %sw_dst_Label, ptr %sw_src_Label, i64 8)
+  br label %skip_sw_Label
 
-skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Velocity
-  %has_sw_Obstacle = and i64 %cur_mask, 16
-  %is_has_sw_Obstacle = icmp ne i64 %has_sw_Obstacle, 0
-  br i1 %is_has_sw_Obstacle, label %swap_Obstacle, label %skip_sw_Obstacle
-
-swap_Obstacle:                                    ; preds = %skip_sw_PlayerTag
-  %sw_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %sw_raw_Obstacle = load ptr, ptr %sw_col_Obstacle, align 8
-  %sw_src_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %last_row
-  %sw_dst_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Obstacle, ptr %sw_src_Obstacle, i64 1)
-  br label %skip_sw_Obstacle
-
-skip_sw_Obstacle:                                 ; preds = %swap_Obstacle, %skip_sw_PlayerTag
+skip_sw_Label:                                    ; preds = %swap_Label, %skip_sw_Velocity
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
@@ -1538,10 +1362,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
 
 copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
+  %rem_src_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 0
   %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
   %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 0
+  %rem_dst_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 0
   %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
   %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
   %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
@@ -1553,46 +1377,31 @@ skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %
   br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
 
 copy_rem_Velocity:                                ; preds = %skip_rem_ChildOf
-  %rem_src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
+  %rem_src_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 2
   %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
   %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 2
+  %rem_dst_col_Velocity = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 2
   %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
   %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
   %3 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
   br label %skip_rem_Velocity
 
 skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_ChildOf
-  %rem_has_PlayerTag = and i64 %cur_mask_val_rem, 8
-  %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
-  br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
+  %rem_has_Label = and i64 %cur_mask_val_rem, 8
+  %is_has_rem_Label = icmp ne i64 %rem_has_Label, 0
+  br i1 %is_has_rem_Label, label %copy_rem_Label, label %skip_rem_Label
 
-copy_rem_PlayerTag:                               ; preds = %skip_rem_Velocity
-  %rem_src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_PlayerTag = load ptr, ptr %rem_src_col_PlayerTag, align 8
-  %rem_src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_src_raw_PlayerTag, i32 %cur_row_rem
-  %rem_dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
-  %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
-  br label %skip_rem_PlayerTag
+copy_rem_Label:                                   ; preds = %skip_rem_Velocity
+  %rem_src_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 3
+  %rem_src_raw_Label = load ptr, ptr %rem_src_col_Label, align 8
+  %rem_src_elem_Label = getelementptr inbounds %struct.Label, ptr %rem_src_raw_Label, i32 %cur_row_rem
+  %rem_dst_col_Label = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 3
+  %rem_dst_raw_Label = load ptr, ptr %rem_dst_col_Label, align 8
+  %rem_dst_elem_Label = getelementptr inbounds %struct.Label, ptr %rem_dst_raw_Label, i32 %new_row_rem
+  %4 = call ptr @memcpy(ptr %rem_dst_elem_Label, ptr %rem_src_elem_Label, i64 8)
+  br label %skip_rem_Label
 
-skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Velocity
-  %rem_has_Obstacle = and i64 %cur_mask_val_rem, 16
-  %is_has_rem_Obstacle = icmp ne i64 %rem_has_Obstacle, 0
-  br i1 %is_has_rem_Obstacle, label %copy_rem_Obstacle, label %skip_rem_Obstacle
-
-copy_rem_Obstacle:                                ; preds = %skip_rem_PlayerTag
-  %rem_src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_Obstacle = load ptr, ptr %rem_src_col_Obstacle, align 8
-  %rem_src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %rem_src_raw_Obstacle, i32 %cur_row_rem
-  %rem_dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_Obstacle = load ptr, ptr %rem_dst_col_Obstacle, align 8
-  %rem_dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %rem_dst_raw_Obstacle, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Obstacle, ptr %rem_src_elem_Obstacle, i64 1)
-  br label %skip_rem_Obstacle
-
-skip_rem_Obstacle:                                ; preds = %copy_rem_Obstacle, %skip_rem_PlayerTag
+skip_rem_Label:                                   ; preds = %copy_rem_Label, %skip_rem_Velocity
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -1600,7 +1409,7 @@ skip_rem_Obstacle:                                ; preds = %copy_rem_Obstacle, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Obstacle
+do_swap_rem:                                      ; preds = %skip_rem_Label
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -1611,7 +1420,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Obstacle
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Obstacle, %skip_rem_Obstacle
+after_swap_rem:                                   ; preds = %skip_sw_rem_Label, %skip_rem_Label
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -1621,11 +1430,11 @@ after_swap_rem:                                   ; preds = %skip_sw_rem_Obstacl
   br label %exit_remove
 
 swap_rem_ChildOf:                                 ; preds = %do_swap_rem
-  %sw_col_rem_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
+  %sw_col_rem_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 0
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %6 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -1634,11 +1443,11 @@ skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
 swap_rem_Position:                                ; preds = %skip_sw_rem_ChildOf
-  %sw_col_rem_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
+  %sw_col_rem_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 1
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_ChildOf
@@ -1647,40 +1456,27 @@ skip_sw_rem_Position:                             ; preds = %swap_rem_Position, 
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 
 swap_rem_Velocity:                                ; preds = %skip_sw_rem_Position
-  %sw_col_rem_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
+  %sw_col_rem_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 2
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Position
-  %sw_rem_has_PlayerTag = and i64 %cur_mask_val_rem, 8
-  %is_sw_rem_PlayerTag = icmp ne i64 %sw_rem_has_PlayerTag, 0
-  br i1 %is_sw_rem_PlayerTag, label %swap_rem_PlayerTag, label %skip_sw_rem_PlayerTag
+  %sw_rem_has_Label = and i64 %cur_mask_val_rem, 8
+  %is_sw_rem_Label = icmp ne i64 %sw_rem_has_Label, 0
+  br i1 %is_sw_rem_Label, label %swap_rem_Label, label %skip_sw_rem_Label
 
-swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Velocity
-  %sw_col_rem_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
-  %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
-  %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
-  br label %skip_sw_rem_PlayerTag
+swap_rem_Label:                                   ; preds = %skip_sw_rem_Velocity
+  %sw_col_rem_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 3
+  %sw_raw_rem_Label = load ptr, ptr %sw_col_rem_Label, align 8
+  %sw_src_rem_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_rem_Label, i32 %last_row_rem
+  %sw_dst_rem_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_rem_Label, i32 %cur_row_rem
+  %8 = call ptr @memcpy(ptr %sw_dst_rem_Label, ptr %sw_src_rem_Label, i64 8)
+  br label %skip_sw_rem_Label
 
-skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Velocity
-  %sw_rem_has_Obstacle = and i64 %cur_mask_val_rem, 16
-  %is_sw_rem_Obstacle = icmp ne i64 %sw_rem_has_Obstacle, 0
-  br i1 %is_sw_rem_Obstacle, label %swap_rem_Obstacle, label %skip_sw_rem_Obstacle
-
-swap_rem_Obstacle:                                ; preds = %skip_sw_rem_PlayerTag
-  %sw_col_rem_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %sw_raw_rem_Obstacle = load ptr, ptr %sw_col_rem_Obstacle, align 8
-  %sw_src_rem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_rem_Obstacle, i32 %last_row_rem
-  %sw_dst_rem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_rem_Obstacle, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Obstacle, ptr %sw_src_rem_Obstacle, i64 1)
-  br label %skip_sw_rem_Obstacle
-
-skip_sw_rem_Obstacle:                             ; preds = %swap_rem_Obstacle, %skip_sw_rem_PlayerTag
+skip_sw_rem_Label:                                ; preds = %swap_rem_Label, %skip_sw_rem_Velocity
   %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
   %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
   store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
@@ -1747,7 +1543,7 @@ store_fields:                                     ; preds = %after_swap_remove, 
   %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [5 x ptr], ptr %final_cols, i32 0, i32 2
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 2
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.Velocity, ptr %final_col_raw, i32 %final_row
   %vx_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 0
@@ -1779,10 +1575,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
 copy_ChildOf:                                     ; preds = %after_grow_new_arch
-  %src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %src_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %src_raw_ChildOf = load ptr, ptr %src_col_ChildOf, align 8
   %src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %src_raw_ChildOf, i32 %cur_row
-  %dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 0
+  %dst_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
   %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
@@ -1794,10 +1590,10 @@ skip_ChildOf:                                     ; preds = %copy_ChildOf, %afte
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
 copy_Position:                                    ; preds = %skip_ChildOf
-  %src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %src_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %src_raw_Position = load ptr, ptr %src_col_Position, align 8
   %src_elem_Position = getelementptr inbounds %struct.Position, ptr %src_raw_Position, i32 %cur_row
-  %dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 1
+  %dst_col_Position = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
   %5 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
@@ -1809,46 +1605,31 @@ skip_Position:                                    ; preds = %copy_Position, %ski
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
 copy_Velocity:                                    ; preds = %skip_Position
-  %src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %src_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %src_raw_Velocity = load ptr, ptr %src_col_Velocity, align 8
   %src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %src_raw_Velocity, i32 %cur_row
-  %dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 2
+  %dst_col_Velocity = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
   %6 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
-  %has_PlayerTag = and i64 %cur_mask, 8
-  %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
-  br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
+  %has_Label = and i64 %cur_mask, 8
+  %is_has_Label = icmp ne i64 %has_Label, 0
+  br i1 %is_has_Label, label %copy_Label, label %skip_Label
 
-copy_PlayerTag:                                   ; preds = %skip_Velocity
-  %src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %src_raw_PlayerTag = load ptr, ptr %src_col_PlayerTag, align 8
-  %src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %src_raw_PlayerTag, i32 %cur_row
-  %dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 3
-  %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
-  %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
-  br label %skip_PlayerTag
+copy_Label:                                       ; preds = %skip_Velocity
+  %src_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %src_raw_Label = load ptr, ptr %src_col_Label, align 8
+  %src_elem_Label = getelementptr inbounds %struct.Label, ptr %src_raw_Label, i32 %cur_row
+  %dst_col_Label = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 3
+  %dst_raw_Label = load ptr, ptr %dst_col_Label, align 8
+  %dst_elem_Label = getelementptr inbounds %struct.Label, ptr %dst_raw_Label, i32 %new_row
+  %7 = call ptr @memcpy(ptr %dst_elem_Label, ptr %src_elem_Label, i64 8)
+  br label %skip_Label
 
-skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Velocity
-  %has_Obstacle = and i64 %cur_mask, 16
-  %is_has_Obstacle = icmp ne i64 %has_Obstacle, 0
-  br i1 %is_has_Obstacle, label %copy_Obstacle, label %skip_Obstacle
-
-copy_Obstacle:                                    ; preds = %skip_PlayerTag
-  %src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %src_raw_Obstacle = load ptr, ptr %src_col_Obstacle, align 8
-  %src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %src_raw_Obstacle, i32 %cur_row
-  %dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 4
-  %dst_raw_Obstacle = load ptr, ptr %dst_col_Obstacle, align 8
-  %dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %dst_raw_Obstacle, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_Obstacle, ptr %src_elem_Obstacle, i64 1)
-  br label %skip_Obstacle
-
-skip_Obstacle:                                    ; preds = %copy_Obstacle, %skip_PlayerTag
+skip_Label:                                       ; preds = %copy_Label, %skip_Velocity
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
   %last_row = sub i32 %cur_arch_count, 1
@@ -1856,7 +1637,7 @@ skip_Obstacle:                                    ; preds = %copy_Obstacle, %ski
   %is_last_row = icmp eq i32 %cur_row, %last_row
   br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
 
-do_swap_remove:                                   ; preds = %skip_Obstacle
+do_swap_remove:                                   ; preds = %skip_Label
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
   %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
@@ -1867,7 +1648,7 @@ do_swap_remove:                                   ; preds = %skip_Obstacle
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
-after_swap_remove:                                ; preds = %skip_sw_Obstacle, %skip_Obstacle
+after_swap_remove:                                ; preds = %skip_sw_Label, %skip_Label
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
   %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
@@ -1879,11 +1660,11 @@ after_swap_remove:                                ; preds = %skip_sw_Obstacle, %
   br label %store_fields
 
 swap_ChildOf:                                     ; preds = %do_swap_remove
-  %sw_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %sw_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -1892,11 +1673,11 @@ skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_s
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
 swap_Position:                                    ; preds = %skip_sw_ChildOf
-  %sw_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %sw_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -1905,40 +1686,27 @@ skip_sw_Position:                                 ; preds = %swap_Position, %ski
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
 swap_Velocity:                                    ; preds = %skip_sw_Position
-  %sw_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %sw_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %has_sw_PlayerTag = and i64 %cur_mask, 8
-  %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
-  br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
+  %has_sw_Label = and i64 %cur_mask, 8
+  %is_has_sw_Label = icmp ne i64 %has_sw_Label, 0
+  br i1 %is_has_sw_Label, label %swap_Label, label %skip_sw_Label
 
-swap_PlayerTag:                                   ; preds = %skip_sw_Velocity
-  %sw_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
-  %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
-  %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
-  br label %skip_sw_PlayerTag
+swap_Label:                                       ; preds = %skip_sw_Velocity
+  %sw_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %sw_raw_Label = load ptr, ptr %sw_col_Label, align 8
+  %sw_src_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %last_row
+  %sw_dst_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %cur_row
+  %11 = call ptr @memcpy(ptr %sw_dst_Label, ptr %sw_src_Label, i64 8)
+  br label %skip_sw_Label
 
-skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Velocity
-  %has_sw_Obstacle = and i64 %cur_mask, 16
-  %is_has_sw_Obstacle = icmp ne i64 %has_sw_Obstacle, 0
-  br i1 %is_has_sw_Obstacle, label %swap_Obstacle, label %skip_sw_Obstacle
-
-swap_Obstacle:                                    ; preds = %skip_sw_PlayerTag
-  %sw_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %sw_raw_Obstacle = load ptr, ptr %sw_col_Obstacle, align 8
-  %sw_src_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %last_row
-  %sw_dst_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Obstacle, ptr %sw_src_Obstacle, i64 1)
-  br label %skip_sw_Obstacle
-
-skip_sw_Obstacle:                                 ; preds = %swap_Obstacle, %skip_sw_PlayerTag
+skip_sw_Label:                                    ; preds = %swap_Label, %skip_sw_Velocity
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
@@ -1989,7 +1757,7 @@ store_fields:                                     ; preds = %after_swap_remove, 
   %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [5 x ptr], ptr %final_cols, i32 0, i32 2
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 2
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.Velocity, ptr %final_col_raw, i32 %final_row
   %vx_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 0
@@ -2021,10 +1789,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
 copy_ChildOf:                                     ; preds = %after_grow_new_arch
-  %src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %src_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %src_raw_ChildOf = load ptr, ptr %src_col_ChildOf, align 8
   %src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %src_raw_ChildOf, i32 %cur_row
-  %dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 0
+  %dst_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
   %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
@@ -2036,10 +1804,10 @@ skip_ChildOf:                                     ; preds = %copy_ChildOf, %afte
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
 copy_Position:                                    ; preds = %skip_ChildOf
-  %src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %src_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %src_raw_Position = load ptr, ptr %src_col_Position, align 8
   %src_elem_Position = getelementptr inbounds %struct.Position, ptr %src_raw_Position, i32 %cur_row
-  %dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 1
+  %dst_col_Position = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
   %5 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
@@ -2051,46 +1819,31 @@ skip_Position:                                    ; preds = %copy_Position, %ski
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
 copy_Velocity:                                    ; preds = %skip_Position
-  %src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %src_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %src_raw_Velocity = load ptr, ptr %src_col_Velocity, align 8
   %src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %src_raw_Velocity, i32 %cur_row
-  %dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 2
+  %dst_col_Velocity = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
   %6 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
-  %has_PlayerTag = and i64 %cur_mask, 8
-  %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
-  br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
+  %has_Label = and i64 %cur_mask, 8
+  %is_has_Label = icmp ne i64 %has_Label, 0
+  br i1 %is_has_Label, label %copy_Label, label %skip_Label
 
-copy_PlayerTag:                                   ; preds = %skip_Velocity
-  %src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %src_raw_PlayerTag = load ptr, ptr %src_col_PlayerTag, align 8
-  %src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %src_raw_PlayerTag, i32 %cur_row
-  %dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 3
-  %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
-  %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
-  br label %skip_PlayerTag
+copy_Label:                                       ; preds = %skip_Velocity
+  %src_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %src_raw_Label = load ptr, ptr %src_col_Label, align 8
+  %src_elem_Label = getelementptr inbounds %struct.Label, ptr %src_raw_Label, i32 %cur_row
+  %dst_col_Label = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 3
+  %dst_raw_Label = load ptr, ptr %dst_col_Label, align 8
+  %dst_elem_Label = getelementptr inbounds %struct.Label, ptr %dst_raw_Label, i32 %new_row
+  %7 = call ptr @memcpy(ptr %dst_elem_Label, ptr %src_elem_Label, i64 8)
+  br label %skip_Label
 
-skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Velocity
-  %has_Obstacle = and i64 %cur_mask, 16
-  %is_has_Obstacle = icmp ne i64 %has_Obstacle, 0
-  br i1 %is_has_Obstacle, label %copy_Obstacle, label %skip_Obstacle
-
-copy_Obstacle:                                    ; preds = %skip_PlayerTag
-  %src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %src_raw_Obstacle = load ptr, ptr %src_col_Obstacle, align 8
-  %src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %src_raw_Obstacle, i32 %cur_row
-  %dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 4
-  %dst_raw_Obstacle = load ptr, ptr %dst_col_Obstacle, align 8
-  %dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %dst_raw_Obstacle, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_Obstacle, ptr %src_elem_Obstacle, i64 1)
-  br label %skip_Obstacle
-
-skip_Obstacle:                                    ; preds = %copy_Obstacle, %skip_PlayerTag
+skip_Label:                                       ; preds = %copy_Label, %skip_Velocity
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
   %last_row = sub i32 %cur_arch_count, 1
@@ -2098,7 +1851,7 @@ skip_Obstacle:                                    ; preds = %copy_Obstacle, %ski
   %is_last_row = icmp eq i32 %cur_row, %last_row
   br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
 
-do_swap_remove:                                   ; preds = %skip_Obstacle
+do_swap_remove:                                   ; preds = %skip_Label
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
   %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
@@ -2109,7 +1862,7 @@ do_swap_remove:                                   ; preds = %skip_Obstacle
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
-after_swap_remove:                                ; preds = %skip_sw_Obstacle, %skip_Obstacle
+after_swap_remove:                                ; preds = %skip_sw_Label, %skip_Label
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
   %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
@@ -2121,11 +1874,11 @@ after_swap_remove:                                ; preds = %skip_sw_Obstacle, %
   br label %store_fields
 
 swap_ChildOf:                                     ; preds = %do_swap_remove
-  %sw_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %sw_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -2134,11 +1887,11 @@ skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_s
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
 swap_Position:                                    ; preds = %skip_sw_ChildOf
-  %sw_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %sw_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -2147,40 +1900,27 @@ skip_sw_Position:                                 ; preds = %swap_Position, %ski
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
 swap_Velocity:                                    ; preds = %skip_sw_Position
-  %sw_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %sw_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %has_sw_PlayerTag = and i64 %cur_mask, 8
-  %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
-  br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
+  %has_sw_Label = and i64 %cur_mask, 8
+  %is_has_sw_Label = icmp ne i64 %has_sw_Label, 0
+  br i1 %is_has_sw_Label, label %swap_Label, label %skip_sw_Label
 
-swap_PlayerTag:                                   ; preds = %skip_sw_Velocity
-  %sw_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
-  %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
-  %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
-  br label %skip_sw_PlayerTag
+swap_Label:                                       ; preds = %skip_sw_Velocity
+  %sw_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %sw_raw_Label = load ptr, ptr %sw_col_Label, align 8
+  %sw_src_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %last_row
+  %sw_dst_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %cur_row
+  %11 = call ptr @memcpy(ptr %sw_dst_Label, ptr %sw_src_Label, i64 8)
+  br label %skip_sw_Label
 
-skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Velocity
-  %has_sw_Obstacle = and i64 %cur_mask, 16
-  %is_has_sw_Obstacle = icmp ne i64 %has_sw_Obstacle, 0
-  br i1 %is_has_sw_Obstacle, label %swap_Obstacle, label %skip_sw_Obstacle
-
-swap_Obstacle:                                    ; preds = %skip_sw_PlayerTag
-  %sw_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %sw_raw_Obstacle = load ptr, ptr %sw_col_Obstacle, align 8
-  %sw_src_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %last_row
-  %sw_dst_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Obstacle, ptr %sw_src_Obstacle, i64 1)
-  br label %skip_sw_Obstacle
-
-skip_sw_Obstacle:                                 ; preds = %swap_Obstacle, %skip_sw_PlayerTag
+skip_sw_Label:                                    ; preds = %swap_Label, %skip_sw_Velocity
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
@@ -2244,10 +1984,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
 
 copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
+  %rem_src_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 0
   %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
   %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 0
+  %rem_dst_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 0
   %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
   %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
   %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
@@ -2259,46 +1999,31 @@ skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %
   br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
 
 copy_rem_Position:                                ; preds = %skip_rem_ChildOf
-  %rem_src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
+  %rem_src_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 1
   %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
   %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 1
+  %rem_dst_col_Position = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 1
   %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
   %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
   %3 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_ChildOf
-  %rem_has_PlayerTag = and i64 %cur_mask_val_rem, 8
-  %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
-  br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
+  %rem_has_Label = and i64 %cur_mask_val_rem, 8
+  %is_has_rem_Label = icmp ne i64 %rem_has_Label, 0
+  br i1 %is_has_rem_Label, label %copy_rem_Label, label %skip_rem_Label
 
-copy_rem_PlayerTag:                               ; preds = %skip_rem_Position
-  %rem_src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_PlayerTag = load ptr, ptr %rem_src_col_PlayerTag, align 8
-  %rem_src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_src_raw_PlayerTag, i32 %cur_row_rem
-  %rem_dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
-  %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
-  br label %skip_rem_PlayerTag
+copy_rem_Label:                                   ; preds = %skip_rem_Position
+  %rem_src_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 3
+  %rem_src_raw_Label = load ptr, ptr %rem_src_col_Label, align 8
+  %rem_src_elem_Label = getelementptr inbounds %struct.Label, ptr %rem_src_raw_Label, i32 %cur_row_rem
+  %rem_dst_col_Label = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 3
+  %rem_dst_raw_Label = load ptr, ptr %rem_dst_col_Label, align 8
+  %rem_dst_elem_Label = getelementptr inbounds %struct.Label, ptr %rem_dst_raw_Label, i32 %new_row_rem
+  %4 = call ptr @memcpy(ptr %rem_dst_elem_Label, ptr %rem_src_elem_Label, i64 8)
+  br label %skip_rem_Label
 
-skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Position
-  %rem_has_Obstacle = and i64 %cur_mask_val_rem, 16
-  %is_has_rem_Obstacle = icmp ne i64 %rem_has_Obstacle, 0
-  br i1 %is_has_rem_Obstacle, label %copy_rem_Obstacle, label %skip_rem_Obstacle
-
-copy_rem_Obstacle:                                ; preds = %skip_rem_PlayerTag
-  %rem_src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_Obstacle = load ptr, ptr %rem_src_col_Obstacle, align 8
-  %rem_src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %rem_src_raw_Obstacle, i32 %cur_row_rem
-  %rem_dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_Obstacle = load ptr, ptr %rem_dst_col_Obstacle, align 8
-  %rem_dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %rem_dst_raw_Obstacle, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Obstacle, ptr %rem_src_elem_Obstacle, i64 1)
-  br label %skip_rem_Obstacle
-
-skip_rem_Obstacle:                                ; preds = %copy_rem_Obstacle, %skip_rem_PlayerTag
+skip_rem_Label:                                   ; preds = %copy_rem_Label, %skip_rem_Position
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -2306,7 +2031,7 @@ skip_rem_Obstacle:                                ; preds = %copy_rem_Obstacle, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Obstacle
+do_swap_rem:                                      ; preds = %skip_rem_Label
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -2317,7 +2042,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Obstacle
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Obstacle, %skip_rem_Obstacle
+after_swap_rem:                                   ; preds = %skip_sw_rem_Label, %skip_rem_Label
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -2327,11 +2052,11 @@ after_swap_rem:                                   ; preds = %skip_sw_rem_Obstacl
   br label %exit_remove
 
 swap_rem_ChildOf:                                 ; preds = %do_swap_rem
-  %sw_col_rem_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
+  %sw_col_rem_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 0
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %6 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -2340,11 +2065,11 @@ skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
 swap_rem_Position:                                ; preds = %skip_sw_rem_ChildOf
-  %sw_col_rem_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
+  %sw_col_rem_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 1
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_ChildOf
@@ -2353,40 +2078,27 @@ skip_sw_rem_Position:                             ; preds = %swap_rem_Position, 
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 
 swap_rem_Velocity:                                ; preds = %skip_sw_rem_Position
-  %sw_col_rem_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
+  %sw_col_rem_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 2
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Position
-  %sw_rem_has_PlayerTag = and i64 %cur_mask_val_rem, 8
-  %is_sw_rem_PlayerTag = icmp ne i64 %sw_rem_has_PlayerTag, 0
-  br i1 %is_sw_rem_PlayerTag, label %swap_rem_PlayerTag, label %skip_sw_rem_PlayerTag
+  %sw_rem_has_Label = and i64 %cur_mask_val_rem, 8
+  %is_sw_rem_Label = icmp ne i64 %sw_rem_has_Label, 0
+  br i1 %is_sw_rem_Label, label %swap_rem_Label, label %skip_sw_rem_Label
 
-swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Velocity
-  %sw_col_rem_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
-  %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
-  %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
-  br label %skip_sw_rem_PlayerTag
+swap_rem_Label:                                   ; preds = %skip_sw_rem_Velocity
+  %sw_col_rem_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 3
+  %sw_raw_rem_Label = load ptr, ptr %sw_col_rem_Label, align 8
+  %sw_src_rem_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_rem_Label, i32 %last_row_rem
+  %sw_dst_rem_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_rem_Label, i32 %cur_row_rem
+  %8 = call ptr @memcpy(ptr %sw_dst_rem_Label, ptr %sw_src_rem_Label, i64 8)
+  br label %skip_sw_rem_Label
 
-skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Velocity
-  %sw_rem_has_Obstacle = and i64 %cur_mask_val_rem, 16
-  %is_sw_rem_Obstacle = icmp ne i64 %sw_rem_has_Obstacle, 0
-  br i1 %is_sw_rem_Obstacle, label %swap_rem_Obstacle, label %skip_sw_rem_Obstacle
-
-swap_rem_Obstacle:                                ; preds = %skip_sw_rem_PlayerTag
-  %sw_col_rem_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %sw_raw_rem_Obstacle = load ptr, ptr %sw_col_rem_Obstacle, align 8
-  %sw_src_rem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_rem_Obstacle, i32 %last_row_rem
-  %sw_dst_rem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_rem_Obstacle, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Obstacle, ptr %sw_src_rem_Obstacle, i64 1)
-  br label %skip_sw_rem_Obstacle
-
-skip_sw_rem_Obstacle:                             ; preds = %swap_rem_Obstacle, %skip_sw_rem_PlayerTag
+skip_sw_rem_Label:                                ; preds = %swap_rem_Label, %skip_sw_rem_Velocity
   %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
   %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
   store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
@@ -2409,7 +2121,7 @@ entry:
   ret i1 %res_has
 }
 
-define void @world_set_PlayerTag(ptr %0, i32 %1, i32 %2) {
+define void @world_set_Label(ptr %0, i32 %1, ptr %2) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
@@ -2453,11 +2165,11 @@ store_fields:                                     ; preds = %after_swap_remove, 
   %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [5 x ptr], ptr %final_cols, i32 0, i32 3
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 3
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
-  %final_elem = getelementptr inbounds %struct.PlayerTag, ptr %final_col_raw, i32 %final_row
-  %id_gep = getelementptr inbounds nuw %struct.PlayerTag, ptr %final_elem, i32 0, i32 0
-  store i32 %2, ptr %id_gep, align 4
+  %final_elem = getelementptr inbounds %struct.Label, ptr %final_col_raw, i32 %final_row
+  %text_gep = getelementptr inbounds nuw %struct.Label, ptr %final_elem, i32 0, i32 0
+  store ptr %2, ptr %text_gep, align 8
   ret void
 
 grow_new_arch:                                    ; preds = %transition
@@ -2483,10 +2195,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
 copy_ChildOf:                                     ; preds = %after_grow_new_arch
-  %src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %src_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %src_raw_ChildOf = load ptr, ptr %src_col_ChildOf, align 8
   %src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %src_raw_ChildOf, i32 %cur_row
-  %dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 0
+  %dst_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
   %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
@@ -2498,10 +2210,10 @@ skip_ChildOf:                                     ; preds = %copy_ChildOf, %afte
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
 copy_Position:                                    ; preds = %skip_ChildOf
-  %src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %src_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %src_raw_Position = load ptr, ptr %src_col_Position, align 8
   %src_elem_Position = getelementptr inbounds %struct.Position, ptr %src_raw_Position, i32 %cur_row
-  %dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 1
+  %dst_col_Position = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
   %4 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
@@ -2513,46 +2225,31 @@ skip_Position:                                    ; preds = %copy_Position, %ski
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
 copy_Velocity:                                    ; preds = %skip_Position
-  %src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %src_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %src_raw_Velocity = load ptr, ptr %src_col_Velocity, align 8
   %src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %src_raw_Velocity, i32 %cur_row
-  %dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 2
+  %dst_col_Velocity = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
   %5 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
-  %has_PlayerTag = and i64 %cur_mask, 8
-  %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
-  br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
+  %has_Label = and i64 %cur_mask, 8
+  %is_has_Label = icmp ne i64 %has_Label, 0
+  br i1 %is_has_Label, label %copy_Label, label %skip_Label
 
-copy_PlayerTag:                                   ; preds = %skip_Velocity
-  %src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %src_raw_PlayerTag = load ptr, ptr %src_col_PlayerTag, align 8
-  %src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %src_raw_PlayerTag, i32 %cur_row
-  %dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 3
-  %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
-  %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
-  br label %skip_PlayerTag
+copy_Label:                                       ; preds = %skip_Velocity
+  %src_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %src_raw_Label = load ptr, ptr %src_col_Label, align 8
+  %src_elem_Label = getelementptr inbounds %struct.Label, ptr %src_raw_Label, i32 %cur_row
+  %dst_col_Label = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 3
+  %dst_raw_Label = load ptr, ptr %dst_col_Label, align 8
+  %dst_elem_Label = getelementptr inbounds %struct.Label, ptr %dst_raw_Label, i32 %new_row
+  %6 = call ptr @memcpy(ptr %dst_elem_Label, ptr %src_elem_Label, i64 8)
+  br label %skip_Label
 
-skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Velocity
-  %has_Obstacle = and i64 %cur_mask, 16
-  %is_has_Obstacle = icmp ne i64 %has_Obstacle, 0
-  br i1 %is_has_Obstacle, label %copy_Obstacle, label %skip_Obstacle
-
-copy_Obstacle:                                    ; preds = %skip_PlayerTag
-  %src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %src_raw_Obstacle = load ptr, ptr %src_col_Obstacle, align 8
-  %src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %src_raw_Obstacle, i32 %cur_row
-  %dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 4
-  %dst_raw_Obstacle = load ptr, ptr %dst_col_Obstacle, align 8
-  %dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %dst_raw_Obstacle, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Obstacle, ptr %src_elem_Obstacle, i64 1)
-  br label %skip_Obstacle
-
-skip_Obstacle:                                    ; preds = %copy_Obstacle, %skip_PlayerTag
+skip_Label:                                       ; preds = %copy_Label, %skip_Velocity
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
   %last_row = sub i32 %cur_arch_count, 1
@@ -2560,7 +2257,7 @@ skip_Obstacle:                                    ; preds = %copy_Obstacle, %ski
   %is_last_row = icmp eq i32 %cur_row, %last_row
   br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
 
-do_swap_remove:                                   ; preds = %skip_Obstacle
+do_swap_remove:                                   ; preds = %skip_Label
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
   %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
@@ -2571,7 +2268,7 @@ do_swap_remove:                                   ; preds = %skip_Obstacle
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
-after_swap_remove:                                ; preds = %skip_sw_Obstacle, %skip_Obstacle
+after_swap_remove:                                ; preds = %skip_sw_Label, %skip_Label
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
   %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
@@ -2583,11 +2280,11 @@ after_swap_remove:                                ; preds = %skip_sw_Obstacle, %
   br label %store_fields
 
 swap_ChildOf:                                     ; preds = %do_swap_remove
-  %sw_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %sw_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %7 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -2596,11 +2293,11 @@ skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_s
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
 swap_Position:                                    ; preds = %skip_sw_ChildOf
-  %sw_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %sw_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %8 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -2609,47 +2306,34 @@ skip_sw_Position:                                 ; preds = %swap_Position, %ski
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
 swap_Velocity:                                    ; preds = %skip_sw_Position
-  %sw_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %sw_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %9 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %has_sw_PlayerTag = and i64 %cur_mask, 8
-  %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
-  br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
+  %has_sw_Label = and i64 %cur_mask, 8
+  %is_has_sw_Label = icmp ne i64 %has_sw_Label, 0
+  br i1 %is_has_sw_Label, label %swap_Label, label %skip_sw_Label
 
-swap_PlayerTag:                                   ; preds = %skip_sw_Velocity
-  %sw_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
-  %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
-  %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
-  br label %skip_sw_PlayerTag
+swap_Label:                                       ; preds = %skip_sw_Velocity
+  %sw_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %sw_raw_Label = load ptr, ptr %sw_col_Label, align 8
+  %sw_src_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %last_row
+  %sw_dst_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %cur_row
+  %10 = call ptr @memcpy(ptr %sw_dst_Label, ptr %sw_src_Label, i64 8)
+  br label %skip_sw_Label
 
-skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Velocity
-  %has_sw_Obstacle = and i64 %cur_mask, 16
-  %is_has_sw_Obstacle = icmp ne i64 %has_sw_Obstacle, 0
-  br i1 %is_has_sw_Obstacle, label %swap_Obstacle, label %skip_sw_Obstacle
-
-swap_Obstacle:                                    ; preds = %skip_sw_PlayerTag
-  %sw_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %sw_raw_Obstacle = load ptr, ptr %sw_col_Obstacle, align 8
-  %sw_src_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %last_row
-  %sw_dst_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_Obstacle, ptr %sw_src_Obstacle, i64 1)
-  br label %skip_sw_Obstacle
-
-skip_sw_Obstacle:                                 ; preds = %swap_Obstacle, %skip_sw_PlayerTag
+skip_sw_Label:                                    ; preds = %swap_Label, %skip_sw_Velocity
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 }
 
-define void @world_add_PlayerTag(ptr %0, i32 %1, i32 %2) {
+define void @world_add_Label(ptr %0, i32 %1, ptr %2) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
@@ -2693,11 +2377,11 @@ store_fields:                                     ; preds = %after_swap_remove, 
   %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
   %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
   %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [5 x ptr], ptr %final_cols, i32 0, i32 3
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 3
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
-  %final_elem = getelementptr inbounds %struct.PlayerTag, ptr %final_col_raw, i32 %final_row
-  %id_gep = getelementptr inbounds nuw %struct.PlayerTag, ptr %final_elem, i32 0, i32 0
-  store i32 %2, ptr %id_gep, align 4
+  %final_elem = getelementptr inbounds %struct.Label, ptr %final_col_raw, i32 %final_row
+  %text_gep = getelementptr inbounds nuw %struct.Label, ptr %final_elem, i32 0, i32 0
+  store ptr %2, ptr %text_gep, align 8
   ret void
 
 grow_new_arch:                                    ; preds = %transition
@@ -2723,10 +2407,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
 copy_ChildOf:                                     ; preds = %after_grow_new_arch
-  %src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %src_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %src_raw_ChildOf = load ptr, ptr %src_col_ChildOf, align 8
   %src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %src_raw_ChildOf, i32 %cur_row
-  %dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 0
+  %dst_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
   %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
@@ -2738,10 +2422,10 @@ skip_ChildOf:                                     ; preds = %copy_ChildOf, %afte
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
 copy_Position:                                    ; preds = %skip_ChildOf
-  %src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %src_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %src_raw_Position = load ptr, ptr %src_col_Position, align 8
   %src_elem_Position = getelementptr inbounds %struct.Position, ptr %src_raw_Position, i32 %cur_row
-  %dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 1
+  %dst_col_Position = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
   %4 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
@@ -2753,46 +2437,31 @@ skip_Position:                                    ; preds = %copy_Position, %ski
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
 copy_Velocity:                                    ; preds = %skip_Position
-  %src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %src_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %src_raw_Velocity = load ptr, ptr %src_col_Velocity, align 8
   %src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %src_raw_Velocity, i32 %cur_row
-  %dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 2
+  %dst_col_Velocity = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
   %5 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
-  %has_PlayerTag = and i64 %cur_mask, 8
-  %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
-  br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
+  %has_Label = and i64 %cur_mask, 8
+  %is_has_Label = icmp ne i64 %has_Label, 0
+  br i1 %is_has_Label, label %copy_Label, label %skip_Label
 
-copy_PlayerTag:                                   ; preds = %skip_Velocity
-  %src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %src_raw_PlayerTag = load ptr, ptr %src_col_PlayerTag, align 8
-  %src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %src_raw_PlayerTag, i32 %cur_row
-  %dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 3
-  %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
-  %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
-  br label %skip_PlayerTag
+copy_Label:                                       ; preds = %skip_Velocity
+  %src_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %src_raw_Label = load ptr, ptr %src_col_Label, align 8
+  %src_elem_Label = getelementptr inbounds %struct.Label, ptr %src_raw_Label, i32 %cur_row
+  %dst_col_Label = getelementptr inbounds [4 x ptr], ptr %new_cols_arr, i32 0, i32 3
+  %dst_raw_Label = load ptr, ptr %dst_col_Label, align 8
+  %dst_elem_Label = getelementptr inbounds %struct.Label, ptr %dst_raw_Label, i32 %new_row
+  %6 = call ptr @memcpy(ptr %dst_elem_Label, ptr %src_elem_Label, i64 8)
+  br label %skip_Label
 
-skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Velocity
-  %has_Obstacle = and i64 %cur_mask, 16
-  %is_has_Obstacle = icmp ne i64 %has_Obstacle, 0
-  br i1 %is_has_Obstacle, label %copy_Obstacle, label %skip_Obstacle
-
-copy_Obstacle:                                    ; preds = %skip_PlayerTag
-  %src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %src_raw_Obstacle = load ptr, ptr %src_col_Obstacle, align 8
-  %src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %src_raw_Obstacle, i32 %cur_row
-  %dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 4
-  %dst_raw_Obstacle = load ptr, ptr %dst_col_Obstacle, align 8
-  %dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %dst_raw_Obstacle, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Obstacle, ptr %src_elem_Obstacle, i64 1)
-  br label %skip_Obstacle
-
-skip_Obstacle:                                    ; preds = %copy_Obstacle, %skip_PlayerTag
+skip_Label:                                       ; preds = %copy_Label, %skip_Velocity
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
   %last_row = sub i32 %cur_arch_count, 1
@@ -2800,7 +2469,7 @@ skip_Obstacle:                                    ; preds = %copy_Obstacle, %ski
   %is_last_row = icmp eq i32 %cur_row, %last_row
   br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
 
-do_swap_remove:                                   ; preds = %skip_Obstacle
+do_swap_remove:                                   ; preds = %skip_Label
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
   %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
@@ -2811,7 +2480,7 @@ do_swap_remove:                                   ; preds = %skip_Obstacle
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
-after_swap_remove:                                ; preds = %skip_sw_Obstacle, %skip_Obstacle
+after_swap_remove:                                ; preds = %skip_sw_Label, %skip_Label
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
   %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
@@ -2823,11 +2492,11 @@ after_swap_remove:                                ; preds = %skip_sw_Obstacle, %
   br label %store_fields
 
 swap_ChildOf:                                     ; preds = %do_swap_remove
-  %sw_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
+  %sw_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 0
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %7 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -2836,11 +2505,11 @@ skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_s
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
 swap_Position:                                    ; preds = %skip_sw_ChildOf
-  %sw_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
+  %sw_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 1
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %8 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
@@ -2849,47 +2518,34 @@ skip_sw_Position:                                 ; preds = %swap_Position, %ski
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
 swap_Velocity:                                    ; preds = %skip_sw_Position
-  %sw_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
+  %sw_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 2
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %9 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %has_sw_PlayerTag = and i64 %cur_mask, 8
-  %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
-  br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
+  %has_sw_Label = and i64 %cur_mask, 8
+  %is_has_sw_Label = icmp ne i64 %has_sw_Label, 0
+  br i1 %is_has_sw_Label, label %swap_Label, label %skip_sw_Label
 
-swap_PlayerTag:                                   ; preds = %skip_sw_Velocity
-  %sw_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
-  %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
-  %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
-  br label %skip_sw_PlayerTag
+swap_Label:                                       ; preds = %skip_sw_Velocity
+  %sw_col_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_arr, i32 0, i32 3
+  %sw_raw_Label = load ptr, ptr %sw_col_Label, align 8
+  %sw_src_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %last_row
+  %sw_dst_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_Label, i32 %cur_row
+  %10 = call ptr @memcpy(ptr %sw_dst_Label, ptr %sw_src_Label, i64 8)
+  br label %skip_sw_Label
 
-skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Velocity
-  %has_sw_Obstacle = and i64 %cur_mask, 16
-  %is_has_sw_Obstacle = icmp ne i64 %has_sw_Obstacle, 0
-  br i1 %is_has_sw_Obstacle, label %swap_Obstacle, label %skip_sw_Obstacle
-
-swap_Obstacle:                                    ; preds = %skip_sw_PlayerTag
-  %sw_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %sw_raw_Obstacle = load ptr, ptr %sw_col_Obstacle, align 8
-  %sw_src_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %last_row
-  %sw_dst_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_Obstacle, ptr %sw_src_Obstacle, i64 1)
-  br label %skip_sw_Obstacle
-
-skip_sw_Obstacle:                                 ; preds = %swap_Obstacle, %skip_sw_PlayerTag
+skip_sw_Label:                                    ; preds = %swap_Label, %skip_sw_Velocity
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
   %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 }
 
-define void @world_remove_PlayerTag(ptr %0, i32 %1) {
+define void @world_remove_Label(ptr %0, i32 %1) {
 entry:
   %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
@@ -2946,10 +2602,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
 
 copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
+  %rem_src_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 0
   %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
   %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 0
+  %rem_dst_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 0
   %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
   %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
   %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
@@ -2961,10 +2617,10 @@ skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %
   br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
 
 copy_rem_Position:                                ; preds = %skip_rem_ChildOf
-  %rem_src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
+  %rem_src_col_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 1
   %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
   %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 1
+  %rem_dst_col_Position = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 1
   %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
   %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
   %3 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
@@ -2976,31 +2632,16 @@ skip_rem_Position:                                ; preds = %copy_rem_Position, 
   br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
 
 copy_rem_Velocity:                                ; preds = %skip_rem_Position
-  %rem_src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
+  %rem_src_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 2
   %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
   %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 2
+  %rem_dst_col_Velocity = getelementptr inbounds [4 x ptr], ptr %new_cols_rem, i32 0, i32 2
   %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
   %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
   %4 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
   br label %skip_rem_Velocity
 
 skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_Position
-  %rem_has_Obstacle = and i64 %cur_mask_val_rem, 16
-  %is_has_rem_Obstacle = icmp ne i64 %rem_has_Obstacle, 0
-  br i1 %is_has_rem_Obstacle, label %copy_rem_Obstacle, label %skip_rem_Obstacle
-
-copy_rem_Obstacle:                                ; preds = %skip_rem_Velocity
-  %rem_src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_Obstacle = load ptr, ptr %rem_src_col_Obstacle, align 8
-  %rem_src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %rem_src_raw_Obstacle, i32 %cur_row_rem
-  %rem_dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_Obstacle = load ptr, ptr %rem_dst_col_Obstacle, align 8
-  %rem_dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %rem_dst_raw_Obstacle, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Obstacle, ptr %rem_src_elem_Obstacle, i64 1)
-  br label %skip_rem_Obstacle
-
-skip_rem_Obstacle:                                ; preds = %copy_rem_Obstacle, %skip_rem_Velocity
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -3008,7 +2649,7 @@ skip_rem_Obstacle:                                ; preds = %copy_rem_Obstacle, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Obstacle
+do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -3019,7 +2660,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Obstacle
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Obstacle, %skip_rem_Obstacle
+after_swap_rem:                                   ; preds = %skip_sw_rem_Label, %skip_rem_Velocity
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -3029,11 +2670,11 @@ after_swap_rem:                                   ; preds = %skip_sw_rem_Obstacl
   br label %exit_remove
 
 swap_rem_ChildOf:                                 ; preds = %do_swap_rem
-  %sw_col_rem_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
+  %sw_col_rem_ChildOf = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 0
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %6 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -3042,11 +2683,11 @@ skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
 swap_rem_Position:                                ; preds = %skip_sw_rem_ChildOf
-  %sw_col_rem_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
+  %sw_col_rem_Position = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 1
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_ChildOf
@@ -3055,47 +2696,34 @@ skip_sw_rem_Position:                             ; preds = %swap_rem_Position, 
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 
 swap_rem_Velocity:                                ; preds = %skip_sw_rem_Position
-  %sw_col_rem_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
+  %sw_col_rem_Velocity = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 2
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Position
-  %sw_rem_has_PlayerTag = and i64 %cur_mask_val_rem, 8
-  %is_sw_rem_PlayerTag = icmp ne i64 %sw_rem_has_PlayerTag, 0
-  br i1 %is_sw_rem_PlayerTag, label %swap_rem_PlayerTag, label %skip_sw_rem_PlayerTag
+  %sw_rem_has_Label = and i64 %cur_mask_val_rem, 8
+  %is_sw_rem_Label = icmp ne i64 %sw_rem_has_Label, 0
+  br i1 %is_sw_rem_Label, label %swap_rem_Label, label %skip_sw_rem_Label
 
-swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Velocity
-  %sw_col_rem_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
-  %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
-  %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
-  br label %skip_sw_rem_PlayerTag
+swap_rem_Label:                                   ; preds = %skip_sw_rem_Velocity
+  %sw_col_rem_Label = getelementptr inbounds [4 x ptr], ptr %cur_cols_rem, i32 0, i32 3
+  %sw_raw_rem_Label = load ptr, ptr %sw_col_rem_Label, align 8
+  %sw_src_rem_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_rem_Label, i32 %last_row_rem
+  %sw_dst_rem_Label = getelementptr inbounds %struct.Label, ptr %sw_raw_rem_Label, i32 %cur_row_rem
+  %8 = call ptr @memcpy(ptr %sw_dst_rem_Label, ptr %sw_src_rem_Label, i64 8)
+  br label %skip_sw_rem_Label
 
-skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Velocity
-  %sw_rem_has_Obstacle = and i64 %cur_mask_val_rem, 16
-  %is_sw_rem_Obstacle = icmp ne i64 %sw_rem_has_Obstacle, 0
-  br i1 %is_sw_rem_Obstacle, label %swap_rem_Obstacle, label %skip_sw_rem_Obstacle
-
-swap_rem_Obstacle:                                ; preds = %skip_sw_rem_PlayerTag
-  %sw_col_rem_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %sw_raw_rem_Obstacle = load ptr, ptr %sw_col_rem_Obstacle, align 8
-  %sw_src_rem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_rem_Obstacle, i32 %last_row_rem
-  %sw_dst_rem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_rem_Obstacle, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Obstacle, ptr %sw_src_rem_Obstacle, i64 1)
-  br label %skip_sw_rem_Obstacle
-
-skip_sw_rem_Obstacle:                             ; preds = %swap_rem_Obstacle, %skip_sw_rem_PlayerTag
+skip_sw_rem_Label:                                ; preds = %swap_rem_Label, %skip_sw_rem_Velocity
   %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
   %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
   store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
   br label %after_swap_rem
 }
 
-define i1 @world_has_PlayerTag(ptr %0, i32 %1) {
+define i1 @world_has_Label(ptr %0, i32 %1) {
 entry:
   %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -3109,716 +2737,6 @@ entry:
   %bit_and_has = and i64 %arch_mask_has, 8
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
-}
-
-define void @world_set_Obstacle(ptr %0, i32 %1, i1 %2) {
-entry:
-  %target_arch = alloca i32, align 4
-  %target_row = alloca i32, align 4
-  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
-  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
-  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
-  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
-  %cur_arch_idx = load i32, ptr %ent_arch_slot, align 4
-  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
-  %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx
-  %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_slot, align 8
-  %has_bit = and i64 %cur_mask, 16
-  %already_has = icmp ne i64 %has_bit, 0
-  br i1 %already_has, label %in_place_update, label %transition
-
-in_place_update:                                  ; preds = %entry
-  store i32 %cur_arch_idx, ptr %target_arch, align 4
-  store i32 %cur_row, ptr %target_row, align 4
-  br label %store_fields
-
-transition:                                       ; preds = %entry
-  %new_mask = or i64 %cur_mask, 16
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
-  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
-  %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
-  %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
-  %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
-  %new_cap_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 2
-  %new_cap1 = load i32, ptr %new_cap_slot1, align 4
-  %need_grow_new = icmp sge i32 %new_cnt1, %new_cap1
-  br i1 %need_grow_new, label %grow_new_arch, label %after_grow_new_arch
-
-store_fields:                                     ; preds = %after_swap_remove, %in_place_update
-  %final_arch = load i32, ptr %target_arch, align 4
-  %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
-  %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
-  %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [5 x ptr], ptr %final_cols, i32 0, i32 4
-  %final_col_raw = load ptr, ptr %final_col_slot, align 8
-  %final_elem = getelementptr inbounds %struct.Obstacle, ptr %final_col_raw, i32 %final_row
-  %solid_gep = getelementptr inbounds nuw %struct.Obstacle, ptr %final_elem, i32 0, i32 0
-  store i1 %2, ptr %solid_gep, align 1
-  ret void
-
-grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
-  br label %after_grow_new_arch
-
-after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx
-  %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
-  %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
-  %new_row = load i32, ptr %new_cnt_slot2, align 4
-  %next_new_cnt = add i32 %new_row, 1
-  store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
-  %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
-  %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
-  %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %1, ptr %new_ent_elem2, align 4
-  %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
-  %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
-  %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
-  br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
-
-copy_ChildOf:                                     ; preds = %after_grow_new_arch
-  %src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
-  %src_raw_ChildOf = load ptr, ptr %src_col_ChildOf, align 8
-  %src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %src_raw_ChildOf, i32 %cur_row
-  %dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 0
-  %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
-  %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
-  br label %skip_ChildOf
-
-skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Position = and i64 %cur_mask, 2
-  %is_has_Position = icmp ne i64 %has_Position, 0
-  br i1 %is_has_Position, label %copy_Position, label %skip_Position
-
-copy_Position:                                    ; preds = %skip_ChildOf
-  %src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
-  %src_raw_Position = load ptr, ptr %src_col_Position, align 8
-  %src_elem_Position = getelementptr inbounds %struct.Position, ptr %src_raw_Position, i32 %cur_row
-  %dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 1
-  %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
-  %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
-  br label %skip_Position
-
-skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
-  %has_Velocity = and i64 %cur_mask, 4
-  %is_has_Velocity = icmp ne i64 %has_Velocity, 0
-  br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
-
-copy_Velocity:                                    ; preds = %skip_Position
-  %src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
-  %src_raw_Velocity = load ptr, ptr %src_col_Velocity, align 8
-  %src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %src_raw_Velocity, i32 %cur_row
-  %dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 2
-  %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
-  %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
-  br label %skip_Velocity
-
-skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
-  %has_PlayerTag = and i64 %cur_mask, 8
-  %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
-  br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
-
-copy_PlayerTag:                                   ; preds = %skip_Velocity
-  %src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %src_raw_PlayerTag = load ptr, ptr %src_col_PlayerTag, align 8
-  %src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %src_raw_PlayerTag, i32 %cur_row
-  %dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 3
-  %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
-  %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
-  br label %skip_PlayerTag
-
-skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Velocity
-  %has_Obstacle = and i64 %cur_mask, 16
-  %is_has_Obstacle = icmp ne i64 %has_Obstacle, 0
-  br i1 %is_has_Obstacle, label %copy_Obstacle, label %skip_Obstacle
-
-copy_Obstacle:                                    ; preds = %skip_PlayerTag
-  %src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %src_raw_Obstacle = load ptr, ptr %src_col_Obstacle, align 8
-  %src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %src_raw_Obstacle, i32 %cur_row
-  %dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 4
-  %dst_raw_Obstacle = load ptr, ptr %dst_col_Obstacle, align 8
-  %dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %dst_raw_Obstacle, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Obstacle, ptr %src_elem_Obstacle, i64 1)
-  br label %skip_Obstacle
-
-skip_Obstacle:                                    ; preds = %copy_Obstacle, %skip_PlayerTag
-  %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
-  %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
-  %last_row = sub i32 %cur_arch_count, 1
-  store i32 %last_row, ptr %cur_cnt_slot, align 4
-  %is_last_row = icmp eq i32 %cur_row, %last_row
-  br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
-
-do_swap_remove:                                   ; preds = %skip_Obstacle
-  %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
-  %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
-  %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
-  %moved_e = load i32, ptr %last_ent_elem, align 4
-  %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
-  store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
-  %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
-  br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
-
-after_swap_remove:                                ; preds = %skip_sw_Obstacle, %skip_Obstacle
-  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
-  store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
-  store i32 %new_row, ptr %e_row_slot_tr, align 4
-  store i32 %new_arch_idx, ptr %target_arch, align 4
-  store i32 %new_row, ptr %target_row, align 4
-  br label %store_fields
-
-swap_ChildOf:                                     ; preds = %do_swap_remove
-  %sw_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
-  %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
-  %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
-  %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
-  br label %skip_sw_ChildOf
-
-skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Position = and i64 %cur_mask, 2
-  %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
-  br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
-
-swap_Position:                                    ; preds = %skip_sw_ChildOf
-  %sw_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
-  %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
-  %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
-  %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
-  br label %skip_sw_Position
-
-skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
-  %has_sw_Velocity = and i64 %cur_mask, 4
-  %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
-  br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
-
-swap_Velocity:                                    ; preds = %skip_sw_Position
-  %sw_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
-  %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
-  %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
-  %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
-  br label %skip_sw_Velocity
-
-skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %has_sw_PlayerTag = and i64 %cur_mask, 8
-  %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
-  br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
-
-swap_PlayerTag:                                   ; preds = %skip_sw_Velocity
-  %sw_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
-  %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
-  %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
-  br label %skip_sw_PlayerTag
-
-skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Velocity
-  %has_sw_Obstacle = and i64 %cur_mask, 16
-  %is_has_sw_Obstacle = icmp ne i64 %has_sw_Obstacle, 0
-  br i1 %is_has_sw_Obstacle, label %swap_Obstacle, label %skip_sw_Obstacle
-
-swap_Obstacle:                                    ; preds = %skip_sw_PlayerTag
-  %sw_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %sw_raw_Obstacle = load ptr, ptr %sw_col_Obstacle, align 8
-  %sw_src_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %last_row
-  %sw_dst_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_Obstacle, ptr %sw_src_Obstacle, i64 1)
-  br label %skip_sw_Obstacle
-
-skip_sw_Obstacle:                                 ; preds = %swap_Obstacle, %skip_sw_PlayerTag
-  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
-  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
-  store i32 %cur_row, ptr %moved_e_row_slot, align 4
-  br label %after_swap_remove
-}
-
-define void @world_add_Obstacle(ptr %0, i32 %1, i1 %2) {
-entry:
-  %target_arch = alloca i32, align 4
-  %target_row = alloca i32, align 4
-  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
-  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
-  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
-  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
-  %cur_arch_idx = load i32, ptr %ent_arch_slot, align 4
-  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
-  %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx
-  %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_slot, align 8
-  %has_bit = and i64 %cur_mask, 16
-  %already_has = icmp ne i64 %has_bit, 0
-  br i1 %already_has, label %in_place_update, label %transition
-
-in_place_update:                                  ; preds = %entry
-  store i32 %cur_arch_idx, ptr %target_arch, align 4
-  store i32 %cur_row, ptr %target_row, align 4
-  br label %store_fields
-
-transition:                                       ; preds = %entry
-  %new_mask = or i64 %cur_mask, 16
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
-  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
-  %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
-  %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
-  %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
-  %new_cap_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 2
-  %new_cap1 = load i32, ptr %new_cap_slot1, align 4
-  %need_grow_new = icmp sge i32 %new_cnt1, %new_cap1
-  br i1 %need_grow_new, label %grow_new_arch, label %after_grow_new_arch
-
-store_fields:                                     ; preds = %after_swap_remove, %in_place_update
-  %final_arch = load i32, ptr %target_arch, align 4
-  %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
-  %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
-  %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [5 x ptr], ptr %final_cols, i32 0, i32 4
-  %final_col_raw = load ptr, ptr %final_col_slot, align 8
-  %final_elem = getelementptr inbounds %struct.Obstacle, ptr %final_col_raw, i32 %final_row
-  %solid_gep = getelementptr inbounds nuw %struct.Obstacle, ptr %final_elem, i32 0, i32 0
-  store i1 %2, ptr %solid_gep, align 1
-  ret void
-
-grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
-  br label %after_grow_new_arch
-
-after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx
-  %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
-  %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
-  %new_row = load i32, ptr %new_cnt_slot2, align 4
-  %next_new_cnt = add i32 %new_row, 1
-  store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
-  %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
-  %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
-  %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %1, ptr %new_ent_elem2, align 4
-  %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
-  %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
-  %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
-  br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
-
-copy_ChildOf:                                     ; preds = %after_grow_new_arch
-  %src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
-  %src_raw_ChildOf = load ptr, ptr %src_col_ChildOf, align 8
-  %src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %src_raw_ChildOf, i32 %cur_row
-  %dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 0
-  %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
-  %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
-  br label %skip_ChildOf
-
-skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Position = and i64 %cur_mask, 2
-  %is_has_Position = icmp ne i64 %has_Position, 0
-  br i1 %is_has_Position, label %copy_Position, label %skip_Position
-
-copy_Position:                                    ; preds = %skip_ChildOf
-  %src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
-  %src_raw_Position = load ptr, ptr %src_col_Position, align 8
-  %src_elem_Position = getelementptr inbounds %struct.Position, ptr %src_raw_Position, i32 %cur_row
-  %dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 1
-  %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
-  %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
-  br label %skip_Position
-
-skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
-  %has_Velocity = and i64 %cur_mask, 4
-  %is_has_Velocity = icmp ne i64 %has_Velocity, 0
-  br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
-
-copy_Velocity:                                    ; preds = %skip_Position
-  %src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
-  %src_raw_Velocity = load ptr, ptr %src_col_Velocity, align 8
-  %src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %src_raw_Velocity, i32 %cur_row
-  %dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 2
-  %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
-  %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
-  br label %skip_Velocity
-
-skip_Velocity:                                    ; preds = %copy_Velocity, %skip_Position
-  %has_PlayerTag = and i64 %cur_mask, 8
-  %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
-  br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
-
-copy_PlayerTag:                                   ; preds = %skip_Velocity
-  %src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %src_raw_PlayerTag = load ptr, ptr %src_col_PlayerTag, align 8
-  %src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %src_raw_PlayerTag, i32 %cur_row
-  %dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 3
-  %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
-  %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
-  br label %skip_PlayerTag
-
-skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Velocity
-  %has_Obstacle = and i64 %cur_mask, 16
-  %is_has_Obstacle = icmp ne i64 %has_Obstacle, 0
-  br i1 %is_has_Obstacle, label %copy_Obstacle, label %skip_Obstacle
-
-copy_Obstacle:                                    ; preds = %skip_PlayerTag
-  %src_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %src_raw_Obstacle = load ptr, ptr %src_col_Obstacle, align 8
-  %src_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %src_raw_Obstacle, i32 %cur_row
-  %dst_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %new_cols_arr, i32 0, i32 4
-  %dst_raw_Obstacle = load ptr, ptr %dst_col_Obstacle, align 8
-  %dst_elem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %dst_raw_Obstacle, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Obstacle, ptr %src_elem_Obstacle, i64 1)
-  br label %skip_Obstacle
-
-skip_Obstacle:                                    ; preds = %copy_Obstacle, %skip_PlayerTag
-  %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
-  %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
-  %last_row = sub i32 %cur_arch_count, 1
-  store i32 %last_row, ptr %cur_cnt_slot, align 4
-  %is_last_row = icmp eq i32 %cur_row, %last_row
-  br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
-
-do_swap_remove:                                   ; preds = %skip_Obstacle
-  %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
-  %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
-  %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
-  %moved_e = load i32, ptr %last_ent_elem, align 4
-  %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
-  store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
-  %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
-  br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
-
-after_swap_remove:                                ; preds = %skip_sw_Obstacle, %skip_Obstacle
-  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
-  store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
-  store i32 %new_row, ptr %e_row_slot_tr, align 4
-  store i32 %new_arch_idx, ptr %target_arch, align 4
-  store i32 %new_row, ptr %target_row, align 4
-  br label %store_fields
-
-swap_ChildOf:                                     ; preds = %do_swap_remove
-  %sw_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 0
-  %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
-  %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
-  %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %8 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
-  br label %skip_sw_ChildOf
-
-skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Position = and i64 %cur_mask, 2
-  %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
-  br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
-
-swap_Position:                                    ; preds = %skip_sw_ChildOf
-  %sw_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 1
-  %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
-  %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
-  %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %9 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
-  br label %skip_sw_Position
-
-skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
-  %has_sw_Velocity = and i64 %cur_mask, 4
-  %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
-  br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
-
-swap_Velocity:                                    ; preds = %skip_sw_Position
-  %sw_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 2
-  %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
-  %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
-  %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
-  br label %skip_sw_Velocity
-
-skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_Position
-  %has_sw_PlayerTag = and i64 %cur_mask, 8
-  %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
-  br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
-
-swap_PlayerTag:                                   ; preds = %skip_sw_Velocity
-  %sw_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 3
-  %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
-  %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
-  %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
-  br label %skip_sw_PlayerTag
-
-skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Velocity
-  %has_sw_Obstacle = and i64 %cur_mask, 16
-  %is_has_sw_Obstacle = icmp ne i64 %has_sw_Obstacle, 0
-  br i1 %is_has_sw_Obstacle, label %swap_Obstacle, label %skip_sw_Obstacle
-
-swap_Obstacle:                                    ; preds = %skip_sw_PlayerTag
-  %sw_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_arr, i32 0, i32 4
-  %sw_raw_Obstacle = load ptr, ptr %sw_col_Obstacle, align 8
-  %sw_src_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %last_row
-  %sw_dst_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_Obstacle, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_Obstacle, ptr %sw_src_Obstacle, i64 1)
-  br label %skip_sw_Obstacle
-
-skip_sw_Obstacle:                                 ; preds = %swap_Obstacle, %skip_sw_PlayerTag
-  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
-  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
-  store i32 %cur_row, ptr %moved_e_row_slot, align 4
-  br label %after_swap_remove
-}
-
-define void @world_remove_Obstacle(ptr %0, i32 %1) {
-entry:
-  %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
-  %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
-  %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
-  %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
-  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
-  %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
-  %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
-  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
-  %cur_row_rem = load i32, ptr %rem_row_slot, align 4
-  %tables_rem = load ptr, ptr %tables_slot_rem, align 8
-  %cur_arch_ptr_rem = getelementptr inbounds %struct.Archetype, ptr %tables_rem, i32 %cur_arch_rem
-  %cur_mask_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem, i32 0, i32 0
-  %cur_mask_val_rem = load i64, ptr %cur_mask_rem, align 8
-  %rem_has_bit = and i64 %cur_mask_val_rem, 16
-  %has_comp_rem = icmp ne i64 %rem_has_bit, 0
-  br i1 %has_comp_rem, label %do_remove, label %exit_remove
-
-do_remove:                                        ; preds = %entry
-  %new_mask_rem = and i64 %cur_mask_val_rem, -17
-  %new_arch_rem = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask_rem)
-  %tables_rem_tr1 = load ptr, ptr %tables_slot_rem, align 8
-  %new_arch_ptr_rem1 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr1, i32 %new_arch_rem
-  %cnt_slot_rem1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem1, i32 0, i32 1
-  %cnt_rem1 = load i32, ptr %cnt_slot_rem1, align 4
-  %cap_slot_rem1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem1, i32 0, i32 2
-  %cap_rem1 = load i32, ptr %cap_slot_rem1, align 4
-  %need_grow_rem = icmp sge i32 %cnt_rem1, %cap_rem1
-  br i1 %need_grow_rem, label %grow_rem_arch, label %after_grow_rem_arch
-
-exit_remove:                                      ; preds = %after_swap_rem, %entry
-  ret void
-
-grow_rem_arch:                                    ; preds = %do_remove
-  call void @world_grow_archetype(ptr %0, i32 %new_arch_rem)
-  br label %after_grow_rem_arch
-
-after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_remove
-  %tables_rem_tr2 = load ptr, ptr %tables_slot_rem, align 8
-  %cur_arch_ptr_rem2 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr2, i32 %cur_arch_rem
-  %new_arch_ptr_rem2 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr2, i32 %new_arch_rem
-  %cnt_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 1
-  %new_row_rem = load i32, ptr %cnt_slot_rem2, align 4
-  %next_cnt_rem = add i32 %new_row_rem, 1
-  store i32 %next_cnt_rem, ptr %cnt_slot_rem2, align 4
-  %new_ent_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 3
-  %new_ent_raw_rem = load ptr, ptr %new_ent_rem, align 8
-  %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
-  store i32 %1, ptr %new_ent_elem_rem, align 4
-  %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
-  %rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
-  %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
-  br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
-
-copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
-  %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
-  %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 0
-  %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
-  %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
-  br label %skip_rem_ChildOf
-
-skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %rem_has_Position = and i64 %cur_mask_val_rem, 2
-  %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
-  br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
-
-copy_rem_Position:                                ; preds = %skip_rem_ChildOf
-  %rem_src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
-  %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
-  %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 1
-  %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
-  %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
-  br label %skip_rem_Position
-
-skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_ChildOf
-  %rem_has_Velocity = and i64 %cur_mask_val_rem, 4
-  %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
-  br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
-
-copy_rem_Velocity:                                ; preds = %skip_rem_Position
-  %rem_src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
-  %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
-  %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 2
-  %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
-  %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
-  br label %skip_rem_Velocity
-
-skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_Position
-  %rem_has_PlayerTag = and i64 %cur_mask_val_rem, 8
-  %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
-  br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
-
-copy_rem_PlayerTag:                               ; preds = %skip_rem_Velocity
-  %rem_src_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_PlayerTag = load ptr, ptr %rem_src_col_PlayerTag, align 8
-  %rem_src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_src_raw_PlayerTag, i32 %cur_row_rem
-  %rem_dst_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
-  %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
-  br label %skip_rem_PlayerTag
-
-skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Velocity
-  %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
-  %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
-  %last_row_rem = sub i32 %cnt_rem, 1
-  store i32 %last_row_rem, ptr %cnt_slot_rem, align 4
-  %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
-  br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
-
-do_swap_rem:                                      ; preds = %skip_rem_PlayerTag
-  %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
-  %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
-  %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
-  %moved_e_rem = load i32, ptr %last_ent_rem, align 4
-  %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
-  store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
-  %sw_rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
-  %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
-  br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
-
-after_swap_rem:                                   ; preds = %skip_sw_rem_Obstacle, %skip_rem_PlayerTag
-  %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
-  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
-  store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
-  %row_arr_rem_tr = load ptr, ptr %ent_row_slot_rem, align 8
-  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %1
-  store i32 %new_row_rem, ptr %rem_row_slot_tr, align 4
-  br label %exit_remove
-
-swap_rem_ChildOf:                                 ; preds = %do_swap_rem
-  %sw_col_rem_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
-  %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
-  %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
-  %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %6 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
-  br label %skip_sw_rem_ChildOf
-
-skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
-  %sw_rem_has_Position = and i64 %cur_mask_val_rem, 2
-  %is_sw_rem_Position = icmp ne i64 %sw_rem_has_Position, 0
-  br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
-
-swap_rem_Position:                                ; preds = %skip_sw_rem_ChildOf
-  %sw_col_rem_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
-  %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
-  %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
-  %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
-  br label %skip_sw_rem_Position
-
-skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_ChildOf
-  %sw_rem_has_Velocity = and i64 %cur_mask_val_rem, 4
-  %is_sw_rem_Velocity = icmp ne i64 %sw_rem_has_Velocity, 0
-  br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
-
-swap_rem_Velocity:                                ; preds = %skip_sw_rem_Position
-  %sw_col_rem_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
-  %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
-  %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
-  %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
-  br label %skip_sw_rem_Velocity
-
-skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Position
-  %sw_rem_has_PlayerTag = and i64 %cur_mask_val_rem, 8
-  %is_sw_rem_PlayerTag = icmp ne i64 %sw_rem_has_PlayerTag, 0
-  br i1 %is_sw_rem_PlayerTag, label %swap_rem_PlayerTag, label %skip_sw_rem_PlayerTag
-
-swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Velocity
-  %sw_col_rem_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
-  %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
-  %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
-  br label %skip_sw_rem_PlayerTag
-
-skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Velocity
-  %sw_rem_has_Obstacle = and i64 %cur_mask_val_rem, 16
-  %is_sw_rem_Obstacle = icmp ne i64 %sw_rem_has_Obstacle, 0
-  br i1 %is_sw_rem_Obstacle, label %swap_rem_Obstacle, label %skip_sw_rem_Obstacle
-
-swap_rem_Obstacle:                                ; preds = %skip_sw_rem_PlayerTag
-  %sw_col_rem_Obstacle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %sw_raw_rem_Obstacle = load ptr, ptr %sw_col_rem_Obstacle, align 8
-  %sw_src_rem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_rem_Obstacle, i32 %last_row_rem
-  %sw_dst_rem_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_raw_rem_Obstacle, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Obstacle, ptr %sw_src_rem_Obstacle, i64 1)
-  br label %skip_sw_rem_Obstacle
-
-skip_sw_rem_Obstacle:                             ; preds = %swap_rem_Obstacle, %skip_sw_rem_PlayerTag
-  %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
-  %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
-  store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
-  br label %after_swap_rem
-}
-
-define i1 @world_has_Obstacle(ptr %0, i32 %1) {
-entry:
-  %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
-  %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
-  %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
-  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %1
-  %cur_arch_idx_has = load i32, ptr %has_arch_slot, align 4
-  %tables_has = load ptr, ptr %tables_slot_has, align 8
-  %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
-  %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
-  %arch_mask_has = load i64, ptr %mask_slot_has, align 8
-  %bit_and_has = and i64 %arch_mask_has, 16
-  %res_has = icmp ne i64 %bit_and_has, 0
-  ret i1 %res_has
-}
-
-define void @world_set_Time(ptr %0, float %1) {
-entry:
-  %res_Time_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
-  %dt_gep = getelementptr inbounds nuw %struct.res.Time, ptr %res_Time_slot, i32 0, i32 0
-  store float %1, ptr %dt_gep, align 4
-  ret void
 }
 
 define void @world_sort_hierarchy(ptr %0) {
@@ -3835,8 +2753,7 @@ entry:
   %temp_ChildOf = alloca %struct.ChildOf, align 8
   %temp_Position = alloca %struct.Position, align 8
   %temp_Velocity = alloca %struct.Velocity, align 8
-  %temp_PlayerTag = alloca %struct.PlayerTag, align 8
-  %temp_Obstacle = alloca %struct.Obstacle, align 8
+  %temp_Label = alloca %struct.Label, align 8
   br label %arch_loop_cond
 
 arch_loop_cond:                                   ; preds = %next_arch, %entry
@@ -3872,7 +2789,7 @@ do_sort:                                          ; preds = %check_sort
   %bytes_needed = mul i64 %count64, 4
   %depths_raw = call ptr @malloc(i64 %bytes_needed)
   %cols_sh = getelementptr inbounds nuw %struct.Archetype, ptr %cur_a, i32 0, i32 4
-  %co_slot = getelementptr inbounds [5 x ptr], ptr %cols_sh, i32 0, i32 0
+  %co_slot = getelementptr inbounds [4 x ptr], ptr %cols_sh, i32 0, i32 0
   %co_col_raw = load ptr, ptr %co_slot, align 8
   store i32 0, ptr %init_i, align 4
   br label %d_init_cond
@@ -3951,13 +2868,13 @@ do_swap_row:                                      ; preds = %sort_inner_body
   %is_sw_co_ChildOf = icmp ne i64 %sw_co_has_ChildOf, 0
   br i1 %is_sw_co_ChildOf, label %sw_sh_ChildOf, label %skip_sw_sh_ChildOf
 
-skip_swap_row:                                    ; preds = %skip_sw_sh_Obstacle, %sort_inner_body
+skip_swap_row:                                    ; preds = %skip_sw_sh_Label, %sort_inner_body
   %next_j = add i32 %cur_sort_j, 1
   store i32 %next_j, ptr %sort_j, align 4
   br label %sort_inner_cond
 
 sw_sh_ChildOf:                                    ; preds = %do_swap_row
-  %sw_sh_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cols_sh, i32 0, i32 0
+  %sw_sh_col_ChildOf = getelementptr inbounds [4 x ptr], ptr %cols_sh, i32 0, i32 0
   %sw_sh_raw_ChildOf = load ptr, ptr %sw_sh_col_ChildOf, align 8
   %elem_i_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_sh_raw_ChildOf, i32 %cur_sort_i
   %elem_j_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_sh_raw_ChildOf, i32 %cur_sort_j
@@ -3972,7 +2889,7 @@ skip_sw_sh_ChildOf:                               ; preds = %sw_sh_ChildOf, %do_
   br i1 %is_sw_co_Position, label %sw_sh_Position, label %skip_sw_sh_Position
 
 sw_sh_Position:                                   ; preds = %skip_sw_sh_ChildOf
-  %sw_sh_col_Position = getelementptr inbounds [5 x ptr], ptr %cols_sh, i32 0, i32 1
+  %sw_sh_col_Position = getelementptr inbounds [4 x ptr], ptr %cols_sh, i32 0, i32 1
   %sw_sh_raw_Position = load ptr, ptr %sw_sh_col_Position, align 8
   %elem_i_Position = getelementptr inbounds %struct.Position, ptr %sw_sh_raw_Position, i32 %cur_sort_i
   %elem_j_Position = getelementptr inbounds %struct.Position, ptr %sw_sh_raw_Position, i32 %cur_sort_j
@@ -3987,7 +2904,7 @@ skip_sw_sh_Position:                              ; preds = %sw_sh_Position, %sk
   br i1 %is_sw_co_Velocity, label %sw_sh_Velocity, label %skip_sw_sh_Velocity
 
 sw_sh_Velocity:                                   ; preds = %skip_sw_sh_Position
-  %sw_sh_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cols_sh, i32 0, i32 2
+  %sw_sh_col_Velocity = getelementptr inbounds [4 x ptr], ptr %cols_sh, i32 0, i32 2
   %sw_sh_raw_Velocity = load ptr, ptr %sw_sh_col_Velocity, align 8
   %elem_i_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_sh_raw_Velocity, i32 %cur_sort_i
   %elem_j_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_sh_raw_Velocity, i32 %cur_sort_j
@@ -3997,40 +2914,25 @@ sw_sh_Velocity:                                   ; preds = %skip_sw_sh_Position
   br label %skip_sw_sh_Velocity
 
 skip_sw_sh_Velocity:                              ; preds = %sw_sh_Velocity, %skip_sw_sh_Position
-  %sw_co_has_PlayerTag = and i64 %m_val, 8
-  %is_sw_co_PlayerTag = icmp ne i64 %sw_co_has_PlayerTag, 0
-  br i1 %is_sw_co_PlayerTag, label %sw_sh_PlayerTag, label %skip_sw_sh_PlayerTag
+  %sw_co_has_Label = and i64 %m_val, 8
+  %is_sw_co_Label = icmp ne i64 %sw_co_has_Label, 0
+  br i1 %is_sw_co_Label, label %sw_sh_Label, label %skip_sw_sh_Label
 
-sw_sh_PlayerTag:                                  ; preds = %skip_sw_sh_Velocity
-  %sw_sh_col_PlayerTag = getelementptr inbounds [5 x ptr], ptr %cols_sh, i32 0, i32 3
-  %sw_sh_raw_PlayerTag = load ptr, ptr %sw_sh_col_PlayerTag, align 8
-  %elem_i_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_sh_raw_PlayerTag, i32 %cur_sort_i
-  %elem_j_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_sh_raw_PlayerTag, i32 %cur_sort_j
-  %10 = call ptr @memcpy(ptr %temp_PlayerTag, ptr %elem_i_PlayerTag, i64 4)
-  %11 = call ptr @memcpy(ptr %elem_i_PlayerTag, ptr %elem_j_PlayerTag, i64 4)
-  %12 = call ptr @memcpy(ptr %elem_j_PlayerTag, ptr %temp_PlayerTag, i64 4)
-  br label %skip_sw_sh_PlayerTag
+sw_sh_Label:                                      ; preds = %skip_sw_sh_Velocity
+  %sw_sh_col_Label = getelementptr inbounds [4 x ptr], ptr %cols_sh, i32 0, i32 3
+  %sw_sh_raw_Label = load ptr, ptr %sw_sh_col_Label, align 8
+  %elem_i_Label = getelementptr inbounds %struct.Label, ptr %sw_sh_raw_Label, i32 %cur_sort_i
+  %elem_j_Label = getelementptr inbounds %struct.Label, ptr %sw_sh_raw_Label, i32 %cur_sort_j
+  %10 = call ptr @memcpy(ptr %temp_Label, ptr %elem_i_Label, i64 8)
+  %11 = call ptr @memcpy(ptr %elem_i_Label, ptr %elem_j_Label, i64 8)
+  %12 = call ptr @memcpy(ptr %elem_j_Label, ptr %temp_Label, i64 8)
+  br label %skip_sw_sh_Label
 
-skip_sw_sh_PlayerTag:                             ; preds = %sw_sh_PlayerTag, %skip_sw_sh_Velocity
-  %sw_co_has_Obstacle = and i64 %m_val, 16
-  %is_sw_co_Obstacle = icmp ne i64 %sw_co_has_Obstacle, 0
-  br i1 %is_sw_co_Obstacle, label %sw_sh_Obstacle, label %skip_sw_sh_Obstacle
-
-sw_sh_Obstacle:                                   ; preds = %skip_sw_sh_PlayerTag
-  %sw_sh_col_Obstacle = getelementptr inbounds [5 x ptr], ptr %cols_sh, i32 0, i32 4
-  %sw_sh_raw_Obstacle = load ptr, ptr %sw_sh_col_Obstacle, align 8
-  %elem_i_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_sh_raw_Obstacle, i32 %cur_sort_i
-  %elem_j_Obstacle = getelementptr inbounds %struct.Obstacle, ptr %sw_sh_raw_Obstacle, i32 %cur_sort_j
-  %13 = call ptr @memcpy(ptr %temp_Obstacle, ptr %elem_i_Obstacle, i64 1)
-  %14 = call ptr @memcpy(ptr %elem_i_Obstacle, ptr %elem_j_Obstacle, i64 1)
-  %15 = call ptr @memcpy(ptr %elem_j_Obstacle, ptr %temp_Obstacle, i64 1)
-  br label %skip_sw_sh_Obstacle
-
-skip_sw_sh_Obstacle:                              ; preds = %sw_sh_Obstacle, %skip_sw_sh_PlayerTag
+skip_sw_sh_Label:                                 ; preds = %sw_sh_Label, %skip_sw_sh_Velocity
   br label %skip_swap_row
 }
 
-define void @system_MovementSystem(ptr %world) {
+define void @system_MoveEntities(ptr %world) {
 entry:
   %world_arch_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 0
   %num_archs = load i32, ptr %world_arch_count_slot, align 4
@@ -4079,37 +2981,39 @@ ent_loop_cond:                                    ; preds = %ent_loop_body, %ent
 
 ent_loop_body:                                    ; preds = %ent_loop_cond
   %cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 4
-  %pos_col_slot = getelementptr inbounds [5 x ptr], ptr %cols_arr, i32 0, i32 1
+  %pos_col_slot = getelementptr inbounds [4 x ptr], ptr %cols_arr, i32 0, i32 1
   %pos_raw = load ptr, ptr %pos_col_slot, align 8
   %pos_elem = getelementptr inbounds %struct.Position, ptr %pos_raw, i32 %cur_row
-  %vel_col_slot = getelementptr inbounds [5 x ptr], ptr %cols_arr, i32 0, i32 2
+  %vel_col_slot = getelementptr inbounds [4 x ptr], ptr %cols_arr, i32 0, i32 2
   %vel_raw = load ptr, ptr %vel_col_slot, align 8
   %vel_elem = getelementptr inbounds %struct.Velocity, ptr %vel_raw, i32 %cur_row
-  %time_res_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 7
   %vel_vx = getelementptr inbounds nuw %struct.Velocity, ptr %vel_elem, i32 0, i32 0
   %vx_val = load float, ptr %vel_vx, align 4
-  %time_dt = getelementptr inbounds nuw %struct.res.Time, ptr %time_res_slot, i32 0, i32 0
-  %dt_val = load float, ptr %time_dt, align 4
-  %fmul = fmul float %vx_val, %dt_val
   %pos_x_gep = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 0
   %cur_fld = load float, ptr %pos_x_gep, align 4
-  %fadd = fadd float %cur_fld, %fmul
+  %fadd = fadd float %cur_fld, %vx_val
   store float %fadd, ptr %pos_x_gep, align 4
   %vel_vy = getelementptr inbounds nuw %struct.Velocity, ptr %vel_elem, i32 0, i32 1
   %vy_val = load float, ptr %vel_vy, align 4
-  %time_dt1 = getelementptr inbounds nuw %struct.res.Time, ptr %time_res_slot, i32 0, i32 0
-  %dt_val2 = load float, ptr %time_dt1, align 4
-  %fmul3 = fmul float %vy_val, %dt_val2
   %pos_y_gep = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 1
-  %cur_fld4 = load float, ptr %pos_y_gep, align 4
-  %fadd5 = fadd float %cur_fld4, %fmul3
-  store float %fadd5, ptr %pos_y_gep, align 4
+  %cur_fld1 = load float, ptr %pos_y_gep, align 4
+  %fadd2 = fadd float %cur_fld1, %vy_val
+  store float %fadd2, ptr %pos_y_gep, align 4
+  %puts_call = call i32 @puts(ptr @str_lit)
+  %pos_x = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 0
+  %x_val = load float, ptr %pos_x, align 4
+  %f_to_d = fpext float %x_val to double
+  %printf_call = call i32 (ptr, ...) @printf(ptr @fmt_f, double %f_to_d)
+  %pos_y = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 1
+  %y_val = load float, ptr %pos_y, align 4
+  %f_to_d3 = fpext float %y_val to double
+  %printf_call4 = call i32 (ptr, ...) @printf(ptr @fmt_f.1, double %f_to_d3)
   %next_row = add i32 %cur_row, 1
   store i32 %next_row, ptr %row, align 4
   br label %ent_loop_cond
 }
 
-define void @system_PrintPlayerSystem(ptr %world) {
+define void @system_RenderLabels(ptr %world) {
 entry:
   %world_arch_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 0
   %num_archs = load i32, ptr %world_arch_count_slot, align 4
@@ -4158,218 +3062,96 @@ ent_loop_cond:                                    ; preds = %ent_loop_body, %ent
 
 ent_loop_body:                                    ; preds = %ent_loop_cond
   %cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 4
-  %pos_col_slot = getelementptr inbounds [5 x ptr], ptr %cols_arr, i32 0, i32 1
+  %lbl_col_slot = getelementptr inbounds [4 x ptr], ptr %cols_arr, i32 0, i32 3
+  %lbl_raw = load ptr, ptr %lbl_col_slot, align 8
+  %lbl_elem = getelementptr inbounds %struct.Label, ptr %lbl_raw, i32 %cur_row
+  %pos_col_slot = getelementptr inbounds [4 x ptr], ptr %cols_arr, i32 0, i32 1
   %pos_raw = load ptr, ptr %pos_col_slot, align 8
   %pos_elem = getelementptr inbounds %struct.Position, ptr %pos_raw, i32 %cur_row
-  %player_col_slot = getelementptr inbounds [5 x ptr], ptr %cols_arr, i32 0, i32 3
-  %player_raw = load ptr, ptr %player_col_slot, align 8
-  %player_elem = getelementptr inbounds %struct.PlayerTag, ptr %player_raw, i32 %cur_row
-  %puts_call = call i32 @puts(ptr @str_lit)
-  %pos_x = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 0
-  %x_val = load float, ptr %pos_x, align 4
-  %f_to_d = fpext float %x_val to double
-  %printf_call = call i32 (ptr, ...) @printf(ptr @fmt_f, double %f_to_d)
-  %pos_y = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 1
-  %y_val = load float, ptr %pos_y, align 4
-  %f_to_d1 = fpext float %y_val to double
-  %printf_call2 = call i32 (ptr, ...) @printf(ptr @fmt_f.1, double %f_to_d1)
-  %next_row = add i32 %cur_row, 1
-  store i32 %next_row, ptr %row, align 4
-  br label %ent_loop_cond
-}
-
-define void @system_PrintObstacleSystem(ptr %world) {
-entry:
-  %world_arch_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 0
-  %num_archs = load i32, ptr %world_arch_count_slot, align 4
-  %arch_idx = alloca i32, align 4
-  store i32 0, ptr %arch_idx, align 4
-  br label %arch_cond
-
-arch_cond:                                        ; preds = %next_arch, %entry
-  %cur_arch_idx = load i32, ptr %arch_idx, align 4
-  %has_more_archs = icmp slt i32 %cur_arch_idx, %num_archs
-  br i1 %has_more_archs, label %arch_body, label %sys_exit
-
-arch_body:                                        ; preds = %arch_cond
-  %world_arch_tables_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 2
-  %tables_base = load ptr, ptr %world_arch_tables_slot, align 8
-  %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_base, i32 %cur_arch_idx
-  %mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %arch_mask = load i64, ptr %mask_slot, align 8
-  %and_mask = and i64 %arch_mask, 18
-  %is_match = icmp eq i64 %and_mask, 18
-  br i1 %is_match, label %check_count, label %next_arch
-
-next_arch:                                        ; preds = %ent_loop_cond, %check_count, %arch_body
-  %next_arch_idx = add i32 %cur_arch_idx, 1
-  store i32 %next_arch_idx, ptr %arch_idx, align 4
-  br label %arch_cond
-
-sys_exit:                                         ; preds = %arch_cond
-  ret void
-
-check_count:                                      ; preds = %arch_body
-  %cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 1
-  %arch_count = load i32, ptr %cnt_slot, align 4
-  %has_entities = icmp sgt i32 %arch_count, 0
-  br i1 %has_entities, label %ent_loop_header, label %next_arch
-
-ent_loop_header:                                  ; preds = %check_count
-  %row = alloca i32, align 4
-  store i32 0, ptr %row, align 4
-  br label %ent_loop_cond
-
-ent_loop_cond:                                    ; preds = %ent_loop_body, %ent_loop_header
-  %cur_row = load i32, ptr %row, align 4
-  %has_more_rows = icmp slt i32 %cur_row, %arch_count
-  br i1 %has_more_rows, label %ent_loop_body, label %next_arch
-
-ent_loop_body:                                    ; preds = %ent_loop_cond
-  %cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 4
-  %pos_col_slot = getelementptr inbounds [5 x ptr], ptr %cols_arr, i32 0, i32 1
-  %pos_raw = load ptr, ptr %pos_col_slot, align 8
-  %pos_elem = getelementptr inbounds %struct.Position, ptr %pos_raw, i32 %cur_row
-  %obs_col_slot = getelementptr inbounds [5 x ptr], ptr %cols_arr, i32 0, i32 4
-  %obs_raw = load ptr, ptr %obs_col_slot, align 8
-  %obs_elem = getelementptr inbounds %struct.Obstacle, ptr %obs_raw, i32 %cur_row
   %puts_call = call i32 @puts(ptr @str_lit.2)
+  %lbl_text = getelementptr inbounds nuw %struct.Label, ptr %lbl_elem, i32 0, i32 0
+  %text_val = load ptr, ptr %lbl_text, align 8
+  %puts_call1 = call i32 @puts(ptr %text_val)
   %pos_x = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 0
   %x_val = load float, ptr %pos_x, align 4
   %f_to_d = fpext float %x_val to double
   %printf_call = call i32 (ptr, ...) @printf(ptr @fmt_f.3, double %f_to_d)
   %pos_y = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 1
   %y_val = load float, ptr %pos_y, align 4
-  %f_to_d1 = fpext float %y_val to double
-  %printf_call2 = call i32 (ptr, ...) @printf(ptr @fmt_f.4, double %f_to_d1)
+  %f_to_d2 = fpext float %y_val to double
+  %printf_call3 = call i32 (ptr, ...) @printf(ptr @fmt_f.4, double %f_to_d2)
   %next_row = add i32 %cur_row, 1
   store i32 %next_row, ptr %row, align 4
   br label %ent_loop_cond
 }
 
-define void @pipeline_PhysicsLoop(ptr %world) {
+define void @pipeline_GamePipeline(ptr %world) {
 entry:
-  call void @system_MovementSystem(ptr %world)
+  call void @system_MoveEntities(ptr %world)
+  ret void
+}
+
+define void @pipeline_UiPipeline(ptr %world) {
+entry:
+  call void @system_RenderLabels(ptr %world)
   ret void
 }
 
 define i32 @main() {
 entry:
-  %rockHasVelAfter = alloca i1, align 1
-  %bulletHasVelAfter = alloca i1, align 1
-  %rockHasObs = alloca i1, align 1
-  %rockHasVel = alloca i1, align 1
-  %playerHasVel = alloca i1, align 1
-  %bullet = alloca i32, align 4
-  %rock = alloca i32, align 4
+  %quit_btn = alloca i32, align 4
+  %title_btn = alloca i32, align 4
+  %ui_world = alloca ptr, align 8
+  %enemy = alloca i32, align 4
   %player = alloca i32, align 4
-  %world = alloca ptr, align 8
+  %game_world = alloca ptr, align 8
   %puts_call = call i32 @puts(ptr @str_lit.5)
-  %puts_call1 = call i32 @puts(ptr @str_lit.6)
-  %puts_call2 = call i32 @puts(ptr @str_lit.7)
   %new_world = call ptr @ecs_create_world()
-  store ptr %new_world, ptr %world, align 8
-  %world3 = load ptr, ptr %world, align 8
-  call void @world_set_Time(ptr %world3, float 1.000000e+00)
-  %world4 = load ptr, ptr %world, align 8
-  %spawn_call = call i32 @world_spawn(ptr %world4)
+  store ptr %new_world, ptr %game_world, align 8
+  %game_world1 = load ptr, ptr %game_world, align 8
+  %spawn_call = call i32 @world_spawn(ptr %game_world1)
   store i32 %spawn_call, ptr %player, align 4
-  %world5 = load ptr, ptr %world, align 8
-  %player6 = load i32, ptr %player, align 4
-  call void @world_set_Position(ptr %world5, i32 %player6, float 1.000000e+01, float 2.000000e+01)
-  %world7 = load ptr, ptr %world, align 8
-  %player8 = load i32, ptr %player, align 4
-  call void @world_set_Velocity(ptr %world7, i32 %player8, float 5.000000e+00, float 2.000000e+00)
-  %world9 = load ptr, ptr %world, align 8
-  %player10 = load i32, ptr %player, align 4
-  call void @world_set_PlayerTag(ptr %world9, i32 %player10, i32 1)
-  %world11 = load ptr, ptr %world, align 8
-  %spawn_call12 = call i32 @world_spawn(ptr %world11)
-  store i32 %spawn_call12, ptr %rock, align 4
-  %world13 = load ptr, ptr %world, align 8
-  %rock14 = load i32, ptr %rock, align 4
-  call void @world_set_Position(ptr %world13, i32 %rock14, float 1.000000e+02, float 1.000000e+02)
-  %world15 = load ptr, ptr %world, align 8
-  %rock16 = load i32, ptr %rock, align 4
-  call void @world_set_Obstacle(ptr %world15, i32 %rock16, i1 true)
-  %world17 = load ptr, ptr %world, align 8
-  %spawn_call18 = call i32 @world_spawn(ptr %world17)
-  store i32 %spawn_call18, ptr %bullet, align 4
-  %world19 = load ptr, ptr %world, align 8
-  %bullet20 = load i32, ptr %bullet, align 4
-  call void @world_set_Position(ptr %world19, i32 %bullet20, float 5.000000e+01, float 5.000000e+01)
-  %world21 = load ptr, ptr %world, align 8
-  %bullet22 = load i32, ptr %bullet, align 4
-  call void @world_set_Velocity(ptr %world21, i32 %bullet22, float 1.000000e+01, float 0.000000e+00)
-  %puts_call23 = call i32 @puts(ptr @str_lit.8)
-  %world24 = load ptr, ptr %world, align 8
-  %player25 = load i32, ptr %player, align 4
-  %has_Velocity_call = call i1 @world_has_Velocity(ptr %world24, i32 %player25)
-  store i1 %has_Velocity_call, ptr %playerHasVel, align 1
-  %puts_call26 = call i32 @puts(ptr @str_lit.9)
-  %playerHasVel27 = load i1, ptr %playerHasVel, align 1
-  %b_to_i32 = zext i1 %playerHasVel27 to i32
-  %printf_call = call i32 (ptr, ...) @printf(ptr @fmt_b, i32 %b_to_i32)
-  %world28 = load ptr, ptr %world, align 8
-  %rock29 = load i32, ptr %rock, align 4
-  %has_Velocity_call30 = call i1 @world_has_Velocity(ptr %world28, i32 %rock29)
-  store i1 %has_Velocity_call30, ptr %rockHasVel, align 1
-  %puts_call31 = call i32 @puts(ptr @str_lit.10)
-  %rockHasVel32 = load i1, ptr %rockHasVel, align 1
-  %b_to_i3233 = zext i1 %rockHasVel32 to i32
-  %printf_call34 = call i32 (ptr, ...) @printf(ptr @fmt_b.11, i32 %b_to_i3233)
-  %world35 = load ptr, ptr %world, align 8
-  %rock36 = load i32, ptr %rock, align 4
-  %has_Obstacle_call = call i1 @world_has_Obstacle(ptr %world35, i32 %rock36)
-  store i1 %has_Obstacle_call, ptr %rockHasObs, align 1
-  %puts_call37 = call i32 @puts(ptr @str_lit.12)
-  %rockHasObs38 = load i1, ptr %rockHasObs, align 1
-  %b_to_i3239 = zext i1 %rockHasObs38 to i32
-  %printf_call40 = call i32 (ptr, ...) @printf(ptr @fmt_b.13, i32 %b_to_i3239)
-  %puts_call41 = call i32 @puts(ptr @str_lit.14)
-  %world42 = load ptr, ptr %world, align 8
-  call void @pipeline_PhysicsLoop(ptr %world42)
-  %puts_call43 = call i32 @puts(ptr @str_lit.15)
-  %world44 = load ptr, ptr %world, align 8
-  call void @system_PrintPlayerSystem(ptr %world44)
-  %puts_call45 = call i32 @puts(ptr @str_lit.16)
-  %world46 = load ptr, ptr %world, align 8
-  call void @system_PrintObstacleSystem(ptr %world46)
-  %puts_call47 = call i32 @puts(ptr @str_lit.17)
-  %world48 = load ptr, ptr %world, align 8
-  %bullet49 = load i32, ptr %bullet, align 4
-  call void @world_remove_Velocity(ptr %world48, i32 %bullet49)
-  %world50 = load ptr, ptr %world, align 8
-  %bullet51 = load i32, ptr %bullet, align 4
-  %has_Velocity_call52 = call i1 @world_has_Velocity(ptr %world50, i32 %bullet51)
-  store i1 %has_Velocity_call52, ptr %bulletHasVelAfter, align 1
-  %puts_call53 = call i32 @puts(ptr @str_lit.18)
-  %bulletHasVelAfter54 = load i1, ptr %bulletHasVelAfter, align 1
-  %b_to_i3255 = zext i1 %bulletHasVelAfter54 to i32
-  %printf_call56 = call i32 (ptr, ...) @printf(ptr @fmt_b.19, i32 %b_to_i3255)
-  %puts_call57 = call i32 @puts(ptr @str_lit.20)
-  %world58 = load ptr, ptr %world, align 8
-  %rock59 = load i32, ptr %rock, align 4
-  call void @world_add_Velocity(ptr %world58, i32 %rock59, float 1.000000e+00, float 2.000000e+00)
-  %world60 = load ptr, ptr %world, align 8
-  %rock61 = load i32, ptr %rock, align 4
-  %has_Velocity_call62 = call i1 @world_has_Velocity(ptr %world60, i32 %rock61)
-  store i1 %has_Velocity_call62, ptr %rockHasVelAfter, align 1
-  %puts_call63 = call i32 @puts(ptr @str_lit.21)
-  %rockHasVelAfter64 = load i1, ptr %rockHasVelAfter, align 1
-  %b_to_i3265 = zext i1 %rockHasVelAfter64 to i32
-  %printf_call66 = call i32 (ptr, ...) @printf(ptr @fmt_b.22, i32 %b_to_i3265)
-  %puts_call67 = call i32 @puts(ptr @str_lit.23)
-  %world68 = load ptr, ptr %world, align 8
-  call void @pipeline_PhysicsLoop(ptr %world68)
-  %puts_call69 = call i32 @puts(ptr @str_lit.24)
-  %world70 = load ptr, ptr %world, align 8
-  call void @system_PrintPlayerSystem(ptr %world70)
-  %puts_call71 = call i32 @puts(ptr @str_lit.25)
-  %world72 = load ptr, ptr %world, align 8
-  call void @system_PrintObstacleSystem(ptr %world72)
-  %puts_call73 = call i32 @puts(ptr @str_lit.26)
-  %puts_call74 = call i32 @puts(ptr @str_lit.27)
-  %puts_call75 = call i32 @puts(ptr @str_lit.28)
+  %game_world2 = load ptr, ptr %game_world, align 8
+  %player3 = load i32, ptr %player, align 4
+  call void @world_set_Position(ptr %game_world2, i32 %player3, float 1.000000e+01, float 2.000000e+01)
+  %game_world4 = load ptr, ptr %game_world, align 8
+  %player5 = load i32, ptr %player, align 4
+  call void @world_set_Velocity(ptr %game_world4, i32 %player5, float 1.500000e+00, float 2.500000e+00)
+  %game_world6 = load ptr, ptr %game_world, align 8
+  %spawn_call7 = call i32 @world_spawn(ptr %game_world6)
+  store i32 %spawn_call7, ptr %enemy, align 4
+  %game_world8 = load ptr, ptr %game_world, align 8
+  %enemy9 = load i32, ptr %enemy, align 4
+  call void @world_set_Position(ptr %game_world8, i32 %enemy9, float 1.000000e+02, float 2.000000e+02)
+  %game_world10 = load ptr, ptr %game_world, align 8
+  %enemy11 = load i32, ptr %enemy, align 4
+  call void @world_set_Velocity(ptr %game_world10, i32 %enemy11, float -5.000000e+00, float 0.000000e+00)
+  %new_world12 = call ptr @ecs_create_world()
+  store ptr %new_world12, ptr %ui_world, align 8
+  %ui_world13 = load ptr, ptr %ui_world, align 8
+  %spawn_call14 = call i32 @world_spawn(ptr %ui_world13)
+  store i32 %spawn_call14, ptr %title_btn, align 4
+  %ui_world15 = load ptr, ptr %ui_world, align 8
+  %title_btn16 = load i32, ptr %title_btn, align 4
+  call void @world_set_Position(ptr %ui_world15, i32 %title_btn16, float 0.000000e+00, float 0.000000e+00)
+  %ui_world17 = load ptr, ptr %ui_world, align 8
+  %title_btn18 = load i32, ptr %title_btn, align 4
+  call void @world_set_Label(ptr %ui_world17, i32 %title_btn18, ptr @str_lit.6)
+  %ui_world19 = load ptr, ptr %ui_world, align 8
+  %spawn_call20 = call i32 @world_spawn(ptr %ui_world19)
+  store i32 %spawn_call20, ptr %quit_btn, align 4
+  %ui_world21 = load ptr, ptr %ui_world, align 8
+  %quit_btn22 = load i32, ptr %quit_btn, align 4
+  call void @world_set_Position(ptr %ui_world21, i32 %quit_btn22, float 0.000000e+00, float 5.000000e+01)
+  %ui_world23 = load ptr, ptr %ui_world, align 8
+  %quit_btn24 = load i32, ptr %quit_btn, align 4
+  call void @world_set_Label(ptr %ui_world23, i32 %quit_btn24, ptr @str_lit.7)
+  %puts_call25 = call i32 @puts(ptr @str_lit.8)
+  %game_world26 = load ptr, ptr %game_world, align 8
+  call void @pipeline_GamePipeline(ptr %game_world26)
+  %puts_call27 = call i32 @puts(ptr @str_lit.9)
+  %ui_world28 = load ptr, ptr %ui_world, align 8
+  call void @pipeline_UiPipeline(ptr %ui_world28)
+  %puts_call29 = call i32 @puts(ptr @str_lit.10)
   ret i32 0
 }

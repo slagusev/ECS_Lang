@@ -216,6 +216,7 @@ public sealed class Lexer
         if (ch == '/' && next == '=') { Advance(); Advance(); return new Token(TokenType.SlashEqual, "/=", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == '&' && next == '&') { Advance(); Advance(); return new Token(TokenType.AmpAmp, "&&", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == '|' && next == '|') { Advance(); Advance(); return new Token(TokenType.PipePipe, "||", new SourceSpan(_filePath, startLine, startCol, 2)); }
+        if (ch == ':' && next == ':') { Advance(); Advance(); return new Token(TokenType.ColonColon, "::", new SourceSpan(_filePath, startLine, startCol, 2)); }
 
         // Single-character tokens
         Advance();

@@ -80,6 +80,10 @@ public sealed class LlvmCodeGenerator
         var memcpyType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i8PtrType, context.Int64Type }, false);
         var memcpyFunc = module.AddFunction("memcpy", memcpyType);
 
+        // void* memset(void* dest, int ch, size_t count)
+        var memsetType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, context.Int32Type, context.Int64Type }, false);
+        var memsetFunc = module.AddFunction("memset", memsetType);
+
         // void* malloc(size_t size)
         var mallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int64Type }, false);
         var mallocFunc = module.AddFunction("malloc", mallocType);
@@ -100,7 +104,7 @@ public sealed class LlvmCodeGenerator
         ecsEmitter.EmitEcsDeclarations(dataLayout);
 
         // Emit Multi-Archetype Runtime (spawn, add, remove, has, setters, sort)
-        ecsEmitter.EmitMultiArchetypeRuntime(dataLayout, reallocType, reallocFunc, memcpyType, memcpyFunc, mallocType, mallocFunc, freeType, freeFunc);
+        ecsEmitter.EmitMultiArchetypeRuntime(dataLayout, reallocType, reallocFunc, memcpyType, memcpyFunc, memsetType, memsetFunc, mallocType, mallocFunc, freeType, freeFunc);
 
         // Compile ECS Systems
         foreach (var decl in program.Declarations)
@@ -116,7 +120,7 @@ public sealed class LlvmCodeGenerator
         {
             if (decl is PipelineDeclaration pipe)
             {
-                CompilePipeline(context, module, builder, pipe);
+                CompilePipeline(context, module, builder, pipe, ecsEmitter);
             }
         }
 
@@ -163,8 +167,11 @@ public sealed class LlvmCodeGenerator
         LLVMTypeRef printfType,
         LLVMValueRef printfFunc)
     {
-        var sysFuncType = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
+        var worldPtrType = LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0);
+        var sysFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
         var sysFunc = module.AddFunction($"system_{sys.Name}", sysFuncType);
+        var worldParam = sysFunc.GetParam(0);
+        worldParam.Name = "world";
         var entryBB = sysFunc.AppendBasicBlock("entry");
         builder.PositionAtEnd(entryBB);
 
@@ -182,7 +189,8 @@ public sealed class LlvmCodeGenerator
         var reqMaskVal = LLVMValueRef.CreateConstInt(context.Int64Type, requiredMask);
 
         // Outer loop: iterate over all archetypes
-        var numArchs = builder.BuildLoad2(context.Int32Type, ecs.GetArchetypeCountGlobal(), "num_archs");
+        var archCountSlot = builder.BuildStructGEP2(ecs.GetWorldStructType(), worldParam, 0, "world_arch_count_slot");
+        var numArchs = builder.BuildLoad2(context.Int32Type, archCountSlot, "num_archs");
         var archIdxAlloca = builder.BuildAlloca(context.Int32Type, "arch_idx");
         builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), archIdxAlloca);
 
@@ -202,7 +210,8 @@ public sealed class LlvmCodeGenerator
         // arch_body: check if archetype matches requiredMask
         builder.PositionAtEnd(archBodyBB);
         var archPtrType = LLVMTypeRef.CreatePointer(ecs.GetArchetypeStructType(), 0);
-        var tablesBase = builder.BuildLoad2(archPtrType, ecs.GetArchetypeTablesGlobal(), "tables_base");
+        var archTablesSlot = builder.BuildStructGEP2(ecs.GetWorldStructType(), worldParam, 2, "world_arch_tables_slot");
+        var tablesBase = builder.BuildLoad2(archPtrType, archTablesSlot, "tables_base");
         var curArchPtr = builder.BuildInBoundsGEP2(ecs.GetArchetypeStructType(), tablesBase, new[] { curArchIdx }, "cur_arch_ptr");
 
         var maskSlot = builder.BuildStructGEP2(ecs.GetArchetypeStructType(), curArchPtr, 0, "mask_slot");
@@ -265,8 +274,9 @@ public sealed class LlvmCodeGenerator
             }
             else if (_typeChecker.Resources.ContainsKey(qp.TypeName))
             {
-                var resGlobal = ecs.GetResourceGlobal(qp.TypeName);
-                locals[qp.Name] = resGlobal;
+                int resOffset = ecs.GetResourceOffset(qp.TypeName);
+                var resSlot = builder.BuildStructGEP2(ecs.GetWorldStructType(), worldParam, (uint)resOffset, $"{qp.Name}_res_slot");
+                locals[qp.Name] = resSlot;
             }
         }
 
@@ -293,10 +303,14 @@ public sealed class LlvmCodeGenerator
         LLVMContextRef context,
         LLVMModuleRef module,
         LLVMBuilderRef builder,
-        PipelineDeclaration pipe)
+        PipelineDeclaration pipe,
+        EcsRuntimeEmitter ecs)
     {
-        var pipeFuncType = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
+        var worldPtrType = LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0);
+        var pipeFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
         var pipeFunc = module.AddFunction($"pipeline_{pipe.Name}", pipeFuncType);
+        var worldParam = pipeFunc.GetParam(0);
+        worldParam.Name = "world";
         var entryBB = pipeFunc.AppendBasicBlock("entry");
         builder.PositionAtEnd(entryBB);
 
@@ -309,8 +323,8 @@ public sealed class LlvmCodeGenerator
                     var sysFunc = module.GetNamedFunction($"system_{call.SystemName}");
                     if (sysFunc.Handle != IntPtr.Zero)
                     {
-                        var voidFuncType = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
-                        builder.BuildCall2(voidFuncType, sysFunc, Array.Empty<LLVMValueRef>());
+                        var voidFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
+                        builder.BuildCall2(voidFuncType, sysFunc, new[] { worldParam });
                     }
                 }
                 else if (action is ParallelAction par)
@@ -321,8 +335,8 @@ public sealed class LlvmCodeGenerator
                         var sysFunc = module.GetNamedFunction($"system_{sCall.SystemName}");
                         if (sysFunc.Handle != IntPtr.Zero)
                         {
-                            var voidFuncType = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
-                            builder.BuildCall2(voidFuncType, sysFunc, Array.Empty<LLVMValueRef>());
+                            var voidFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
+                            builder.BuildCall2(voidFuncType, sysFunc, new[] { worldParam });
                         }
                     }
                 }
@@ -331,8 +345,8 @@ public sealed class LlvmCodeGenerator
                     var sortFunc = module.GetNamedFunction("world_sort_hierarchy");
                     if (sortFunc.Handle != IntPtr.Zero)
                     {
-                        var voidFuncType = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
-                        builder.BuildCall2(voidFuncType, sortFunc, Array.Empty<LLVMValueRef>());
+                        var sortFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
+                        builder.BuildCall2(sortFuncType, sortFunc, new[] { worldParam });
                     }
                 }
             }
@@ -352,8 +366,8 @@ public sealed class LlvmCodeGenerator
         LLVMTypeRef printfType,
         LLVMValueRef printfFunc)
     {
-        var returnType = MapType(context, fnDecl.ReturnType);
-        var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName)).ToArray();
+        var returnType = MapType(context, fnDecl.ReturnType, ecs);
+        var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName, ecs)).ToArray();
         var funcType = LLVMTypeRef.CreateFunction(returnType, paramTypes, false);
         var function = module.AddFunction(fnDecl.Name, funcType);
 
@@ -410,7 +424,7 @@ public sealed class LlvmCodeGenerator
             {
                 case VariableDeclarationStatement varDecl:
                     var tName = varDecl.TypeName ?? _typeChecker.GetNodeType(varDecl.Initializer).Name;
-                    var varType = MapType(context, tName);
+                    var varType = MapType(context, tName, ecs);
                     if (!locals.TryGetValue(varDecl.Name, out var alloca))
                     {
                         alloca = CreateEntryBlockAlloca(context, function, varType, varDecl.Name);
@@ -587,7 +601,7 @@ public sealed class LlvmCodeGenerator
                 if (locals.TryGetValue(ident.Name, out var varPtr))
                 {
                     var varType = _typeChecker.GetNodeType(ident);
-                    var llvmType = MapType(context, varType.Name);
+                    var llvmType = MapType(context, varType.Name, ecs);
                     return builder.BuildLoad2(llvmType, varPtr, ident.Name);
                 }
                 return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
@@ -600,11 +614,31 @@ public sealed class LlvmCodeGenerator
                         var structType = ecs.GetComponentStructType(structTypeName);
                         int offset = ecs.GetFieldOffset(structTypeName, mem.MemberName);
                         var fieldGEP = builder.BuildStructGEP2(structType, structPtr, (uint)offset, $"{targetId.Name}_{mem.MemberName}");
-                        var fieldType = MapType(context, _typeChecker.GetNodeType(mem).Name);
+                        var fieldType = MapType(context, _typeChecker.GetNodeType(mem).Name, ecs);
                         return builder.BuildLoad2(fieldType, fieldGEP, $"{mem.MemberName}_val");
                     }
                 }
                 return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
+
+            case MethodCallExpression methodCall:
+                var targetVal = CompileExpression(context, module, builder, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                string mTargetName = $"world_{methodCall.MethodName}";
+                var mFunc = module.GetNamedFunction(mTargetName);
+                if (mFunc.Handle == IntPtr.Zero)
+                {
+                    _diagnostics.ReportError($"Undefined ECS world method '{methodCall.MethodName}'.", methodCall.Span);
+                    return LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                }
+
+                var mArgs = new List<LLVMValueRef> { targetVal };
+                foreach (var arg in methodCall.Arguments)
+                {
+                    mArgs.Add(CompileExpression(context, module, builder, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                }
+
+                var mFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(mFunc);
+                string mCallName = mFuncType.ReturnType == context.VoidType ? "" : $"{methodCall.MethodName}_call";
+                return builder.BuildCall2(mFuncType, mFunc, mArgs.ToArray(), mCallName);
 
             case UnaryExpression un:
                 var operand = CompileExpression(context, module, builder, un.Operand, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
@@ -707,6 +741,12 @@ public sealed class LlvmCodeGenerator
                     var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
                     return builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), "key_input");
                 }
+                else if (call.Callee is "ecs::create_world" or "create_world")
+                {
+                    var createWorldFunc = module.GetNamedFunction("ecs_create_world");
+                    var createWorldType = LLVMTypeRef.CreateFunction(LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0), Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(createWorldType, createWorldFunc, Array.Empty<LLVMValueRef>(), "new_world");
+                }
                 else
                 {
                     // Generic function call or ECS call (world_spawn, world_set_*, pipeline_*)
@@ -737,7 +777,7 @@ public sealed class LlvmCodeGenerator
         return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
     }
 
-    private static LLVMTypeRef MapType(LLVMContextRef context, string? typeName) => typeName switch
+    private static LLVMTypeRef MapType(LLVMContextRef context, string? typeName, EcsRuntimeEmitter? ecs = null) => typeName switch
     {
         "f32" or "float" => context.FloatType,
         "f64" or "double" => context.DoubleType,
@@ -745,6 +785,7 @@ public sealed class LlvmCodeGenerator
         "i32" or "u32" or "int" => context.Int32Type,
         "bool" => context.Int1Type,
         "string" or "str" => LLVMTypeRef.CreatePointer(context.Int8Type, 0),
+        "World" or "world" => ecs != null ? LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0) : LLVMTypeRef.CreatePointer(context.Int8Type, 0),
         "void" => context.VoidType,
         _ => context.Int32Type
     };

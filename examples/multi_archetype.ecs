@@ -54,73 +54,72 @@ fn main(): i32 {
     println("  ECS-Lang: Multi-Archetype Dynamic ECS Demo      ");
     println("==================================================");
 
-    world_set_Time(1.0);
+    let mut world = ecs::create_world();
+    world.set_Time(1.0);
 
     // 1. Spawn Player: Archetype { Position, Velocity, PlayerTag }
-    let player = world_spawn();
-    world_set_Position(player, 10.0, 20.0);
-    world_set_Velocity(player, 5.0, 2.0);
-    world_set_PlayerTag(player, 1);
+    let player = world.spawn();
+    world.set_Position(player, 10.0, 20.0);
+    world.set_Velocity(player, 5.0, 2.0);
+    world.set_PlayerTag(player, 1);
 
     // 2. Spawn Rock: Archetype { Position, Obstacle }
-    let rock = world_spawn();
-    world_set_Position(rock, 100.0, 100.0);
-    world_set_Obstacle(rock, true);
+    let rock = world.spawn();
+    world.set_Position(rock, 100.0, 100.0);
+    world.set_Obstacle(rock, true);
 
     // 3. Spawn Bullet: Archetype { Position, Velocity }
-    let bullet = world_spawn();
-    world_set_Position(bullet, 50.0, 50.0);
-    world_set_Velocity(bullet, 10.0, 0.0);
+    let bullet = world.spawn();
+    world.set_Position(bullet, 50.0, 50.0);
+    world.set_Velocity(bullet, 10.0, 0.0);
 
     println("Verifying initial component presence:");
-    let playerHasVel = world_has_Velocity(player);
+    let playerHasVel = world.has_Velocity(player);
     println("Player has Velocity (expected 1):");
     println(playerHasVel);
 
-    let rockHasVel = world_has_Velocity(rock);
+    let rockHasVel = world.has_Velocity(rock);
     println("Rock has Velocity (expected 0):");
     println(rockHasVel);
 
-    let rockHasObs = world_has_Obstacle(rock);
+    let rockHasObs = world.has_Obstacle(rock);
     println("Rock has Obstacle (expected 1):");
     println(rockHasObs);
 
     println("--- Frame 1: Running PhysicsLoop ---");
-    PhysicsLoop();
+    PhysicsLoop(world);
 
     println("Player after frame 1 (expected 15.0, 22.0):");
-    PrintPlayerSystem();
+    PrintPlayerSystem(world);
 
     println("Obstacle after frame 1 (expected 100.0, 100.0 - unmoved):");
-    PrintObstacleSystem();
+    PrintObstacleSystem(world);
 
     // 4. Test dynamic component removal: remove Velocity from bullet
     println("--- Removing Velocity from Bullet ---");
-    world_remove_Velocity(bullet);
-    let bulletHasVelAfter = world_has_Velocity(bullet);
+    world.remove_Velocity(bullet);
+    let bulletHasVelAfter = world.has_Velocity(bullet);
     println("Bullet has Velocity after removal (expected 0):");
     println(bulletHasVelAfter);
 
     // 5. Test dynamic component addition: add Velocity to Rock (it begins rolling!)
     println("--- Dynamically adding Velocity to Rock ---");
-    world_add_Velocity(rock, 1.0, 2.0);
-    let rockHasVelAfter = world_has_Velocity(rock);
+    world.add_Velocity(rock, 1.0, 2.0);
+    let rockHasVelAfter = world.has_Velocity(rock);
     println("Rock has Velocity after addition (expected 1):");
     println(rockHasVelAfter);
 
     println("--- Frame 2: Running PhysicsLoop again ---");
-    PhysicsLoop();
+    PhysicsLoop(world);
 
     println("Player after frame 2 (expected 20.0, 24.0):");
-    PrintPlayerSystem();
+    PrintPlayerSystem(world);
 
     println("Obstacle after frame 2 (expected 101.0, 102.0 - moved because Velocity was added!):");
-    PrintObstacleSystem();
+    PrintObstacleSystem(world);
 
     println("==================================================");
     println("Multi-Archetype verification successful!");
     println("==================================================");
-    println("Press Enter to exit...");
-    wait_key();
     return 0;
 }

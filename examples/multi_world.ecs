@@ -1,0 +1,77 @@
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+component Label {
+    text: string,
+}
+
+system MoveEntities {
+    query(mut pos: Position, vel: Velocity) {
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+        println("  [Game System] Moved entity to Position:");
+        println(pos.x);
+        println(pos.y);
+    }
+}
+
+system RenderLabels {
+    query(lbl: Label, pos: Position) {
+        println("  [UI System] Rendering Label at Position:");
+        println(lbl.text);
+        println(pos.x);
+        println(pos.y);
+    }
+}
+
+pipeline GamePipeline {
+    stage Update {
+        MoveEntities;
+    }
+}
+
+pipeline UiPipeline {
+    stage Render {
+        RenderLabels;
+    }
+}
+
+fn main(): i32 {
+    println("=== ECS Multi-World Universal Context Demo ===");
+
+    // Create World 1: Game Simulation World
+    let mut game_world = ecs::create_world();
+    let player = game_world.spawn();
+    game_world.set_Position(player, 10.0, 20.0);
+    game_world.set_Velocity(player, 1.5, 2.5);
+
+    let enemy = game_world.spawn();
+    game_world.set_Position(enemy, 100.0, 200.0);
+    game_world.set_Velocity(enemy, -5.0, 0.0);
+
+    // Create World 2: Isolated UI World
+    let mut ui_world = ecs::create_world();
+    let title_btn = ui_world.spawn();
+    ui_world.set_Position(title_btn, 0.0, 0.0);
+    ui_world.set_Label(title_btn, "Start Game");
+
+    let quit_btn = ui_world.spawn();
+    ui_world.set_Position(quit_btn, 0.0, 50.0);
+    ui_world.set_Label(quit_btn, "Quit");
+
+    println("--- Running GamePipeline on game_world ---");
+    GamePipeline(game_world);
+
+    println("--- Running UiPipeline on ui_world ---");
+    UiPipeline(ui_world);
+
+    println("Universal Contexts: Game and UI Worlds executed completely independently!");
+    return 0;
+}

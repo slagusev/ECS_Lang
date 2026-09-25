@@ -11,6 +11,7 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
     public static readonly TypeSymbol Bool = new("bool");
     public static readonly TypeSymbol String = new("string");
     public static readonly TypeSymbol Void = new("void");
+    public static readonly TypeSymbol World = new("World", IsPrimitive: false);
     public static readonly TypeSymbol Unknown = new("<unknown>");
 
     public bool IsNumeric => this == I32 || this == I64 || this == U32 || this == U64 || this == F32 || this == F64;
@@ -27,6 +28,7 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
         "f64" or "double" => F64,
         "bool" => Bool,
         "string" or "str" => String,
+        "World" or "world" => World,
         "void" => Void,
         null => Unknown,
         _ => new TypeSymbol(name, IsPrimitive: false)
