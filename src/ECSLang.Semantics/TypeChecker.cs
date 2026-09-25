@@ -1,0 +1,479 @@
+using ECSLang.Core;
+using ECSLang.Core.AST;
+
+namespace ECSLang.Semantics;
+
+public sealed record VariableSymbol(string Name, TypeSymbol Type, bool IsMutable, SourceSpan Span);
+
+public sealed class Scope
+{
+    private readonly Dictionary<string, VariableSymbol> _variables = new(StringComparer.Ordinal);
+    public Scope? Parent { get; }
+
+    public Scope(Scope? parent = null)
+    {
+        Parent = parent;
+    }
+
+    public bool TryDeclare(VariableSymbol symbol) =>
+        _variables.TryAdd(symbol.Name, symbol);
+
+    public VariableSymbol? Lookup(string name)
+    {
+        if (_variables.TryGetValue(name, out var sym))
+            return sym;
+        return Parent?.Lookup(name);
+    }
+}
+
+public sealed class TypeChecker
+{
+    private readonly DiagnosticsBag _diagnostics;
+    private readonly Dictionary<AstNode, TypeSymbol> _nodeTypes = new();
+    private readonly Dictionary<string, ComponentSymbol> _components = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ResourceSymbol> _resources = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, SystemSymbol> _systems = new(StringComparer.Ordinal);
+    private readonly List<PipelineDeclaration> _pipelines = new();
+    private Scope _currentScope = new();
+
+    public IReadOnlyDictionary<string, ComponentSymbol> Components => _components;
+    public IReadOnlyDictionary<string, ResourceSymbol> Resources => _resources;
+    public IReadOnlyDictionary<string, SystemSymbol> Systems => _systems;
+    public IReadOnlyList<PipelineDeclaration> Pipelines => _pipelines;
+
+    public TypeChecker(DiagnosticsBag diagnostics)
+    {
+        _diagnostics = diagnostics;
+    }
+
+    public TypeSymbol GetNodeType(AstNode node) =>
+        _nodeTypes.TryGetValue(node, out var t) ? t : TypeSymbol.Unknown;
+
+    public void CheckProgram(ProgramNode program)
+    {
+        RegisterBuiltinComponents();
+
+        // Pass 1: Register all Components and Resources
+        foreach (var decl in program.Declarations)
+        {
+            if (decl is ComponentDeclaration comp)
+            {
+                RegisterComponent(comp);
+            }
+            else if (decl is ResourceDeclaration res)
+            {
+                RegisterResource(res);
+            }
+        }
+
+        // Pass 2: Register & Check Systems, Functions and Pipelines
+        foreach (var decl in program.Declarations)
+        {
+            if (decl is SystemDeclaration sys)
+            {
+                CheckSystem(sys);
+            }
+            else if (decl is FunctionDeclaration fn)
+            {
+                CheckFunction(fn);
+            }
+            else if (decl is PipelineDeclaration pipe)
+            {
+                CheckPipeline(pipe);
+            }
+        }
+    }
+
+    private void RegisterBuiltinComponents()
+    {
+        _components["ChildOf"] = new ComponentSymbol("ChildOf", new[]
+        {
+            new ComponentFieldSymbol("parent", TypeSymbol.I32, SourceSpan.None)
+        }, SourceSpan.None);
+    }
+
+    private void RegisterComponent(ComponentDeclaration comp)
+    {
+        if (_components.ContainsKey(comp.Name))
+        {
+            _diagnostics.ReportError($"Duplicate component declaration '{comp.Name}'.", comp.Span);
+            return;
+        }
+
+        var fields = new List<ComponentFieldSymbol>();
+        var fieldNames = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var f in comp.Fields)
+        {
+            if (!fieldNames.Add(f.Name))
+            {
+                _diagnostics.ReportError($"Duplicate field '{f.Name}' in component '{comp.Name}'.", f.Span);
+            }
+            fields.Add(new ComponentFieldSymbol(f.Name, TypeSymbol.FromName(f.TypeName), f.Span));
+        }
+
+        _components[comp.Name] = new ComponentSymbol(comp.Name, fields, comp.Span);
+    }
+
+    private void RegisterResource(ResourceDeclaration res)
+    {
+        if (_resources.ContainsKey(res.Name))
+        {
+            _diagnostics.ReportError($"Duplicate resource declaration '{res.Name}'.", res.Span);
+            return;
+        }
+
+        var fields = new List<ComponentFieldSymbol>();
+        var fieldNames = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var f in res.Fields)
+        {
+            if (!fieldNames.Add(f.Name))
+            {
+                _diagnostics.ReportError($"Duplicate field '{f.Name}' in resource '{res.Name}'.", f.Span);
+            }
+            fields.Add(new ComponentFieldSymbol(f.Name, TypeSymbol.FromName(f.TypeName), f.Span));
+        }
+
+        _resources[res.Name] = new ResourceSymbol(res.Name, fields, res.Span);
+    }
+
+    private void CheckSystem(SystemDeclaration sys)
+    {
+        var queryParams = new List<QueryParamSymbol>();
+        var seenTypes = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var p in sys.QueryParams)
+        {
+            bool isComp = _components.ContainsKey(p.TypeName);
+            bool isRes = _resources.ContainsKey(p.TypeName);
+
+            if (!isComp && !isRes)
+            {
+                _diagnostics.ReportError($"Unknown component or resource '{p.TypeName}' in query parameter.", p.Span);
+            }
+
+            if (!seenTypes.Add(p.TypeName))
+            {
+                _diagnostics.ReportError($"Type '{p.TypeName}' is queried multiple times in system '{sys.Name}'.", p.Span);
+            }
+
+            queryParams.Add(new QueryParamSymbol(p.IsMutable, p.Name, TypeSymbol.FromName(p.TypeName), isRes, p.Span));
+        }
+
+        _systems[sys.Name] = new SystemSymbol(sys.Name, queryParams, sys.Span);
+
+        // System Body Scope
+        var sysScope = new Scope(_currentScope);
+        _currentScope = sysScope;
+
+        foreach (var qp in queryParams)
+        {
+            var varSym = new VariableSymbol(qp.ParameterName, qp.Type, qp.IsMutable, qp.Span);
+            _currentScope.TryDeclare(varSym);
+        }
+
+        CheckBlock(sys.Body);
+        _currentScope = _currentScope.Parent!;
+    }
+
+    private void CheckPipeline(PipelineDeclaration pipe)
+    {
+        _pipelines.Add(pipe);
+
+        foreach (var stage in pipe.Stages)
+        {
+            foreach (var action in stage.Actions)
+            {
+                if (action is SystemCallAction call)
+                {
+                    if (!_systems.ContainsKey(call.SystemName))
+                    {
+                        _diagnostics.ReportError($"Undefined system '{call.SystemName}' in stage '{stage.Name}'.", call.Span);
+                    }
+                }
+                else if (action is ParallelAction par)
+                {
+                    var writeComponents = new HashSet<string>(StringComparer.Ordinal);
+                    foreach (var sCall in par.Systems)
+                    {
+                        if (!_systems.TryGetValue(sCall.SystemName, out var sSym))
+                        {
+                            _diagnostics.ReportError($"Undefined system '{sCall.SystemName}' in parallel stage.", sCall.Span);
+                            continue;
+                        }
+
+                        // Parallel safety check: write conflicts
+                        foreach (var qp in sSym.QueryParams.Where(q => q.IsMutable))
+                        {
+                            if (!writeComponents.Add(qp.Type.Name))
+                            {
+                                _diagnostics.ReportWarning(
+                                    $"Parallel stage has multiple systems writing to '{qp.Type.Name}'. Consider placing them in separate sync stages.",
+                                    sCall.Span);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void CheckFunction(FunctionDeclaration fn)
+    {
+        var fnScope = new Scope(_currentScope);
+        _currentScope = fnScope;
+
+        foreach (var param in fn.Parameters)
+        {
+            var paramType = TypeSymbol.FromName(param.TypeName);
+            var varSym = new VariableSymbol(param.Name, paramType, IsMutable: false, param.Span);
+            if (!_currentScope.TryDeclare(varSym))
+            {
+                _diagnostics.ReportError($"Duplicate parameter name '{param.Name}'.", param.Span);
+            }
+        }
+
+        CheckBlock(fn.Body);
+        _currentScope = _currentScope.Parent!;
+    }
+
+    private void CheckBlock(BlockStatement block)
+    {
+        var blockScope = new Scope(_currentScope);
+        _currentScope = blockScope;
+
+        foreach (var stmt in block.Statements)
+        {
+            CheckStatement(stmt);
+        }
+
+        _currentScope = _currentScope.Parent!;
+    }
+
+    private void CheckStatement(StatementNode stmt)
+    {
+        switch (stmt)
+        {
+            case VariableDeclarationStatement varDecl:
+                CheckVariableDeclaration(varDecl);
+                break;
+            case AssignmentStatement assign:
+                CheckAssignment(assign);
+                break;
+            case IfStatement ifStmt:
+                CheckIfStatement(ifStmt);
+                break;
+            case WhileStatement whileStmt:
+                CheckWhileStatement(whileStmt);
+                break;
+            case ReturnStatement retStmt:
+                if (retStmt.Value != null)
+                {
+                    CheckExpression(retStmt.Value);
+                }
+                break;
+            case ExpressionStatement exprStmt:
+                CheckExpression(exprStmt.Expression);
+                break;
+            case BlockStatement block:
+                CheckBlock(block);
+                break;
+        }
+    }
+
+    private void CheckVariableDeclaration(VariableDeclarationStatement varDecl)
+    {
+        var initType = CheckExpression(varDecl.Initializer);
+
+        TypeSymbol explicitType = varDecl.TypeName != null
+            ? TypeSymbol.FromName(varDecl.TypeName)
+            : initType;
+
+        if (varDecl.TypeName != null && initType != TypeSymbol.Unknown && explicitType != initType)
+        {
+            _diagnostics.ReportError(
+                $"Cannot initialize variable of type '{explicitType.Name}' with value of type '{initType.Name}'.",
+                varDecl.Initializer.Span);
+        }
+
+        var sym = new VariableSymbol(varDecl.Name, explicitType, varDecl.IsMutable, varDecl.Span);
+        if (!_currentScope.TryDeclare(sym))
+        {
+            _diagnostics.ReportError($"Variable '{varDecl.Name}' is already declared in this scope.", varDecl.Span);
+        }
+    }
+
+    private void CheckAssignment(AssignmentStatement assign)
+    {
+        var sym = _currentScope.Lookup(assign.TargetName);
+        if (sym == null)
+        {
+            _diagnostics.ReportError($"Undefined variable '{assign.TargetName}'.", assign.Span);
+            return;
+        }
+
+        if (!sym.IsMutable)
+        {
+            _diagnostics.ReportError($"Cannot assign to immutable variable '{assign.TargetName}'. Use 'mut' to make it mutable.", assign.Span);
+        }
+
+        TypeSymbol expectedType = sym.Type;
+
+        // If member assignment: target.member = expr
+        if (assign.MemberName != null)
+        {
+            expectedType = GetMemberType(sym.Type, assign.MemberName, assign.Span);
+        }
+
+        var valType = CheckExpression(assign.Value);
+        if (expectedType != TypeSymbol.Unknown && valType != TypeSymbol.Unknown && expectedType != valType)
+        {
+            _diagnostics.ReportError($"Cannot assign value of type '{valType.Name}' to '{assign.TargetName}{(assign.MemberName != null ? "." + assign.MemberName : "")}' of type '{expectedType.Name}'.", assign.Value.Span);
+        }
+    }
+
+    private TypeSymbol GetMemberType(TypeSymbol targetType, string memberName, SourceSpan span)
+    {
+        if (_components.TryGetValue(targetType.Name, out var comp))
+        {
+            var field = comp.Fields.FirstOrDefault(f => f.Name == memberName);
+            if (field != null)
+                return field.Type;
+            _diagnostics.ReportError($"Component '{targetType.Name}' has no member '{memberName}'.", span);
+            return TypeSymbol.Unknown;
+        }
+
+        if (_resources.TryGetValue(targetType.Name, out var res))
+        {
+            var field = res.Fields.FirstOrDefault(f => f.Name == memberName);
+            if (field != null)
+                return field.Type;
+            _diagnostics.ReportError($"Resource '{targetType.Name}' has no member '{memberName}'.", span);
+            return TypeSymbol.Unknown;
+        }
+
+        _diagnostics.ReportError($"Type '{targetType.Name}' has no member '{memberName}'.", span);
+        return TypeSymbol.Unknown;
+    }
+
+    private void CheckIfStatement(IfStatement ifStmt)
+    {
+        var condType = CheckExpression(ifStmt.Condition);
+        if (condType != TypeSymbol.Bool && condType != TypeSymbol.Unknown)
+        {
+            _diagnostics.ReportError($"Condition in 'if' statement must be of type 'bool', got '{condType.Name}'.", ifStmt.Condition.Span);
+        }
+
+        CheckBlock(ifStmt.ThenBranch);
+        if (ifStmt.ElseBranch != null)
+        {
+            CheckStatement(ifStmt.ElseBranch);
+        }
+    }
+
+    private void CheckWhileStatement(WhileStatement whileStmt)
+    {
+        var condType = CheckExpression(whileStmt.Condition);
+        if (condType != TypeSymbol.Bool && condType != TypeSymbol.Unknown)
+        {
+            _diagnostics.ReportError($"Condition in 'while' statement must be of type 'bool', got '{condType.Name}'.", whileStmt.Condition.Span);
+        }
+
+        CheckBlock(whileStmt.Body);
+    }
+
+    public TypeSymbol CheckExpression(ExpressionNode expr)
+    {
+        var type = expr switch
+        {
+            NumberLiteralExpression num => num.IsFloatingPoint ? TypeSymbol.F32 : TypeSymbol.I32,
+            StringLiteralExpression => TypeSymbol.String,
+            BooleanLiteralExpression => TypeSymbol.Bool,
+            IdentifierExpression ident => CheckIdentifier(ident),
+            MemberAccessExpression mem => CheckMemberAccess(mem),
+            BinaryExpression bin => CheckBinaryExpression(bin),
+            UnaryExpression un => CheckUnaryExpression(un),
+            CallExpression call => CheckCallExpression(call),
+            _ => TypeSymbol.Unknown
+        };
+
+        _nodeTypes[expr] = type;
+        return type;
+    }
+
+    private TypeSymbol CheckIdentifier(IdentifierExpression ident)
+    {
+        var sym = _currentScope.Lookup(ident.Name);
+        if (sym == null)
+        {
+            _diagnostics.ReportError($"Undefined variable '{ident.Name}'.", ident.Span);
+            return TypeSymbol.Unknown;
+        }
+        return sym.Type;
+    }
+
+    private TypeSymbol CheckMemberAccess(MemberAccessExpression mem)
+    {
+        var targetType = CheckExpression(mem.Target);
+        return GetMemberType(targetType, mem.MemberName, mem.Span);
+    }
+
+    private TypeSymbol CheckBinaryExpression(BinaryExpression bin)
+    {
+        var leftType = CheckExpression(bin.Left);
+        var rightType = CheckExpression(bin.Right);
+
+        if (bin.Operator is BinaryOperator.LogicalAnd or BinaryOperator.LogicalOr)
+        {
+            if (leftType != TypeSymbol.Bool || rightType != TypeSymbol.Bool)
+            {
+                _diagnostics.ReportError("Logical operators '&&' and '||' require 'bool' operands.", bin.Span);
+            }
+            return TypeSymbol.Bool;
+        }
+
+        if (bin.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual or
+            BinaryOperator.Less or BinaryOperator.LessOrEqual or
+            BinaryOperator.Greater or BinaryOperator.GreaterOrEqual)
+        {
+            return TypeSymbol.Bool;
+        }
+
+        // Arithmetic
+        return leftType;
+    }
+
+    private TypeSymbol CheckUnaryExpression(UnaryExpression un)
+    {
+        var opType = CheckExpression(un.Operand);
+        if (un.Operator == UnaryOperator.LogicalNot)
+        {
+            if (opType != TypeSymbol.Bool)
+                _diagnostics.ReportError("Operator '!' requires 'bool' operand.", un.Span);
+            return TypeSymbol.Bool;
+        }
+
+        return opType;
+    }
+
+    private TypeSymbol CheckCallExpression(CallExpression call)
+    {
+        foreach (var arg in call.Arguments)
+        {
+            CheckExpression(arg);
+        }
+
+        if (call.Callee is "println" or "print")
+        {
+            return TypeSymbol.Void;
+        }
+
+        if (call.Callee is "readln" or "wait_key")
+        {
+            return TypeSymbol.I32;
+        }
+
+        return TypeSymbol.I32;
+    }
+}
