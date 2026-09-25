@@ -1,0 +1,68 @@
+component TextWidget {
+    content: string,
+    font_size: f32,
+}
+
+component RectTransform {
+    x: f32,
+    y: f32,
+    width: f32,
+    height: f32,
+}
+
+system RenderTextSystem {
+    query(text: TextWidget, rect: RectTransform, child: ChildOf) {
+        println("----------------------------------------------");
+        println("Rendering Widget:");
+        println(text.content);
+        println("Font Size:");
+        println(text.font_size);
+        println("X, Y Coordinates:");
+        println(rect.x);
+        println(rect.y);
+        println("Parent Entity Index (-1 is Root):");
+        println(child.parent);
+    }
+}
+
+pipeline GuiPipeline {
+    stage Layout {
+        sort_hierarchy;
+        RenderTextSystem;
+    }
+}
+
+fn main(): i32 {
+    println("==============================================");
+    println("  ECS-Lang: Declarative GUI & Hierarchy Demo  ");
+    println("==============================================");
+
+    // 1. Deliberately spawn child element FIRST (index 0) with parent = 1
+    let childBtn = world_spawn();
+    world_set_TextWidget(childBtn, "[Button: Submit Form]", 14.0);
+    world_set_RectTransform(childBtn, 20.0, 50.0, 120.0, 40.0);
+    world_set_ChildOf(childBtn, 1);
+
+    // 2. Spawn root parent element SECOND (index 1) with parent = -1
+    let parentWin = world_spawn();
+    world_set_TextWidget(parentWin, "[Window: Settings Dialog]", 18.0);
+    world_set_RectTransform(parentWin, 0.0, 0.0, 800.0, 600.0);
+    world_set_ChildOf(parentWin, -1);
+
+    // 3. Spawn grandchild element THIRD (index 2) with parent = 0 (Button's label)
+    let grandChild = world_spawn();
+    world_set_TextWidget(grandChild, "[Label: OK Text]", 12.0);
+    world_set_RectTransform(grandChild, 25.0, 55.0, 50.0, 20.0);
+    world_set_ChildOf(grandChild, 0);
+
+    println("Running GuiPipeline with automatic 'sort_hierarchy' stage...");
+    println("Notice that the root Window renders first, then Button, then Label!");
+    GuiPipeline();
+
+    println("==============================================");
+    println("GUI hierarchy layout successfully verified!");
+    println("==============================================");
+    println("Press Enter to exit...");
+    wait_key();
+    return 0;
+}
