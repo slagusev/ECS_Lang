@@ -44,4 +44,78 @@ public sealed record SystemSymbol(
 )
 {
     public bool IsEventSystem => ReadParams.Count > 0;
+
+    public IReadOnlySet<string> MutComponents => QueryParams
+        .Where(q => !q.IsResource && q.IsMutable)
+        .Select(q => q.Type.Name)
+        .ToHashSet();
+
+    public IReadOnlySet<string> ConstComponents => QueryParams
+        .Where(q => !q.IsResource && !q.IsMutable)
+        .Select(q => q.Type.Name)
+        .ToHashSet();
+
+    public IReadOnlySet<string> MutResources => QueryParams.Concat(ReadParams)
+        .Where(q => q.IsResource && q.IsMutable)
+        .Select(q => q.Type.Name)
+        .ToHashSet();
+
+    public IReadOnlySet<string> ConstResources => QueryParams.Concat(ReadParams)
+        .Where(q => q.IsResource && !q.IsMutable)
+        .Select(q => q.Type.Name)
+        .ToHashSet();
+
+    public bool HasConflictWith(SystemSymbol other, out string reason)
+    {
+        // 1. Check mutable component conflicts
+        foreach (var comp in MutComponents)
+        {
+            if (other.MutComponents.Contains(comp))
+            {
+                reason = $"write-write conflict on component '{comp}'";
+                return true;
+            }
+            if (other.ConstComponents.Contains(comp))
+            {
+                reason = $"write-read conflict on component '{comp}'";
+                return true;
+            }
+        }
+
+        foreach (var comp in ConstComponents)
+        {
+            if (other.MutComponents.Contains(comp))
+            {
+                reason = $"read-write conflict on component '{comp}'";
+                return true;
+            }
+        }
+
+        // 2. Check resource conflicts
+        foreach (var res in MutResources)
+        {
+            if (other.MutResources.Contains(res))
+            {
+                reason = $"write-write conflict on resource '{res}'";
+                return true;
+            }
+            if (other.ConstResources.Contains(res))
+            {
+                reason = $"write-read conflict on resource '{res}'";
+                return true;
+            }
+        }
+
+        foreach (var res in ConstResources)
+        {
+            if (other.MutResources.Contains(res))
+            {
+                reason = $"read-write conflict on resource '{res}'";
+                return true;
+            }
+        }
+
+        reason = string.Empty;
+        return false;
+    }
 }

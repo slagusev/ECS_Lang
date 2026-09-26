@@ -295,23 +295,31 @@ public sealed class TypeChecker
                 }
                 else if (action is ParallelAction par)
                 {
-                    var writeComponents = new HashSet<string>(StringComparer.Ordinal);
+                    var resolvedSystems = new List<SystemSymbol>();
                     foreach (var sCall in par.Systems)
                     {
                         if (!_systems.TryGetValue(sCall.SystemName, out var sSym))
                         {
                             _diagnostics.ReportError($"Undefined system '{sCall.SystemName}' in parallel stage.", sCall.Span);
-                            continue;
                         }
-
-                        // Parallel safety check: write conflicts
-                        foreach (var qp in sSym.QueryParams.Where(q => q.IsMutable))
+                        else
                         {
-                            if (!writeComponents.Add(qp.Type.Name))
+                            resolvedSystems.Add(sSym);
+                        }
+                    }
+
+                    // Strict data race check between all pairs in the parallel block
+                    for (int i = 0; i < resolvedSystems.Count; i++)
+                    {
+                        for (int j = i + 1; j < resolvedSystems.Count; j++)
+                        {
+                            var sA = resolvedSystems[i];
+                            var sB = resolvedSystems[j];
+                            if (sA.HasConflictWith(sB, out var reason))
                             {
-                                _diagnostics.ReportWarning(
-                                    $"Parallel stage has multiple systems writing to '{qp.Type.Name}'. Consider placing them in separate sync stages.",
-                                    sCall.Span);
+                                _diagnostics.ReportError(
+                                    $"Data race detected in parallel block: system '{sA.Name}' conflicts with system '{sB.Name}' ({reason}). Place them in separate stages or synchronize with 'sync;'.",
+                                    par.Span);
                             }
                         }
                     }
@@ -632,7 +640,7 @@ public sealed class TypeChecker
         if (call.Callee is "get_fps" or "rl_get_fps" or
             "get_mouse_x" or "rl_get_mouse_x" or
             "get_mouse_y" or "rl_get_mouse_y" or
-            "rl_color")
+            "rl_color" or "get_tick_count" or "time_ms")
         {
             return TypeSymbol.I32;
         }
