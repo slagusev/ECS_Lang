@@ -62,6 +62,10 @@ public sealed class Parser
             {
                 declarations.Add(ParseResourceDeclaration());
             }
+            else if (Check(TokenType.Event))
+            {
+                declarations.Add(ParseEventDeclaration());
+            }
             else if (Check(TokenType.System))
             {
                 declarations.Add(ParseSystemDeclaration());
@@ -146,41 +150,94 @@ public sealed class Parser
         return new ResourceDeclaration(nameTok.Text, fields, resTok.Span);
     }
 
+    private EventDeclaration ParseEventDeclaration()
+    {
+        var evTok = Match(TokenType.Event);
+        var nameTok = Match(TokenType.Identifier, "Expected event name after 'event'.");
+        Match(TokenType.OpenBrace, "Expected '{' to start event body.");
+
+        var fields = new List<FieldDefinition>();
+        while (!Check(TokenType.CloseBrace) && !Check(TokenType.EndOfFile))
+        {
+            var fieldName = Match(TokenType.Identifier, "Expected field name.");
+            Match(TokenType.Colon, "Expected ':' after field name.");
+            var fieldType = Match(TokenType.Identifier, "Expected field type.");
+            if (Check(TokenType.Comma)) Advance();
+            else if (Check(TokenType.Semicolon)) Advance();
+
+            fields.Add(new FieldDefinition(fieldName.Text, fieldType.Text, fieldName.Span));
+        }
+
+        Match(TokenType.CloseBrace, "Expected '}' to close event body.");
+        return new EventDeclaration(nameTok.Text, fields, evTok.Span);
+    }
+
     private SystemDeclaration ParseSystemDeclaration()
     {
         var sysTok = Match(TokenType.System);
         var nameTok = Match(TokenType.Identifier, "Expected system name after 'system'.");
         Match(TokenType.OpenBrace, "Expected '{' to start system body.");
 
-        Match(TokenType.Query, "Expected 'query' declaration inside system.");
-        Match(TokenType.OpenParen, "Expected '(' after 'query'.");
-
         var queryParams = new List<QueryParameter>();
-        if (!Check(TokenType.CloseParen))
+        var readParams = new List<QueryParameter>();
+
+        if (Check(TokenType.Query))
         {
-            do
+            Match(TokenType.Query);
+            Match(TokenType.OpenParen, "Expected '(' after 'query'.");
+            if (!Check(TokenType.CloseParen))
             {
-                bool isMut = false;
-                if (Check(TokenType.Mut))
+                do
                 {
-                    isMut = true;
-                    Advance();
-                }
+                    bool isMut = false;
+                    if (Check(TokenType.Mut))
+                    {
+                        isMut = true;
+                        Advance();
+                    }
 
-                var paramName = Match(TokenType.Identifier, "Expected query parameter name.");
-                Match(TokenType.Colon, "Expected ':' after query parameter name.");
-                var paramType = Match(TokenType.Identifier, "Expected component or resource type name.");
+                    var paramName = Match(TokenType.Identifier, "Expected query parameter name.");
+                    Match(TokenType.Colon, "Expected ':' after query parameter name.");
+                    var paramType = Match(TokenType.Identifier, "Expected component or resource type name.");
 
-                queryParams.Add(new QueryParameter(isMut, paramName.Text, paramType.Text, paramName.Span));
-            } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                    queryParams.Add(new QueryParameter(isMut, paramName.Text, paramType.Text, paramName.Span));
+                } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+            }
+            Match(TokenType.CloseParen, "Expected ')' after query parameters.");
         }
+        else if (Check(TokenType.Read))
+        {
+            Match(TokenType.Read);
+            Match(TokenType.OpenParen, "Expected '(' after 'read'.");
+            if (!Check(TokenType.CloseParen))
+            {
+                do
+                {
+                    bool isMut = false;
+                    if (Check(TokenType.Mut))
+                    {
+                        isMut = true;
+                        Advance();
+                    }
 
-        Match(TokenType.CloseParen, "Expected ')' after query parameters.");
+                    var paramName = Match(TokenType.Identifier, "Expected read parameter name.");
+                    Match(TokenType.Colon, "Expected ':' after read parameter name.");
+                    var paramType = Match(TokenType.Identifier, "Expected event or resource type name.");
+
+                    readParams.Add(new QueryParameter(isMut, paramName.Text, paramType.Text, paramName.Span));
+                } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+            }
+            Match(TokenType.CloseParen, "Expected ')' after read parameters.");
+        }
+        else
+        {
+            _diagnostics.ReportError("Expected 'query' or 'read' inside system declaration.", Current.Span);
+        }
 
         var body = ParseBlockStatement();
         Match(TokenType.CloseBrace, "Expected '}' to close system.");
 
-        return new SystemDeclaration(nameTok.Text, queryParams, body, sysTok.Span);
+        return new SystemDeclaration(nameTok.Text, queryParams, readParams, body, sysTok.Span);
     }
 
     private PipelineDeclaration ParsePipelineDeclaration()
@@ -226,6 +283,12 @@ public sealed class Parser
                         var sortTok = Advance();
                         Match(TokenType.Semicolon, "Expected ';' after sort_hierarchy.");
                         actions.Add(new SortHierarchyAction(sortTok.Span));
+                    }
+                    else if (Check(TokenType.SwapEvents))
+                    {
+                        var swapTok = Advance();
+                        Match(TokenType.Semicolon, "Expected ';' after swap_events.");
+                        actions.Add(new SwapEventsAction(swapTok.Span));
                     }
                     else if (Check(TokenType.Identifier))
                     {

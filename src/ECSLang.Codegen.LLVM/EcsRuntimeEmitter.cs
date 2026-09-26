@@ -19,6 +19,8 @@ public sealed class EcsRuntimeEmitter
     private readonly Dictionary<string, int> _compIds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ulong> _compSizes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _resourceWorldOffsets = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, int> _eventWorldOffsets = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ulong> _eventSizes = new(StringComparer.Ordinal);
 
     // Multi-Archetype Structs
     private LLVMTypeRef _archStructType;
@@ -44,6 +46,9 @@ public sealed class EcsRuntimeEmitter
 
     public int GetResourceOffset(string resName) =>
         _resourceWorldOffsets.TryGetValue(resName, out var off) ? off : -1;
+
+    public int GetEventWorldOffset(string eventName) =>
+        _eventWorldOffsets.TryGetValue(eventName, out var off) ? off : -1;
 
     public int GetComponentId(string compName) =>
         _compIds.TryGetValue(compName, out var id) ? id : -1;
@@ -74,6 +79,15 @@ public sealed class EcsRuntimeEmitter
             for (int i = 0; i < res.Fields.Count; i++)
             {
                 if (res.Fields[i].Name == fieldName)
+                    return i;
+            }
+        }
+
+        if (_typeChecker.Events.TryGetValue(compOrResName, out var ev))
+        {
+            for (int i = 0; i < ev.Fields.Count; i++)
+            {
+                if (ev.Fields[i].Name == fieldName)
                     return i;
             }
         }
@@ -121,10 +135,24 @@ public sealed class EcsRuntimeEmitter
         // 2.1 Struct types for all user structs
         foreach (var (stName, stSym) in _typeChecker.Structs)
         {
-            var fieldTypes = stSym.Fields.Select(f => MapType(f.Type.Name)).ToArray();
-            var structType = _context.CreateNamedStruct($"struct.user.{stName}");
+            if (!_compStructTypes.ContainsKey(stName))
+            {
+                var fieldTypes = stSym.Fields.Select(f => MapType(f.Type.Name)).ToArray();
+                var structType = _context.CreateNamedStruct($"struct.user.{stName}");
+                structType.StructSetBody(fieldTypes, false);
+                _compStructTypes[stName] = structType;
+            }
+        }
+
+        // 2.2 Struct types for all events
+        foreach (var (evName, evSym) in _typeChecker.Events)
+        {
+            var fieldTypes = evSym.Fields.Select(f => MapType(f.Type.Name)).ToArray();
+            var structType = _context.CreateNamedStruct($"struct.event.{evName}");
             structType.StructSetBody(fieldTypes, false);
-            _compStructTypes[stName] = structType;
+            _compStructTypes[evName] = structType;
+            ulong sizeInBytes = LlvmApi.ABISizeOfType(dataLayout, structType);
+            _eventSizes[evName] = Math.Max(1, sizeInBytes);
         }
 
         // 3. Define %struct.Archetype: { i64 mask, i32 count, i32 cap, ptr entities, [N x ptr] columns }
@@ -151,6 +179,8 @@ public sealed class EcsRuntimeEmitter
         // 5: entity_arch (ptr to i32[])
         // 6: entity_row (ptr to i32[])
         // 7+: embedded resource structs
+        // followed by event buffers (6 fields per event type):
+        // read_count, read_cap, read_data, write_count, write_cap, write_data
         var worldFields = new List<LLVMTypeRef>
         {
             _context.Int32Type,
@@ -167,6 +197,17 @@ public sealed class EcsRuntimeEmitter
         {
             worldFields.Add(_compStructTypes[resName]);
             _resourceWorldOffsets[resName] = resOffset++;
+        }
+
+        foreach (var (evName, _) in _typeChecker.Events)
+        {
+            _eventWorldOffsets[evName] = worldFields.Count;
+            worldFields.Add(_context.Int32Type); // read_count
+            worldFields.Add(_context.Int32Type); // read_cap
+            worldFields.Add(i8PtrType);          // read_data
+            worldFields.Add(_context.Int32Type); // write_count
+            worldFields.Add(_context.Int32Type); // write_cap
+            worldFields.Add(i8PtrType);          // write_data
         }
 
         _worldStructType = _context.CreateNamedStruct("struct.EcsWorld");
@@ -1234,6 +1275,114 @@ public sealed class EcsRuntimeEmitter
             _builder.PositionAtEnd(archLoopExitBB);
             _builder.BuildRetVoid();
         }
+
+        // =========================================================================
+        // Event Runtime: world_emit_{Name}(ptr world, ...) and world_swap_events(ptr world)
+        // =========================================================================
+        foreach (var (evName, evSym) in _typeChecker.Events)
+        {
+            int evBaseOffset = GetEventWorldOffset(evName);
+            ulong evSize = _eventSizes[evName];
+            var evStructType = _compStructTypes[evName];
+            var evPtrType = LLVMTypeRef.CreatePointer(evStructType, 0);
+
+            var paramTypes = new List<LLVMTypeRef> { worldPtrType };
+            foreach (var f in evSym.Fields)
+            {
+                paramTypes.Add(MapType(f.Type.Name));
+            }
+
+            var emitFuncType = LLVMTypeRef.CreateFunction(_context.VoidType, paramTypes.ToArray(), false);
+            var emitFunc = _module.AddFunction($"world_emit_{evName}", emitFuncType);
+            var wArg = emitFunc.GetParam(0);
+            wArg.Name = "world";
+
+            var evEntryBB = emitFunc.AppendBasicBlock("entry");
+            var evGrowBB = emitFunc.AppendBasicBlock("grow");
+            var evStoreBB = emitFunc.AppendBasicBlock("store_event");
+
+            _builder.PositionAtEnd(evEntryBB);
+
+            var wCountSlot = _builder.BuildStructGEP2(_worldStructType, wArg, (uint)(evBaseOffset + 3), "wcount_slot");
+            var wCapSlot = _builder.BuildStructGEP2(_worldStructType, wArg, (uint)(evBaseOffset + 4), "wcap_slot");
+            var wDataSlot = _builder.BuildStructGEP2(_worldStructType, wArg, (uint)(evBaseOffset + 5), "wdata_slot");
+
+            var curWCount = _builder.BuildLoad2(_context.Int32Type, wCountSlot, "cur_wcount");
+            var curWCap = _builder.BuildLoad2(_context.Int32Type, wCapSlot, "cur_wcap");
+
+            var evNeedGrow = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curWCount, curWCap, "need_grow");
+            _builder.BuildCondBr(evNeedGrow, evGrowBB, evStoreBB);
+
+            // grow block
+            _builder.PositionAtEnd(evGrowBB);
+            var evCapIsZero = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curWCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "cap_is_zero");
+            var evDoubledCap = _builder.BuildMul(curWCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 2), "doubled_cap");
+            var evNewCap = _builder.BuildSelect(evCapIsZero, LLVMValueRef.CreateConstInt(_context.Int32Type, 16), evDoubledCap, "new_cap");
+            var evNewCap64 = _builder.BuildZExt(evNewCap, _context.Int64Type, "new_cap64");
+            var evNewBytes = _builder.BuildMul(evNewCap64, LLVMValueRef.CreateConstInt(_context.Int64Type, evSize), "new_bytes");
+
+            var evOldDataRaw = _builder.BuildLoad2(i8PtrType, wDataSlot, "old_data");
+            var evReallocCall = _builder.BuildCall2(reallocType, reallocFunc, new[] { evOldDataRaw, evNewBytes }, "new_data");
+            _builder.BuildStore(evNewCap, wCapSlot);
+            _builder.BuildStore(evReallocCall, wDataSlot);
+            _builder.BuildBr(evStoreBB);
+
+            // store_event block
+            _builder.PositionAtEnd(evStoreBB);
+            var finalDataRaw = _builder.BuildLoad2(i8PtrType, wDataSlot, "final_data_raw");
+            var finalDataTyped = _builder.BuildBitCast(finalDataRaw, evPtrType, "final_data_typed");
+            var elemSlot = _builder.BuildInBoundsGEP2(evStructType, finalDataTyped, new[] { curWCount }, "ev_elem_slot");
+
+            for (int i = 0; i < evSym.Fields.Count; i++)
+            {
+                var fieldArg = emitFunc.GetParam((uint)(i + 1));
+                var fieldSlot = _builder.BuildStructGEP2(evStructType, elemSlot, (uint)i, $"ev_f_{evSym.Fields[i].Name}");
+                _builder.BuildStore(fieldArg, fieldSlot);
+            }
+
+            var nextWCount = _builder.BuildAdd(curWCount, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_wcount");
+            _builder.BuildStore(nextWCount, wCountSlot);
+            _builder.BuildRetVoid();
+        }
+
+        // world_swap_events(ptr world)
+        var swapFuncType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType }, false);
+        var swapFunc = _module.AddFunction("world_swap_events", swapFuncType);
+        var swapWorldArg = swapFunc.GetParam(0);
+        swapWorldArg.Name = "world";
+
+        var swapEntryBB = swapFunc.AppendBasicBlock("entry");
+        _builder.PositionAtEnd(swapEntryBB);
+
+        foreach (var (evName, _) in _typeChecker.Events)
+        {
+            int evBaseOffset = GetEventWorldOffset(evName);
+
+            var rCountSlot = _builder.BuildStructGEP2(_worldStructType, swapWorldArg, (uint)(evBaseOffset + 0), $"{evName}_rcount_slot");
+            var rCapSlot = _builder.BuildStructGEP2(_worldStructType, swapWorldArg, (uint)(evBaseOffset + 1), $"{evName}_rcap_slot");
+            var rDataSlot = _builder.BuildStructGEP2(_worldStructType, swapWorldArg, (uint)(evBaseOffset + 2), $"{evName}_rdata_slot");
+
+            var wCountSlot = _builder.BuildStructGEP2(_worldStructType, swapWorldArg, (uint)(evBaseOffset + 3), $"{evName}_wcount_slot");
+            var wCapSlot = _builder.BuildStructGEP2(_worldStructType, swapWorldArg, (uint)(evBaseOffset + 4), $"{evName}_wcap_slot");
+            var wDataSlot = _builder.BuildStructGEP2(_worldStructType, swapWorldArg, (uint)(evBaseOffset + 5), $"{evName}_wdata_slot");
+
+            var wCount = _builder.BuildLoad2(_context.Int32Type, wCountSlot, $"{evName}_wcount");
+            _builder.BuildStore(wCount, rCountSlot);
+            _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, 0), wCountSlot);
+
+            // Swap pointers and caps
+            var rCap = _builder.BuildLoad2(_context.Int32Type, rCapSlot, $"{evName}_rcap");
+            var wCap = _builder.BuildLoad2(_context.Int32Type, wCapSlot, $"{evName}_wcap");
+            _builder.BuildStore(wCap, rCapSlot);
+            _builder.BuildStore(rCap, wCapSlot);
+
+            var rData = _builder.BuildLoad2(i8PtrType, rDataSlot, $"{evName}_rdata");
+            var wData = _builder.BuildLoad2(i8PtrType, wDataSlot, $"{evName}_wdata");
+            _builder.BuildStore(wData, rDataSlot);
+            _builder.BuildStore(rData, wDataSlot);
+        }
+
+        _builder.BuildRetVoid();
     }
 
     private LLVMTypeRef MapType(string typeName) => typeName switch

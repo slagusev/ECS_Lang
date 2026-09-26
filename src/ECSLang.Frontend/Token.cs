@@ -35,6 +35,9 @@ public enum TokenType
     For,
     In,
     Struct,
+    Event,
+    Read,
+    SwapEvents,
 
     // Punctuation & Delimiters
     OpenParen,    // (

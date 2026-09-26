@@ -33,6 +33,7 @@ public sealed class TypeChecker
     private readonly Dictionary<string, ComponentSymbol> _components = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ResourceSymbol> _resources = new(StringComparer.Ordinal);
     private readonly Dictionary<string, StructSymbol> _structs = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, EventSymbol> _events = new(StringComparer.Ordinal);
     private readonly Dictionary<string, SystemSymbol> _systems = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FunctionDeclaration> _functions = new(StringComparer.Ordinal);
     private readonly List<PipelineDeclaration> _pipelines = new();
@@ -41,6 +42,7 @@ public sealed class TypeChecker
     public IReadOnlyDictionary<string, ComponentSymbol> Components => _components;
     public IReadOnlyDictionary<string, ResourceSymbol> Resources => _resources;
     public IReadOnlyDictionary<string, StructSymbol> Structs => _structs;
+    public IReadOnlyDictionary<string, EventSymbol> Events => _events;
     public IReadOnlyDictionary<string, SystemSymbol> Systems => _systems;
     public IReadOnlyDictionary<string, FunctionDeclaration> Functions => _functions;
     public IReadOnlyList<PipelineDeclaration> Pipelines => _pipelines;
@@ -57,7 +59,7 @@ public sealed class TypeChecker
     {
         RegisterBuiltinComponents();
 
-        // Pass 1: Register all Components, Resources, and Functions
+        // Pass 1: Register all Components, Resources, Structs, Events, and Functions
         foreach (var decl in program.Declarations)
         {
             if (decl is ComponentDeclaration comp)
@@ -71,6 +73,10 @@ public sealed class TypeChecker
             else if (decl is StructDeclaration st)
             {
                 RegisterStruct(st);
+            }
+            else if (decl is EventDeclaration ev)
+            {
+                RegisterEvent(ev);
             }
             else if (decl is FunctionDeclaration fn)
             {
@@ -173,9 +179,37 @@ public sealed class TypeChecker
         _structs[st.Name] = new StructSymbol(st.Name, fields, st.Span);
     }
 
+    private void RegisterEvent(EventDeclaration ev)
+    {
+        if (_events.ContainsKey(ev.Name) || _components.ContainsKey(ev.Name) || _resources.ContainsKey(ev.Name) || _structs.ContainsKey(ev.Name))
+        {
+            _diagnostics.ReportError($"Type '{ev.Name}' is already defined.", ev.Span);
+            return;
+        }
+
+        var fields = new List<ComponentFieldSymbol>();
+        var fieldNames = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var f in ev.Fields)
+        {
+            if (!fieldNames.Add(f.Name))
+            {
+                _diagnostics.ReportError($"Duplicate field '{f.Name}' in event '{ev.Name}'.", f.Span);
+            }
+            fields.Add(new ComponentFieldSymbol(f.Name, TypeSymbol.FromName(f.TypeName), f.Span));
+        }
+
+        var evSym = new EventSymbol(ev.Name, fields, ev.Span);
+        _events[ev.Name] = evSym;
+
+        // Also register as struct so constructor syntax Event(a, b) works
+        _structs[ev.Name] = new StructSymbol(ev.Name, fields, ev.Span);
+    }
+
     private void CheckSystem(SystemDeclaration sys)
     {
         var queryParams = new List<QueryParamSymbol>();
+        var readParams = new List<QueryParamSymbol>();
         var seenTypes = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var p in sys.QueryParams)
@@ -196,15 +230,47 @@ public sealed class TypeChecker
             queryParams.Add(new QueryParamSymbol(p.IsMutable, p.Name, TypeSymbol.FromName(p.TypeName), isRes, p.Span));
         }
 
-        _systems[sys.Name] = new SystemSymbol(sys.Name, queryParams, sys.Span);
+        for (int i = 0; i < sys.ReadParams.Count; i++)
+        {
+            var p = sys.ReadParams[i];
+            bool isEvent = _events.ContainsKey(p.TypeName);
+            bool isRes = _resources.ContainsKey(p.TypeName);
+
+            if (i == 0 && !isEvent)
+            {
+                _diagnostics.ReportError($"First parameter in system 'read' must be an event type, but found '{p.TypeName}'.", p.Span);
+            }
+            else if (i > 0 && !isRes)
+            {
+                _diagnostics.ReportError($"Additional parameters in system 'read' must be resource types, but found '{p.TypeName}'.", p.Span);
+            }
+
+            if (!seenTypes.Add(p.TypeName))
+            {
+                _diagnostics.ReportError($"Type '{p.TypeName}' is read multiple times in system '{sys.Name}'.", p.Span);
+            }
+
+            readParams.Add(new QueryParamSymbol(p.IsMutable, p.Name, TypeSymbol.FromName(p.TypeName), isRes, p.Span));
+        }
+
+        _systems[sys.Name] = new SystemSymbol(sys.Name, queryParams, readParams, sys.Span);
 
         // System Body Scope
         var sysScope = new Scope(_currentScope);
         _currentScope = sysScope;
 
+        // Provide world variable in system scope
+        _currentScope.TryDeclare(new VariableSymbol("world", TypeSymbol.World, false, sys.Span));
+
         foreach (var qp in queryParams)
         {
             var varSym = new VariableSymbol(qp.ParameterName, qp.Type, qp.IsMutable, qp.Span);
+            _currentScope.TryDeclare(varSym);
+        }
+
+        foreach (var rp in readParams)
+        {
+            var varSym = new VariableSymbol(rp.ParameterName, rp.Type, rp.IsMutable, rp.Span);
             _currentScope.TryDeclare(varSym);
         }
 
@@ -598,7 +664,9 @@ public sealed class TypeChecker
 
         if (call.Callee.StartsWith("world_add_") ||
             call.Callee.StartsWith("world_remove_") ||
-            call.Callee.StartsWith("world_set_"))
+            call.Callee.StartsWith("world_set_") ||
+            call.Callee.StartsWith("world_emit_") ||
+            call.Callee == "world_swap_events")
         {
             return TypeSymbol.Void;
         }
@@ -658,6 +726,9 @@ public sealed class TypeChecker
             if (methodCall.MethodName.StartsWith("set_") ||
                 methodCall.MethodName.StartsWith("add_") ||
                 methodCall.MethodName.StartsWith("remove_") ||
+                methodCall.MethodName.StartsWith("emit_") ||
+                methodCall.MethodName == "emit" ||
+                methodCall.MethodName == "swap_events" ||
                 methodCall.MethodName == "sort_hierarchy")
             {
                 return TypeSymbol.Void;

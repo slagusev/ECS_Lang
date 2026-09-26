@@ -28,6 +28,12 @@ public sealed record StructDeclaration(
     SourceSpan Span
 ) : DeclarationNode(Span);
 
+public sealed record EventDeclaration(
+    string Name,
+    IReadOnlyList<FieldDefinition> Fields,
+    SourceSpan Span
+) : DeclarationNode(Span);
+
 public sealed record QueryParameter(
     bool IsMutable,
     string Name,
@@ -38,9 +44,13 @@ public sealed record QueryParameter(
 public sealed record SystemDeclaration(
     string Name,
     IReadOnlyList<QueryParameter> QueryParams,
+    IReadOnlyList<QueryParameter> ReadParams,
     BlockStatement Body,
     SourceSpan Span
-) : DeclarationNode(Span);
+) : DeclarationNode(Span)
+{
+    public bool IsEventSystem => ReadParams.Count > 0;
+}
 
 public sealed record FunctionDeclaration(
     string Name,
@@ -61,6 +71,8 @@ public sealed record ParallelAction(IReadOnlyList<SystemCallAction> Systems, Sou
 public sealed record SyncAction(SourceSpan Span) : StageAction(Span);
 
 public sealed record SortHierarchyAction(SourceSpan Span) : StageAction(Span);
+
+public sealed record SwapEventsAction(SourceSpan Span) : StageAction(Span);
 
 public sealed record StageDefinition(
     string Name,

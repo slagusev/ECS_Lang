@@ -220,7 +220,86 @@ public sealed class LlvmCodeGenerator
         var entryBB = sysFunc.AppendBasicBlock("entry");
         builder.PositionAtEnd(entryBB);
 
+        var worldAlloca = builder.BuildAlloca(worldPtrType, "world_alloca");
+        builder.BuildStore(worldParam, worldAlloca);
+
         var i8PtrType = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
+
+        if (sys.IsEventSystem)
+        {
+            var evParam = sys.ReadParams[0];
+            string evTypeName = evParam.TypeName;
+            int evBaseOffset = ecs.GetEventWorldOffset(evTypeName);
+            var evStructType = ecs.GetComponentStructType(evTypeName);
+            var evPtrType = LLVMTypeRef.CreatePointer(evStructType, 0);
+
+            var rCountSlot = builder.BuildStructGEP2(ecs.GetWorldStructType(), worldParam, (uint)(evBaseOffset + 0), "ev_rcount_slot");
+            var rDataSlot = builder.BuildStructGEP2(ecs.GetWorldStructType(), worldParam, (uint)(evBaseOffset + 2), "ev_rdata_slot");
+
+            var rCount = builder.BuildLoad2(context.Int32Type, rCountSlot, "ev_rcount");
+            var rDataRaw = builder.BuildLoad2(i8PtrType, rDataSlot, "ev_rdata_raw");
+            var rDataTyped = builder.BuildBitCast(rDataRaw, evPtrType, "ev_rdata_typed");
+
+            var evIdxAlloca = builder.BuildAlloca(context.Int32Type, "ev_idx");
+            builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), evIdxAlloca);
+
+            var evCondBB = sysFunc.AppendBasicBlock("ev_cond");
+            var evBodyBB = sysFunc.AppendBasicBlock("ev_body");
+            var evIncBB = sysFunc.AppendBasicBlock("ev_inc");
+            var evExitBB = sysFunc.AppendBasicBlock("ev_exit");
+
+            builder.BuildBr(evCondBB);
+
+            // ev_cond
+            builder.PositionAtEnd(evCondBB);
+            var curEvIdx = builder.BuildLoad2(context.Int32Type, evIdxAlloca, "cur_ev_idx");
+            var hasMoreEvs = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curEvIdx, rCount, "has_more_evs");
+            builder.BuildCondBr(hasMoreEvs, evBodyBB, evExitBB);
+
+            // ev_body
+            builder.PositionAtEnd(evBodyBB);
+            var evElemPtr = builder.BuildInBoundsGEP2(evStructType, rDataTyped, new[] { curEvIdx }, "ev_elem");
+
+            var evLocals = new Dictionary<string, LLVMValueRef>(StringComparer.Ordinal);
+            var evVarTypes = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            evLocals[evParam.Name] = evElemPtr;
+            evVarTypes[evParam.Name] = evTypeName;
+
+            evLocals["world"] = worldAlloca;
+            evVarTypes["world"] = "World";
+
+            // Bind any resources specified in read(...)
+            for (int r = 1; r < sys.ReadParams.Count; r++)
+            {
+                var rp = sys.ReadParams[r];
+                if (_typeChecker.Resources.ContainsKey(rp.TypeName))
+                {
+                    int resOffset = ecs.GetResourceOffset(rp.TypeName);
+                    var resSlot = builder.BuildStructGEP2(ecs.GetWorldStructType(), worldParam, (uint)resOffset, $"{rp.Name}_res_slot");
+                    evLocals[rp.Name] = resSlot;
+                    evVarTypes[rp.Name] = rp.TypeName;
+                }
+            }
+
+            CompileBlock(context, module, builder, sysFunc, sys.Body, evLocals, evVarTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+
+            if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
+            {
+                builder.BuildBr(evIncBB);
+            }
+
+            // ev_inc
+            builder.PositionAtEnd(evIncBB);
+            var nextEvIdx = builder.BuildAdd(curEvIdx, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "next_ev_idx");
+            builder.BuildStore(nextEvIdx, evIdxAlloca);
+            builder.BuildBr(evCondBB);
+
+            // ev_exit
+            builder.PositionAtEnd(evExitBB);
+            builder.BuildRetVoid();
+            return;
+        }
 
         // Compute required query component mask
         ulong requiredMask = 0;
@@ -300,6 +379,9 @@ public sealed class LlvmCodeGenerator
         var locals = new Dictionary<string, LLVMValueRef>(StringComparer.Ordinal);
         var varTypes = new Dictionary<string, string>(StringComparer.Ordinal);
 
+        locals["world"] = worldAlloca;
+        varTypes["world"] = "World";
+
         foreach (var qp in sys.QueryParams)
         {
             varTypes[qp.Name] = qp.TypeName;
@@ -359,6 +441,15 @@ public sealed class LlvmCodeGenerator
         var entryBB = pipeFunc.AppendBasicBlock("entry");
         builder.PositionAtEnd(entryBB);
 
+        // Automatically swap event buffers at start of pipeline execution only if no explicit swap_events is in the pipeline
+        bool hasExplicitSwap = pipe.Stages.Any(s => s.Actions.Any(a => a is SwapEventsAction));
+        var swapFuncInit = module.GetNamedFunction("world_swap_events");
+        if (!hasExplicitSwap && swapFuncInit.Handle != IntPtr.Zero)
+        {
+            var swapFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
+            builder.BuildCall2(swapFuncType, swapFuncInit, new[] { worldParam });
+        }
+
         foreach (var stage in pipe.Stages)
         {
             foreach (var action in stage.Actions)
@@ -392,6 +483,15 @@ public sealed class LlvmCodeGenerator
                     {
                         var sortFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
                         builder.BuildCall2(sortFuncType, sortFunc, new[] { worldParam });
+                    }
+                }
+                else if (action is SwapEventsAction)
+                {
+                    var swapFunc = module.GetNamedFunction("world_swap_events");
+                    if (swapFunc.Handle != IntPtr.Zero)
+                    {
+                        var swapFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
+                        builder.BuildCall2(swapFuncType, swapFunc, new[] { worldParam });
                     }
                 }
             }
@@ -761,6 +861,26 @@ public sealed class LlvmCodeGenerator
             case MethodCallExpression methodCall:
                 var targetVal = CompileExpression(context, module, builder, function, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                 string mTargetName = $"world_{methodCall.MethodName}";
+
+                if (methodCall.MethodName == "emit" && methodCall.Arguments.Count == 1)
+                {
+                    if (methodCall.Arguments[0] is CallExpression ctorCall)
+                    {
+                        mTargetName = $"world_emit_{ctorCall.Callee}";
+                        var ctorFunc = module.GetNamedFunction(mTargetName);
+                        if (ctorFunc.Handle != IntPtr.Zero)
+                        {
+                            var ctorArgs = new List<LLVMValueRef> { targetVal };
+                            foreach (var arg in ctorCall.Arguments)
+                            {
+                                ctorArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                            }
+                            var ctorFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(ctorFunc);
+                            return builder.BuildCall2(ctorFuncType, ctorFunc, ctorArgs.ToArray(), "");
+                        }
+                    }
+                }
+
                 var mFunc = module.GetNamedFunction(mTargetName);
                 if (mFunc.Handle == IntPtr.Zero)
                 {
@@ -838,7 +958,29 @@ public sealed class LlvmCodeGenerator
 
                         if (argType == TypeSymbol.String)
                         {
-                            if (addNewline)
+                            if (call.Arguments.Count > 1)
+                            {
+                                var printfArgs = new List<LLVMValueRef> { val };
+                                for (int i = 1; i < call.Arguments.Count; i++)
+                                {
+                                    var pArg = call.Arguments[i];
+                                    var pArgType = _typeChecker.GetNodeType(pArg);
+                                    var pVal = CompileExpression(context, module, builder, function, pArg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                                    if (pArgType.IsFloatingPoint)
+                                    {
+                                        pVal = builder.BuildFPExt(pVal, context.DoubleType, "f_to_d");
+                                    }
+                                    printfArgs.Add(pVal);
+                                }
+                                var res = builder.BuildCall2(printfType, printfFunc, printfArgs.ToArray(), "printf_call");
+                                if (addNewline)
+                                {
+                                    var nlStr = builder.BuildGlobalStringPtr("\n", "nl_s");
+                                    builder.BuildCall2(printfType, printfFunc, new[] { nlStr }, "printf_nl");
+                                }
+                                return res;
+                            }
+                            else if (addNewline)
                             {
                                 return builder.BuildCall2(putsType, putsFunc, new[] { val }, "puts_call");
                             }

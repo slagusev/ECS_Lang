@@ -33,6 +33,9 @@ public sealed class Lexer
         ["for"] = TokenType.For,
         ["in"] = TokenType.In,
         ["struct"] = TokenType.Struct,
+        ["event"] = TokenType.Event,
+        ["read"] = TokenType.Read,
+        ["swap_events"] = TokenType.SwapEvents,
         ["true"] = TokenType.True,
         ["false"] = TokenType.False,
     };

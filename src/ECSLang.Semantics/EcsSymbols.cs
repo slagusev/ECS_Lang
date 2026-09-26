@@ -22,6 +22,12 @@ public sealed record StructSymbol(
     SourceSpan Span
 );
 
+public sealed record EventSymbol(
+    string Name,
+    IReadOnlyList<ComponentFieldSymbol> Fields,
+    SourceSpan Span
+);
+
 public sealed record QueryParamSymbol(
     bool IsMutable,
     string ParameterName,
@@ -33,5 +39,9 @@ public sealed record QueryParamSymbol(
 public sealed record SystemSymbol(
     string Name,
     IReadOnlyList<QueryParamSymbol> QueryParams,
+    IReadOnlyList<QueryParamSymbol> ReadParams,
     SourceSpan Span
-);
+)
+{
+    public bool IsEventSystem => ReadParams.Count > 0;
+}
