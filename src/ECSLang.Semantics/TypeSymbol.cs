@@ -17,6 +17,27 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
     public bool IsNumeric => this == I32 || this == I64 || this == U32 || this == U64 || this == F32 || this == F64;
     public bool IsFloatingPoint => this == F32 || this == F64;
     public bool IsInteger => this == I32 || this == I64 || this == U32 || this == U64;
+    public bool IsArray => Name.StartsWith("[") && Name.EndsWith("]");
+
+    public bool TryGetArrayInfo(out TypeSymbol elementType, out int length)
+    {
+        if (IsArray)
+        {
+            var inner = Name.Substring(1, Name.Length - 2);
+            var parts = inner.Split(';');
+            if (parts.Length == 2 && int.TryParse(parts[1].Trim(), out int len))
+            {
+                elementType = FromName(parts[0].Trim());
+                length = len;
+                return true;
+            }
+        }
+        elementType = Unknown;
+        length = 0;
+        return false;
+    }
+
+    public static TypeSymbol CreateArray(TypeSymbol elem, int length) => new($"[{elem.Name}; {length}]", IsPrimitive: false);
 
     public static TypeSymbol FromName(string? name) => name switch
     {

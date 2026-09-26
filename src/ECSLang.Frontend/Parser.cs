@@ -66,6 +66,10 @@ public sealed class Parser
             {
                 declarations.Add(ParseEventDeclaration());
             }
+            else if (Check(TokenType.Enum))
+            {
+                declarations.Add(ParseEnumDeclaration());
+            }
             else if (Check(TokenType.System))
             {
                 declarations.Add(ParseSystemDeclaration());
@@ -84,6 +88,21 @@ public sealed class Parser
         return new ProgramNode(declarations, startSpan);
     }
 
+    private string ParseTypeAnnotation()
+    {
+        if (Check(TokenType.OpenBracket))
+        {
+            Advance(); // [
+            var elemType = ParseTypeAnnotation();
+            Match(TokenType.Semicolon, "Expected ';' between array element type and length.");
+            var lenTok = Match(TokenType.NumberLiteral, "Expected array length number.");
+            Match(TokenType.CloseBracket, "Expected ']' to close array type.");
+            return $"[{elemType}; {lenTok.Text}]";
+        }
+        var idTok = Match(TokenType.Identifier, "Expected type name.");
+        return idTok.Text;
+    }
+
     private ComponentDeclaration ParseComponentDeclaration()
     {
         var compTok = Match(TokenType.Component);
@@ -95,11 +114,11 @@ public sealed class Parser
         {
             var fieldName = Match(TokenType.Identifier, "Expected field name.");
             Match(TokenType.Colon, "Expected ':' after field name.");
-            var fieldType = Match(TokenType.Identifier, "Expected field type.");
+            var fieldType = ParseTypeAnnotation();
             if (Check(TokenType.Comma)) Advance();
             else if (Check(TokenType.Semicolon)) Advance();
 
-            fields.Add(new FieldDefinition(fieldName.Text, fieldType.Text, fieldName.Span));
+            fields.Add(new FieldDefinition(fieldName.Text, fieldType, fieldName.Span));
         }
 
         Match(TokenType.CloseBrace, "Expected '}' to close component body.");
@@ -117,11 +136,11 @@ public sealed class Parser
         {
             var fieldName = Match(TokenType.Identifier, "Expected field name.");
             Match(TokenType.Colon, "Expected ':' after field name.");
-            var fieldType = Match(TokenType.Identifier, "Expected field type.");
+            var fieldType = ParseTypeAnnotation();
             if (Check(TokenType.Comma)) Advance();
             else if (Check(TokenType.Semicolon)) Advance();
 
-            fields.Add(new FieldDefinition(fieldName.Text, fieldType.Text, fieldName.Span));
+            fields.Add(new FieldDefinition(fieldName.Text, fieldType, fieldName.Span));
         }
 
         Match(TokenType.CloseBrace, "Expected '}' to close struct body.");
@@ -139,11 +158,11 @@ public sealed class Parser
         {
             var fieldName = Match(TokenType.Identifier, "Expected field name.");
             Match(TokenType.Colon, "Expected ':' after field name.");
-            var fieldType = Match(TokenType.Identifier, "Expected field type.");
+            var fieldType = ParseTypeAnnotation();
             if (Check(TokenType.Comma)) Advance();
             else if (Check(TokenType.Semicolon)) Advance();
 
-            fields.Add(new FieldDefinition(fieldName.Text, fieldType.Text, fieldName.Span));
+            fields.Add(new FieldDefinition(fieldName.Text, fieldType, fieldName.Span));
         }
 
         Match(TokenType.CloseBrace, "Expected '}' to close resource body.");
@@ -161,15 +180,56 @@ public sealed class Parser
         {
             var fieldName = Match(TokenType.Identifier, "Expected field name.");
             Match(TokenType.Colon, "Expected ':' after field name.");
-            var fieldType = Match(TokenType.Identifier, "Expected field type.");
+            var fieldType = ParseTypeAnnotation();
             if (Check(TokenType.Comma)) Advance();
             else if (Check(TokenType.Semicolon)) Advance();
 
-            fields.Add(new FieldDefinition(fieldName.Text, fieldType.Text, fieldName.Span));
+            fields.Add(new FieldDefinition(fieldName.Text, fieldType, fieldName.Span));
         }
 
         Match(TokenType.CloseBrace, "Expected '}' to close event body.");
         return new EventDeclaration(nameTok.Text, fields, evTok.Span);
+    }
+
+    private EnumDeclaration ParseEnumDeclaration()
+    {
+        var enumTok = Match(TokenType.Enum);
+        var nameTok = Match(TokenType.Identifier, "Expected enum name after 'enum'.");
+        Match(TokenType.OpenBrace, "Expected '{' to start enum body.");
+
+        var members = new List<EnumMemberDefinition>();
+        int autoVal = 0;
+        while (!Check(TokenType.CloseBrace) && !Check(TokenType.EndOfFile))
+        {
+            var memName = Match(TokenType.Identifier, "Expected enum member name.");
+            int? val = null;
+            if (Check(TokenType.Equal))
+            {
+                Advance(); // =
+                var valTok = Match(TokenType.NumberLiteral, "Expected integer value after '='.");
+                if (int.TryParse(valTok.Text, out int parsedVal))
+                {
+                    val = parsedVal;
+                    autoVal = parsedVal + 1;
+                }
+                else
+                {
+                    _diagnostics.ReportError("Invalid integer value for enum member.", valTok.Span);
+                }
+            }
+            else
+            {
+                val = autoVal++;
+            }
+
+            if (Check(TokenType.Comma)) Advance();
+            else if (Check(TokenType.Semicolon)) Advance();
+
+            members.Add(new EnumMemberDefinition(memName.Text, val, memName.Span));
+        }
+
+        Match(TokenType.CloseBrace, "Expected '}' to close enum body.");
+        return new EnumDeclaration(nameTok.Text, members, enumTok.Span);
     }
 
     private SystemDeclaration ParseSystemDeclaration()
@@ -329,8 +389,8 @@ public sealed class Parser
             {
                 var paramName = Match(TokenType.Identifier, "Expected parameter name.");
                 Match(TokenType.Colon, "Expected ':' after parameter name.");
-                var paramType = Match(TokenType.Identifier, "Expected parameter type.");
-                parameters.Add(new FunctionParameter(paramName.Text, paramType.Text, paramName.Span));
+                var paramType = ParseTypeAnnotation();
+                parameters.Add(new FunctionParameter(paramName.Text, paramType, paramName.Span));
             } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
         }
         Match(TokenType.CloseParen, "Expected ')' after parameters.");
@@ -339,8 +399,7 @@ public sealed class Parser
         if (Check(TokenType.Colon))
         {
             Advance();
-            var typeToken = Match(TokenType.Identifier, "Expected return type after ':'.");
-            returnType = typeToken.Text;
+            returnType = ParseTypeAnnotation();
         }
 
         var body = ParseBlockStatement();
@@ -402,50 +461,50 @@ public sealed class Parser
             return ParseForStatement();
         }
 
-        // 5. Assignment or Expression statement
-        if (Check(TokenType.Identifier))
+        // 4.2 Match statement: match expr { pat => { ... } }
+        if (Check(TokenType.Match))
         {
-            // Lookahead for assignment: name = ... OR name.member = ... OR name += ...
-            if (Peek(1).Type is TokenType.Equal or TokenType.PlusEqual or TokenType.MinusEqual or TokenType.StarEqual or TokenType.SlashEqual)
-            {
-                var targetToken = Advance();
-                var opToken = Advance();
-                var op = opToken.Type switch
-                {
-                    TokenType.PlusEqual => AssignmentOperator.PlusAssign,
-                    TokenType.MinusEqual => AssignmentOperator.MinusAssign,
-                    TokenType.StarEqual => AssignmentOperator.MulAssign,
-                    TokenType.SlashEqual => AssignmentOperator.DivAssign,
-                    _ => AssignmentOperator.Assign
-                };
-
-                var value = ParseExpression();
-                Match(TokenType.Semicolon, "Expected ';' after assignment.");
-                return new AssignmentStatement(targetToken.Text, null, op, value, targetToken.Span);
-            }
-            else if (Peek(1).Type == TokenType.Dot && Peek(2).Type == TokenType.Identifier &&
-                     Peek(3).Type is TokenType.Equal or TokenType.PlusEqual or TokenType.MinusEqual or TokenType.StarEqual or TokenType.SlashEqual)
-            {
-                var targetToken = Advance();
-                Advance(); // dot
-                var memberToken = Advance();
-                var opToken = Advance();
-                var op = opToken.Type switch
-                {
-                    TokenType.PlusEqual => AssignmentOperator.PlusAssign,
-                    TokenType.MinusEqual => AssignmentOperator.MinusAssign,
-                    TokenType.StarEqual => AssignmentOperator.MulAssign,
-                    TokenType.SlashEqual => AssignmentOperator.DivAssign,
-                    _ => AssignmentOperator.Assign
-                };
-
-                var value = ParseExpression();
-                Match(TokenType.Semicolon, "Expected ';' after member assignment.");
-                return new AssignmentStatement(targetToken.Text, memberToken.Text, op, value, targetToken.Span);
-            }
+            return ParseMatchStatement();
         }
 
+        // 5. Assignment or Expression statement
         var expr = ParseExpression();
+        if (Current.Type is TokenType.Equal or TokenType.PlusEqual or TokenType.MinusEqual or TokenType.StarEqual or TokenType.SlashEqual)
+        {
+            var opToken = Advance();
+            var op = opToken.Type switch
+            {
+                TokenType.PlusEqual => AssignmentOperator.PlusAssign,
+                TokenType.MinusEqual => AssignmentOperator.MinusAssign,
+                TokenType.StarEqual => AssignmentOperator.MulAssign,
+                TokenType.SlashEqual => AssignmentOperator.DivAssign,
+                _ => AssignmentOperator.Assign
+            };
+
+            var value = ParseExpression();
+            Match(TokenType.Semicolon, "Expected ';' after assignment.");
+
+            if (expr is IdentifierExpression id)
+            {
+                return new AssignmentStatement(id.Name, null, null, op, value, id.Span);
+            }
+            if (expr is MemberAccessExpression mem && mem.Target is IdentifierExpression targetId)
+            {
+                return new AssignmentStatement(targetId.Name, mem.MemberName, null, op, value, mem.Span);
+            }
+            if (expr is IndexExpression idx && idx.Target is IdentifierExpression arrId)
+            {
+                return new AssignmentStatement(arrId.Name, null, idx.Index, op, value, idx.Span);
+            }
+            if (expr is IndexExpression idxMem && idxMem.Target is MemberAccessExpression memAcc && memAcc.Target is IdentifierExpression tid)
+            {
+                return new AssignmentStatement(tid.Name, memAcc.MemberName, idxMem.Index, op, value, idxMem.Span);
+            }
+
+            _diagnostics.ReportError("Invalid assignment target.", expr.Span);
+            return new AssignmentStatement("<invalid>", null, null, op, value, expr.Span);
+        }
+
         Match(TokenType.Semicolon, "Expected ';' after expression statement.");
         return new ExpressionStatement(expr, expr.Span);
     }
@@ -465,8 +524,7 @@ public sealed class Parser
         if (Check(TokenType.Colon))
         {
             Advance();
-            var typeTok = Match(TokenType.Identifier, "Expected type name after ':'.");
-            typeName = typeTok.Text;
+            typeName = ParseTypeAnnotation();
         }
 
         Match(TokenType.Equal, "Expected '=' in variable declaration.");
@@ -517,6 +575,26 @@ public sealed class Parser
         var endExpr = ParseExpression();
         var body = ParseBlockStatement();
         return new ForStatement(varName.Text, startExpr, endExpr, body, forTok.Span);
+    }
+
+    private MatchStatement ParseMatchStatement()
+    {
+        var matchTok = Match(TokenType.Match);
+        var scrutinee = ParseExpression();
+        Match(TokenType.OpenBrace, "Expected '{' after match expression.");
+
+        var arms = new List<MatchArm>();
+        while (!Check(TokenType.CloseBrace) && !Check(TokenType.EndOfFile))
+        {
+            var pat = ParseExpression();
+            Match(TokenType.FatArrow, "Expected '=>' after match pattern.");
+            var body = ParseBlockStatement();
+            arms.Add(new MatchArm(pat, body, pat.Span));
+            if (Check(TokenType.Comma)) Advance();
+        }
+
+        Match(TokenType.CloseBrace, "Expected '}' to close match body.");
+        return new MatchStatement(scrutinee, arms, matchTok.Span);
     }
 
     // Expression parsing with precedence
@@ -592,6 +670,13 @@ public sealed class Parser
                     expr = new MemberAccessExpression(expr, memberTok.Text, expr.Span);
                 }
             }
+            else if (Check(TokenType.OpenBracket))
+            {
+                Advance(); // [
+                var indexExpr = ParseExpression();
+                Match(TokenType.CloseBracket, "Expected ']' after array index.");
+                expr = new IndexExpression(expr, indexExpr, expr.Span);
+            }
             else
             {
                 break;
@@ -605,12 +690,33 @@ public sealed class Parser
     {
         var token = Current;
 
+        if (token.Type == TokenType.OpenBracket)
+        {
+            var openTok = Advance();
+            var elements = new List<ExpressionNode>();
+            if (!Check(TokenType.CloseBracket))
+            {
+                do
+                {
+                    elements.Add(ParseExpression());
+                } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+            }
+            Match(TokenType.CloseBracket, "Expected ']' to close array literal.");
+            return new ArrayLiteralExpression(elements, openTok.Span);
+        }
+
         if (token.Type == TokenType.OpenParen)
         {
             Advance();
             var expr = ParseExpression();
             Match(TokenType.CloseParen, "Expected ')' after parenthesized expression.");
             return expr;
+        }
+
+        if (token.Type == TokenType.Underscore)
+        {
+            Advance();
+            return new WildcardExpression(token.Span);
         }
 
         if (token.Type == TokenType.True)

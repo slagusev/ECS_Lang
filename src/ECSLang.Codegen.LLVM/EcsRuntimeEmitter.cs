@@ -1385,15 +1385,29 @@ public sealed class EcsRuntimeEmitter
         _builder.BuildRetVoid();
     }
 
-    private LLVMTypeRef MapType(string typeName) => typeName switch
+    private LLVMTypeRef MapType(string typeName)
     {
-        "f32" or "float" => _context.FloatType,
-        "f64" or "double" => _context.DoubleType,
-        "i64" or "u64" => _context.Int64Type,
-        "i32" or "u32" or "int" => _context.Int32Type,
-        "bool" => _context.Int1Type,
-        "string" or "str" => LLVMTypeRef.CreatePointer(_context.Int8Type, 0),
-        "World" or "world" => LLVMTypeRef.CreatePointer(_worldStructType, 0),
-        _ => _compStructTypes.TryGetValue(typeName, out var st) ? st : _context.Int32Type
-    };
+        if (typeName.StartsWith("[") && typeName.EndsWith("]"))
+        {
+            var inner = typeName.Substring(1, typeName.Length - 2);
+            var parts = inner.Split(';');
+            if (parts.Length == 2 && uint.TryParse(parts[1].Trim(), out uint len))
+            {
+                var elemType = MapType(parts[0].Trim());
+                return LLVMTypeRef.CreateArray(elemType, len);
+            }
+        }
+
+        return typeName switch
+        {
+            "f32" or "float" => _context.FloatType,
+            "f64" or "double" => _context.DoubleType,
+            "i64" or "u64" => _context.Int64Type,
+            "i32" or "u32" or "int" => _context.Int32Type,
+            "bool" => _context.Int1Type,
+            "string" or "str" => LLVMTypeRef.CreatePointer(_context.Int8Type, 0),
+            "World" or "world" => LLVMTypeRef.CreatePointer(_worldStructType, 0),
+            _ => _compStructTypes.TryGetValue(typeName, out var st) ? st : _context.Int32Type
+        };
+    }
 }

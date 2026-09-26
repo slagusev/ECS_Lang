@@ -38,18 +38,24 @@ public enum TokenType
     Event,
     Read,
     SwapEvents,
+    Enum,
+    Match,
 
     // Punctuation & Delimiters
     OpenParen,    // (
     CloseParen,   // )
     OpenBrace,    // {
     CloseBrace,   // }
+    OpenBracket,  // [
+    CloseBracket, // ]
     Colon,        // :
     ColonColon,   // ::
     Semicolon,    // ;
     Comma,        // ,
     Dot,          // .
     DotDot,       // ..
+    FatArrow,     // =>
+    Underscore,   // _
 
     // Operators
     Plus,         // +

@@ -1,0 +1,108 @@
+enum PlayerState {
+    Idle,
+    Walking,
+    Running,
+    Attacking = 10,
+    Dead
+}
+
+component Actor {
+    state: PlayerState,
+    health: i32
+}
+
+system ActorSystem {
+    query(mut a: Actor) {
+        println("Processing actor (health: %d)...", a.health);
+        match a.state {
+            PlayerState.Idle => {
+                println("-> Actor is Idle. Changing to Walking.");
+                a.state = PlayerState.Walking;
+            }
+            PlayerState.Walking => {
+                println("-> Actor is Walking. Changing to Attacking.");
+                a.state = PlayerState.Attacking;
+            }
+            PlayerState.Attacking => {
+                println("-> Actor is Attacking. Changing to Dead.");
+                a.state = PlayerState.Dead;
+            }
+            _ => {
+                println("-> Actor is in other state (Dead/Unknown).");
+            }
+        }
+    }
+}
+
+pipeline GamePipeline {
+    stage Update {
+        ActorSystem;
+    }
+}
+
+fn describe_score(score: i32) {
+    match score {
+        100 => {
+            println("Score: Perfect (100)!");
+        }
+        50 => {
+            println("Score: Average (50).");
+        }
+        _ => {
+            println("Score: Other (%d).", score);
+        }
+    }
+}
+
+fn main(): i32 {
+    println("=== Stage 11.2: Enums and Pattern Matching ===");
+
+    println("--- Test 1: Direct Enum match ---");
+    let mut s: PlayerState = PlayerState.Idle;
+    match s {
+        PlayerState.Idle => {
+            println("Matched: Idle");
+        }
+        _ => {
+            println("Matched: Not idle");
+        }
+    }
+
+    s = PlayerState.Attacking;
+    match s {
+        PlayerState.Idle => {
+            println("Matched: Idle");
+        }
+        PlayerState.Attacking => {
+            println("Matched: Attacking (explicit value 10)");
+        }
+        _ => {
+            println("Matched: Default");
+        }
+    }
+
+    println("--- Test 2: Integer match ---");
+    describe_score(100);
+    describe_score(50);
+    describe_score(42);
+
+    println("--- Test 3: Component with Enum in ECS Pipeline ---");
+    let mut world = ecs::create_world();
+    let hero = world.spawn();
+    world.add_Actor(hero, PlayerState.Idle, 100);
+
+    println("Tick 1:");
+    GamePipeline(world);
+
+    println("Tick 2:");
+    GamePipeline(world);
+
+    println("Tick 3:");
+    GamePipeline(world);
+
+    println("Tick 4:");
+    GamePipeline(world);
+
+    println("Enums and Match tests completed successfully!");
+    return 0;
+}

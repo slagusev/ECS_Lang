@@ -34,6 +34,7 @@ public sealed class TypeChecker
     private readonly Dictionary<string, ResourceSymbol> _resources = new(StringComparer.Ordinal);
     private readonly Dictionary<string, StructSymbol> _structs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, EventSymbol> _events = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, EnumSymbol> _enums = new(StringComparer.Ordinal);
     private readonly Dictionary<string, SystemSymbol> _systems = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FunctionDeclaration> _functions = new(StringComparer.Ordinal);
     private readonly List<PipelineDeclaration> _pipelines = new();
@@ -43,6 +44,7 @@ public sealed class TypeChecker
     public IReadOnlyDictionary<string, ResourceSymbol> Resources => _resources;
     public IReadOnlyDictionary<string, StructSymbol> Structs => _structs;
     public IReadOnlyDictionary<string, EventSymbol> Events => _events;
+    public IReadOnlyDictionary<string, EnumSymbol> Enums => _enums;
     public IReadOnlyDictionary<string, SystemSymbol> Systems => _systems;
     public IReadOnlyDictionary<string, FunctionDeclaration> Functions => _functions;
     public IReadOnlyList<PipelineDeclaration> Pipelines => _pipelines;
@@ -59,7 +61,7 @@ public sealed class TypeChecker
     {
         RegisterBuiltinComponents();
 
-        // Pass 1: Register all Components, Resources, Structs, Events, and Functions
+        // Pass 1: Register all Components, Resources, Structs, Events, Enums, and Functions
         foreach (var decl in program.Declarations)
         {
             if (decl is ComponentDeclaration comp)
@@ -77,6 +79,10 @@ public sealed class TypeChecker
             else if (decl is EventDeclaration ev)
             {
                 RegisterEvent(ev);
+            }
+            else if (decl is EnumDeclaration en)
+            {
+                RegisterEnum(en);
             }
             else if (decl is FunctionDeclaration fn)
             {
@@ -204,6 +210,26 @@ public sealed class TypeChecker
 
         // Also register as struct so constructor syntax Event(a, b) works
         _structs[ev.Name] = new StructSymbol(ev.Name, fields, ev.Span);
+    }
+
+    private void RegisterEnum(EnumDeclaration en)
+    {
+        if (_enums.ContainsKey(en.Name) || _components.ContainsKey(en.Name) || _resources.ContainsKey(en.Name) || _structs.ContainsKey(en.Name) || _events.ContainsKey(en.Name))
+        {
+            _diagnostics.ReportError($"Type '{en.Name}' is already defined.", en.Span);
+            return;
+        }
+
+        var members = new Dictionary<string, EnumMemberSymbol>(StringComparer.Ordinal);
+        foreach (var m in en.Members)
+        {
+            if (!members.TryAdd(m.Name, new EnumMemberSymbol(m.Name, m.Value ?? 0, m.Span)))
+            {
+                _diagnostics.ReportError($"Duplicate enum member '{m.Name}' in enum '{en.Name}'.", m.Span);
+            }
+        }
+
+        _enums[en.Name] = new EnumSymbol(en.Name, members, en.Span);
     }
 
     private void CheckSystem(SystemDeclaration sys)
@@ -388,6 +414,9 @@ public sealed class TypeChecker
             case ExpressionStatement exprStmt:
                 CheckExpression(exprStmt.Expression);
                 break;
+            case MatchStatement matchStmt:
+                CheckMatchStatement(matchStmt);
+                break;
             case BlockStatement block:
                 CheckBlock(block);
                 break;
@@ -438,11 +467,35 @@ public sealed class TypeChecker
             expectedType = GetMemberType(sym.Type, assign.MemberName, assign.Span);
         }
 
+        // If indexed assignment: target[index] = expr OR target.member[index] = expr
+        if (assign.Index != null)
+        {
+            var indexType = CheckExpression(assign.Index);
+            if (!indexType.IsInteger)
+            {
+                _diagnostics.ReportError("Array index must be an integer.", assign.Index.Span);
+            }
+
+            if (expectedType.TryGetArrayInfo(out var elemType, out _))
+            {
+                expectedType = elemType;
+            }
+            else
+            {
+                _diagnostics.ReportError($"Type '{expectedType.Name}' is not indexable.", assign.Span);
+            }
+        }
+
         var valType = CheckExpression(assign.Value);
         if (expectedType != TypeSymbol.Unknown && valType != TypeSymbol.Unknown && expectedType != valType)
         {
             _diagnostics.ReportError($"Cannot assign value of type '{valType.Name}' to '{assign.TargetName}{(assign.MemberName != null ? "." + assign.MemberName : "")}' of type '{expectedType.Name}'.", assign.Value.Span);
         }
+    }
+
+    public TypeSymbol GetMemberType(string targetTypeName, string memberName, SourceSpan span = default)
+    {
+        return GetMemberType(TypeSymbol.FromName(targetTypeName), memberName, span);
     }
 
     private TypeSymbol GetMemberType(TypeSymbol targetType, string memberName, SourceSpan span)
@@ -525,6 +578,40 @@ public sealed class TypeChecker
         _currentScope = _currentScope.Parent!;
     }
 
+    private void CheckMatchStatement(MatchStatement match)
+    {
+        var sType = CheckExpression(match.Scrutinee);
+        bool isEnum = _enums.ContainsKey(sType.Name);
+        if (!sType.IsInteger && !isEnum && sType != TypeSymbol.Unknown)
+        {
+            _diagnostics.ReportError($"Match expression must be an integer or enum type, got '{sType.Name}'.", match.Scrutinee.Span);
+        }
+
+        foreach (var arm in match.Arms)
+        {
+            if (arm.Pattern is not WildcardExpression)
+            {
+                var patType = CheckExpression(arm.Pattern);
+                if (isEnum)
+                {
+                    if (patType != TypeSymbol.Unknown && patType.Name != sType.Name)
+                    {
+                        _diagnostics.ReportError($"Pattern type '{patType.Name}' does not match enum type '{sType.Name}'.", arm.Pattern.Span);
+                    }
+                }
+                else
+                {
+                    if (patType != TypeSymbol.Unknown && !patType.IsInteger)
+                    {
+                        _diagnostics.ReportError($"Pattern type '{patType.Name}' is not a valid integer pattern.", arm.Pattern.Span);
+                    }
+                }
+            }
+
+            CheckBlock(arm.Body);
+        }
+    }
+
     public TypeSymbol CheckExpression(ExpressionNode expr)
     {
         var type = expr switch
@@ -538,11 +625,53 @@ public sealed class TypeChecker
             UnaryExpression un => CheckUnaryExpression(un),
             CallExpression call => CheckCallExpression(call),
             MethodCallExpression methodCall => CheckMethodCall(methodCall),
+            ArrayLiteralExpression arrLit => CheckArrayLiteral(arrLit),
+            IndexExpression idxExpr => CheckIndexExpression(idxExpr),
+            WildcardExpression => TypeSymbol.Unknown,
             _ => TypeSymbol.Unknown
         };
 
         _nodeTypes[expr] = type;
         return type;
+    }
+
+    private TypeSymbol CheckArrayLiteral(ArrayLiteralExpression arrLit)
+    {
+        if (arrLit.Elements.Count == 0)
+        {
+            return TypeSymbol.CreateArray(TypeSymbol.Unknown, 0);
+        }
+
+        var firstType = CheckExpression(arrLit.Elements[0]);
+        for (int i = 1; i < arrLit.Elements.Count; i++)
+        {
+            var elemType = CheckExpression(arrLit.Elements[i]);
+            if (firstType != TypeSymbol.Unknown && elemType != TypeSymbol.Unknown && firstType != elemType)
+            {
+                _diagnostics.ReportError($"Array element at index {i} has type '{elemType.Name}', expected '{firstType.Name}'.", arrLit.Elements[i].Span);
+            }
+        }
+
+        return TypeSymbol.CreateArray(firstType, arrLit.Elements.Count);
+    }
+
+    private TypeSymbol CheckIndexExpression(IndexExpression idxExpr)
+    {
+        var targetType = CheckExpression(idxExpr.Target);
+        var indexType = CheckExpression(idxExpr.Index);
+
+        if (!indexType.IsInteger)
+        {
+            _diagnostics.ReportError("Array index must be an integer.", idxExpr.Index.Span);
+        }
+
+        if (targetType.TryGetArrayInfo(out var elemType, out _))
+        {
+            return elemType;
+        }
+
+        _diagnostics.ReportError($"Type '{targetType.Name}' is not indexable.", idxExpr.Span);
+        return TypeSymbol.Unknown;
     }
 
     private TypeSymbol CheckIdentifier(IdentifierExpression ident)
@@ -558,6 +687,16 @@ public sealed class TypeChecker
 
     private TypeSymbol CheckMemberAccess(MemberAccessExpression mem)
     {
+        if (mem.Target is IdentifierExpression id && _enums.TryGetValue(id.Name, out var enumSym))
+        {
+            if (enumSym.Members.TryGetValue(mem.MemberName, out var memberSym))
+            {
+                return TypeSymbol.FromName(enumSym.Name);
+            }
+            _diagnostics.ReportError($"Enum '{enumSym.Name}' does not have member '{mem.MemberName}'.", mem.Span);
+            return TypeSymbol.Unknown;
+        }
+
         var targetType = CheckExpression(mem.Target);
         return GetMemberType(targetType, mem.MemberName, mem.Span);
     }

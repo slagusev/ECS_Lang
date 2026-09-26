@@ -34,6 +34,18 @@ public sealed record EventDeclaration(
     SourceSpan Span
 ) : DeclarationNode(Span);
 
+public sealed record EnumMemberDefinition(
+    string Name,
+    int? Value,
+    SourceSpan Span
+) : AstNode(Span);
+
+public sealed record EnumDeclaration(
+    string Name,
+    IReadOnlyList<EnumMemberDefinition> Members,
+    SourceSpan Span
+) : DeclarationNode(Span);
+
 public sealed record QueryParameter(
     bool IsMutable,
     string Name,
@@ -102,6 +114,7 @@ public sealed record VariableDeclarationStatement(
 public sealed record AssignmentStatement(
     string TargetName,
     string? MemberName,
+    ExpressionNode? Index,
     AssignmentOperator Op,
     ExpressionNode Value,
     SourceSpan Span
@@ -134,6 +147,18 @@ public sealed record ForStatement(
     ExpressionNode Start,
     ExpressionNode End,
     BlockStatement Body,
+    SourceSpan Span
+) : StatementNode(Span);
+
+public sealed record MatchArm(
+    ExpressionNode Pattern,
+    BlockStatement Body,
+    SourceSpan Span
+) : AstNode(Span);
+
+public sealed record MatchStatement(
+    ExpressionNode Scrutinee,
+    IReadOnlyList<MatchArm> Arms,
     SourceSpan Span
 ) : StatementNode(Span);
 
@@ -196,3 +221,16 @@ public sealed record StringLiteralExpression(string Value, SourceSpan Span) : Ex
 public sealed record NumberLiteralExpression(string RawValue, bool IsFloatingPoint, SourceSpan Span) : ExpressionNode(Span);
 
 public sealed record BooleanLiteralExpression(bool Value, SourceSpan Span) : ExpressionNode(Span);
+
+public sealed record ArrayLiteralExpression(
+    IReadOnlyList<ExpressionNode> Elements,
+    SourceSpan Span
+) : ExpressionNode(Span);
+
+public sealed record IndexExpression(
+    ExpressionNode Target,
+    ExpressionNode Index,
+    SourceSpan Span
+) : ExpressionNode(Span);
+
+public sealed record WildcardExpression(SourceSpan Span) : ExpressionNode(Span);

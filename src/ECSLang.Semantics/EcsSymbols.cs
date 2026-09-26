@@ -28,6 +28,14 @@ public sealed record EventSymbol(
     SourceSpan Span
 );
 
+public sealed record EnumMemberSymbol(string Name, int Value, SourceSpan Span);
+
+public sealed record EnumSymbol(
+    string Name,
+    IReadOnlyDictionary<string, EnumMemberSymbol> Members,
+    SourceSpan Span
+);
+
 public sealed record QueryParamSymbol(
     bool IsMutable,
     string ParameterName,

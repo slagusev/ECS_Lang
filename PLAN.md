@@ -212,9 +212,18 @@ fn main(): i32 {
   - Синтаксис `for i in start..end { ... }`.
   - Семантическая валидация целочисленных границ и локальной области видимости переменной цикла.
   - Генерация базовых блоков `for_cond`, `for_body`, `for_inc` и `for_exit` в LLVM IR.
-- [x] Сквозной тест: [`examples/functions_structs_for.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/functions_structs_for.ecs) — комплексная проверка пользовательских структур, функций, вычислений в циклах `for` и их оркестрации с изолированным ECS-миром.
-- [ ] Массивы и слайсы `[T; N]` и `[T]`.
-- [ ] Перечисления `enum` и сопоставление с образцом `match`.
+- [x] Массивы фиксированного размера `[T; N]`:
+  - Синтаксис типов `[T; N]` в компонентах, структурах, ресурсах, событиях, функциях и локальных переменных.
+  - Литералы массивов `[10, 20, 30]`.
+  - Индексация чтения `arr[i]`, `pos.items[i]` и мутации `arr[i] = val;`, `arr[i] += val;`, `pos.items[i] += val;`.
+  - Машинная генерация LLVM: плотные массивы `[N x T]`, вычисление адресов элементов через `InBoundsGEP2` без лишних копий.
+  - Сквозной тест: [`examples/arrays_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/arrays_test.ecs).
+- [x] Перечисления `enum` и сопоставление с образцом `match`:
+  - Декларации перечислений: `enum State { Idle, Running, Attacking = 10, Dead }`.
+  - Автоматическая и явная нумерация дискриминантов, 32-битное машинное представление.
+  - Конструкция `match` с сопоставлением по членам enum (`State.Idle => { ... }`), целочисленным константам (`100 => { ... }`) и веткой по умолчанию (`_ => { ... }`).
+  - Компиляция `match` в нативные таблицы переходов LLVM `switch` с $O(1)$ диспетчеризацией.
+  - Сквозной тест: [`examples/enums_match_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/enums_match_test.ecs).
 
 ### [x] Этап 12: Графика, окно и ввод (Raylib / Window Integration)
 - [x] Подключение библиотеки Raylib (C ABI, static `raylib.lib` под Windows x64) в `MsvcLinker` с динамическим UCRT (`msvcrt.lib`, `vcruntime.lib`, `ucrt.lib`) и Win32 подсистемами (`user32.lib`, `gdi32.lib`, `winmm.lib`, `shell32.lib`, `opengl32.lib`).

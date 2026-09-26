@@ -36,6 +36,8 @@ public sealed class Lexer
         ["event"] = TokenType.Event,
         ["read"] = TokenType.Read,
         ["swap_events"] = TokenType.SwapEvents,
+        ["enum"] = TokenType.Enum,
+        ["match"] = TokenType.Match,
         ["true"] = TokenType.True,
         ["false"] = TokenType.False,
     };
@@ -163,6 +165,8 @@ public sealed class Lexer
             }
 
             string ident = sb.ToString();
+            if (ident == "_")
+                return new Token(TokenType.Underscore, ident, new SourceSpan(_filePath, startLine, startCol, ident.Length));
             var type = Keywords.TryGetValue(ident, out var kwType) ? kwType : TokenType.Identifier;
             return new Token(type, ident, new SourceSpan(_filePath, startLine, startCol, ident.Length));
         }
@@ -213,6 +217,7 @@ public sealed class Lexer
         char next = Peek(1);
 
         if (ch == '=' && next == '=') { Advance(); Advance(); return new Token(TokenType.EqualEqual, "==", new SourceSpan(_filePath, startLine, startCol, 2)); }
+        if (ch == '=' && next == '>') { Advance(); Advance(); return new Token(TokenType.FatArrow, "=>", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == '!' && next == '=') { Advance(); Advance(); return new Token(TokenType.BangEqual, "!=", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == '<' && next == '=') { Advance(); Advance(); return new Token(TokenType.LessEqual, "<=", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == '>' && next == '=') { Advance(); Advance(); return new Token(TokenType.GreaterEqual, ">=", new SourceSpan(_filePath, startLine, startCol, 2)); }
@@ -233,6 +238,8 @@ public sealed class Lexer
             ')' => TokenType.CloseParen,
             '{' => TokenType.OpenBrace,
             '}' => TokenType.CloseBrace,
+            '[' => TokenType.OpenBracket,
+            ']' => TokenType.CloseBracket,
             ':' => TokenType.Colon,
             ';' => TokenType.Semicolon,
             ',' => TokenType.Comma,

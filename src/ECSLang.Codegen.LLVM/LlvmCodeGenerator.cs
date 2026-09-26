@@ -670,61 +670,65 @@ public sealed class LlvmCodeGenerator
                     {
                         var newVal = CompileExpression(context, module, builder, function, assign.Value, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
 
+                        LLVMValueRef destPtr;
                         if (assign.MemberName != null && varTypes.TryGetValue(assign.TargetName, out var targetTypeName))
                         {
-                            // Member assignment: pos.x = ... or pos.x += ...
                             var structType = ecs.GetComponentStructType(targetTypeName);
                             int fieldOffset = ecs.GetFieldOffset(targetTypeName, assign.MemberName);
                             var fieldGEP = builder.BuildStructGEP2(structType, targetPtr, (uint)fieldOffset, $"{assign.TargetName}_{assign.MemberName}_gep");
 
-                            if (assign.Op == AssignmentOperator.Assign)
+                            if (assign.Index != null)
                             {
-                                builder.BuildStore(newVal, fieldGEP);
+                                var memType = _typeChecker.GetMemberType(targetTypeName, assign.MemberName, assign.Span);
+                                var fieldArrType = MapType(context, memType.Name, ecs);
+                                var idxVal = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, assign.Index, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                                var zero = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                                destPtr = builder.BuildInBoundsGEP2(fieldArrType, fieldGEP, new[] { zero, idxVal }, $"{assign.TargetName}_{assign.MemberName}_elem_gep");
                             }
                             else
                             {
-                                var currentVal = builder.BuildLoad2(newVal.TypeOf, fieldGEP, "cur_fld");
-                                var resVal = assign.Op switch
-                                {
-                                    AssignmentOperator.PlusAssign => newVal.TypeOf == context.FloatType
-                                        ? builder.BuildFAdd(currentVal, newVal, "fadd")
-                                        : builder.BuildAdd(currentVal, newVal, "add"),
-                                    AssignmentOperator.MinusAssign => newVal.TypeOf == context.FloatType
-                                        ? builder.BuildFSub(currentVal, newVal, "fsub")
-                                        : builder.BuildSub(currentVal, newVal, "sub"),
-                                    AssignmentOperator.MulAssign => newVal.TypeOf == context.FloatType
-                                        ? builder.BuildFMul(currentVal, newVal, "fmul")
-                                        : builder.BuildMul(currentVal, newVal, "mul"),
-                                    AssignmentOperator.DivAssign => newVal.TypeOf == context.FloatType
-                                        ? builder.BuildFDiv(currentVal, newVal, "fdiv")
-                                        : builder.BuildSDiv(currentVal, newVal, "div"),
-                                    _ => newVal
-                                };
-                                builder.BuildStore(resVal, fieldGEP);
+                                destPtr = fieldGEP;
                             }
                         }
                         else
                         {
-                            // Regular variable assignment
-                            if (assign.Op == AssignmentOperator.Assign)
+                            if (assign.Index != null && varTypes.TryGetValue(assign.TargetName, out var arrTypeName))
                             {
-                                builder.BuildStore(newVal, targetPtr);
+                                var arrType = MapType(context, arrTypeName, ecs);
+                                var idxVal = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, assign.Index, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                                var zero = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                                destPtr = builder.BuildInBoundsGEP2(arrType, targetPtr, new[] { zero, idxVal }, $"{assign.TargetName}_elem_gep");
                             }
                             else
                             {
-                                var currentVal = builder.BuildLoad2(newVal.TypeOf, targetPtr, $"{assign.TargetName}_cur");
-                                var resVal = assign.Op switch
-                                {
-                                    AssignmentOperator.PlusAssign => newVal.TypeOf == context.FloatType
-                                        ? builder.BuildFAdd(currentVal, newVal, "fadd")
-                                        : builder.BuildAdd(currentVal, newVal, "add"),
-                                    AssignmentOperator.MinusAssign => newVal.TypeOf == context.FloatType
-                                        ? builder.BuildFSub(currentVal, newVal, "fsub")
-                                        : builder.BuildSub(currentVal, newVal, "sub"),
-                                    _ => newVal
-                                };
-                                builder.BuildStore(resVal, targetPtr);
+                                destPtr = targetPtr;
                             }
+                        }
+
+                        if (assign.Op == AssignmentOperator.Assign)
+                        {
+                            builder.BuildStore(newVal, destPtr);
+                        }
+                        else
+                        {
+                            var currentVal = builder.BuildLoad2(newVal.TypeOf, destPtr, "cur_val");
+                            var resVal = assign.Op switch
+                            {
+                                AssignmentOperator.PlusAssign => newVal.TypeOf == context.FloatType
+                                    ? builder.BuildFAdd(currentVal, newVal, "fadd")
+                                    : builder.BuildAdd(currentVal, newVal, "add"),
+                                AssignmentOperator.MinusAssign => newVal.TypeOf == context.FloatType
+                                    ? builder.BuildFSub(currentVal, newVal, "fsub")
+                                    : builder.BuildSub(currentVal, newVal, "sub"),
+                                AssignmentOperator.MulAssign => newVal.TypeOf == context.FloatType
+                                    ? builder.BuildFMul(currentVal, newVal, "fmul")
+                                    : builder.BuildMul(currentVal, newVal, "mul"),
+                                AssignmentOperator.DivAssign => newVal.TypeOf == context.FloatType
+                                    ? builder.BuildFDiv(currentVal, newVal, "fdiv")
+                                    : builder.BuildSDiv(currentVal, newVal, "div"),
+                                _ => newVal
+                            };
+                            builder.BuildStore(resVal, destPtr);
                         }
                     }
                     break;
@@ -849,11 +853,89 @@ public sealed class LlvmCodeGenerator
                     }
                     break;
 
+                case MatchStatement matchStmt:
+                    CompileMatchStatement(context, module, builder, function, matchStmt, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+                    break;
+
                 case ExpressionStatement exprStmt:
                     CompileExpression(context, module, builder, function, exprStmt.Expression, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     break;
             }
         }
+    }
+
+    private void CompileMatchStatement(
+        LLVMContextRef context,
+        LLVMModuleRef module,
+        LLVMBuilderRef builder,
+        LLVMValueRef function,
+        MatchStatement match,
+        Dictionary<string, LLVMValueRef> locals,
+        Dictionary<string, string> varTypes,
+        EcsRuntimeEmitter ecs,
+        LLVMTypeRef putsType,
+        LLVMValueRef putsFunc,
+        LLVMTypeRef printfType,
+        LLVMValueRef printfFunc,
+        bool isMain,
+        bool hasWaitKey)
+    {
+        var scrutineeVal = CompileExpression(context, module, builder, function, match.Scrutinee, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+        scrutineeVal = EnsureInt32(context, builder, scrutineeVal, "match_scrut");
+
+        var mergeBB = function.AppendBasicBlock("match_merge");
+        var defaultBB = function.AppendBasicBlock("match_default");
+
+        var nonWildcardArms = new List<(int Value, MatchArm Arm)>();
+        MatchArm? wildcardArm = null;
+
+        foreach (var arm in match.Arms)
+        {
+            if (arm.Pattern is WildcardExpression)
+            {
+                wildcardArm = arm;
+            }
+            else if (arm.Pattern is NumberLiteralExpression num)
+            {
+                int val = int.Parse(num.RawValue);
+                nonWildcardArms.Add((val, arm));
+            }
+            else if (arm.Pattern is MemberAccessExpression mem && mem.Target is IdentifierExpression id && _typeChecker.Enums.TryGetValue(id.Name, out var eSym))
+            {
+                if (eSym.Members.TryGetValue(mem.MemberName, out var mSym))
+                {
+                    nonWildcardArms.Add((mSym.Value, arm));
+                }
+            }
+        }
+
+        var switchInst = builder.BuildSwitch(scrutineeVal, defaultBB, (uint)nonWildcardArms.Count);
+
+        foreach (var (val, arm) in nonWildcardArms)
+        {
+            var armBB = function.AppendBasicBlock($"match_arm_{val}");
+            switchInst.AddCase(LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)val, false), armBB);
+
+            builder.PositionAtEnd(armBB);
+            CompileBlock(context, module, builder, function, arm.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+            if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
+            {
+                builder.BuildBr(mergeBB);
+            }
+        }
+
+        // Default / wildcard block
+        builder.PositionAtEnd(defaultBB);
+        if (wildcardArm != null)
+        {
+            CompileBlock(context, module, builder, function, wildcardArm.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+        }
+        if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
+        {
+            builder.BuildBr(mergeBB);
+        }
+
+        builder.PositionAtEnd(mergeBB);
     }
 
     private unsafe LLVMValueRef CompileExpression(
@@ -901,6 +983,13 @@ public sealed class LlvmCodeGenerator
                 return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
 
             case MemberAccessExpression mem:
+                if (mem.Target is IdentifierExpression enumId && _typeChecker.Enums.TryGetValue(enumId.Name, out var enumSym))
+                {
+                    if (enumSym.Members.TryGetValue(mem.MemberName, out var mSym))
+                    {
+                        return LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)mSym.Value, false);
+                    }
+                }
                 if (mem.Target is IdentifierExpression targetId && locals.TryGetValue(targetId.Name, out var structPtr))
                 {
                     if (varTypes.TryGetValue(targetId.Name, out var structTypeName))
@@ -913,6 +1002,53 @@ public sealed class LlvmCodeGenerator
                     }
                 }
                 return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
+
+            case ArrayLiteralExpression arrLit:
+                var arrTypeSym = _typeChecker.GetNodeType(arrLit);
+                var llvmArrType = MapType(context, arrTypeSym.Name, ecs);
+                var arrAlloca = CreateEntryBlockAlloca(context, function, llvmArrType, "arr_lit");
+                var zeroConst = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                for (int i = 0; i < arrLit.Elements.Count; i++)
+                {
+                    var elemVal = CompileExpression(context, module, builder, function, arrLit.Elements[i], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var idxVal = LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)i);
+                    var elemGEP = builder.BuildInBoundsGEP2(llvmArrType, arrAlloca, new[] { zeroConst, idxVal }, $"arr_elem_{i}");
+                    builder.BuildStore(elemVal, elemGEP);
+                }
+                return builder.BuildLoad2(llvmArrType, arrAlloca, "arr_lit_val");
+
+            case IndexExpression idxExpr:
+                var elemType = MapType(context, _typeChecker.GetNodeType(idxExpr).Name, ecs);
+                var indexVal = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, idxExpr.Index, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                var zeroIdx = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+
+                if (idxExpr.Target is IdentifierExpression idxTargetId && locals.TryGetValue(idxTargetId.Name, out var targetArrPtr))
+                {
+                    var arrTypeName = varTypes[idxTargetId.Name];
+                    var arrType = MapType(context, arrTypeName, ecs);
+                    var elemGEP = builder.BuildInBoundsGEP2(arrType, targetArrPtr, new[] { zeroIdx, indexVal }, $"{idxTargetId.Name}_idx_gep");
+                    return builder.BuildLoad2(elemType, elemGEP, $"{idxTargetId.Name}_elem_val");
+                }
+                else if (idxExpr.Target is MemberAccessExpression memAccess && memAccess.Target is IdentifierExpression memTargetId && locals.TryGetValue(memTargetId.Name, out var structPtr2))
+                {
+                    if (varTypes.TryGetValue(memTargetId.Name, out var structTypeName))
+                    {
+                        var structType = ecs.GetComponentStructType(structTypeName);
+                        int offset = ecs.GetFieldOffset(structTypeName, memAccess.MemberName);
+                        var fieldGEP = builder.BuildStructGEP2(structType, structPtr2, (uint)offset, $"{memTargetId.Name}_{memAccess.MemberName}");
+                        var memType = _typeChecker.GetMemberType(structTypeName, memAccess.MemberName, memAccess.Span);
+                        var fieldArrType = MapType(context, memType.Name, ecs);
+                        var elemGEP = builder.BuildInBoundsGEP2(fieldArrType, fieldGEP, new[] { zeroIdx, indexVal }, $"{memAccess.MemberName}_idx_gep");
+                        return builder.BuildLoad2(elemType, elemGEP, $"{memAccess.MemberName}_elem_val");
+                    }
+                }
+
+                // Fallback: evaluate target expression into temporary
+                var targetValExpr = CompileExpression(context, module, builder, function, idxExpr.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                var tmpArrAlloca = CreateEntryBlockAlloca(context, function, targetValExpr.TypeOf, "tmp_idx_arr");
+                builder.BuildStore(targetValExpr, tmpArrAlloca);
+                var fallbackElemGEP = builder.BuildInBoundsGEP2(targetValExpr.TypeOf, tmpArrAlloca, new[] { zeroIdx, indexVal }, "tmp_elem_gep");
+                return builder.BuildLoad2(elemType, fallbackElemGEP, "tmp_elem_val");
 
             case MethodCallExpression methodCall:
                 var targetVal = CompileExpression(context, module, builder, function, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
@@ -1358,6 +1494,17 @@ public sealed class LlvmCodeGenerator
 
     private LLVMTypeRef MapType(LLVMContextRef context, string? typeName, EcsRuntimeEmitter? ecs = null)
     {
+        if (typeName != null && typeName.StartsWith("[") && typeName.EndsWith("]"))
+        {
+            var inner = typeName.Substring(1, typeName.Length - 2);
+            var parts = inner.Split(';');
+            if (parts.Length == 2 && uint.TryParse(parts[1].Trim(), out uint len))
+            {
+                var elemType = MapType(context, parts[0].Trim(), ecs);
+                return LLVMTypeRef.CreateArray(elemType, len);
+            }
+        }
+
         if (typeName != null && _typeChecker.Structs.ContainsKey(typeName) && ecs != null)
         {
             return ecs.GetComponentStructType(typeName);
