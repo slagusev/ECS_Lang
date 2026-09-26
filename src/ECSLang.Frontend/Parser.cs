@@ -350,6 +350,12 @@ public sealed class Parser
                         Match(TokenType.Semicolon, "Expected ';' after swap_events.");
                         actions.Add(new SwapEventsAction(swapTok.Span));
                     }
+                    else if (Check(TokenType.ApplyCommands))
+                    {
+                        var appTok = Advance();
+                        Match(TokenType.Semicolon, "Expected ';' after apply_commands.");
+                        actions.Add(new ApplyCommandsAction(appTok.Span));
+                    }
                     else if (Check(TokenType.Identifier))
                     {
                         var sName = Advance();

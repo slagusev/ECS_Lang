@@ -40,6 +40,7 @@ public enum TokenType
     SwapEvents,
     Enum,
     Match,
+    ApplyCommands,
 
     // Punctuation & Delimiters
     OpenParen,    // (

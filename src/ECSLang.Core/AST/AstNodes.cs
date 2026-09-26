@@ -86,6 +86,8 @@ public sealed record SortHierarchyAction(SourceSpan Span) : StageAction(Span);
 
 public sealed record SwapEventsAction(SourceSpan Span) : StageAction(Span);
 
+public sealed record ApplyCommandsAction(SourceSpan Span) : StageAction(Span);
+
 public sealed record StageDefinition(
     string Name,
     IReadOnlyList<StageAction> Actions,

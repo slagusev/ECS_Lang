@@ -646,7 +646,80 @@ fn main(): i32 {
 
 ---
 
-## 13. Справочник по CLI компилятора
+## 13. Буфер команд и мутация мира (Command Buffer & Deferred Mutations)
+
+Для безопасного создания, удаления и изменения компонентов сущностей прямо во время выполнения систем в ECSLang реализован механизм **Command Buffer**. Команды мутации накапливаются во встроенном потокобезопасном буфере и пакетом применяются вне циклов итерации систем.
+
+### Получение текущей сущности (`Entity`)
+В сигнатуре запроса системы можно объявить параметр типа `Entity` (например, `e: Entity`). В цикле системы переменная `e` содержит целочисленный идентификатор текущей обрабатываемой сущности:
+
+```rust
+system LifetimeSystem {
+    query(e: Entity, mut lt: Lifetime, cmd: Commands) {
+        lt.seconds -= 0.016;
+        if lt.seconds <= 0.0 {
+            cmd.despawn(e);
+        }
+    }
+}
+```
+
+### Доступ к `Commands` в системах
+Параметр `cmd: Commands` объявляется в `query(...)` систем движения или в `read(...)` систем-наблюдателей:
+```rust
+system GunnerSystem {
+    query(e: Entity, pos: Position, cmd: Commands) {
+        if is_key_pressed(32) { // Space
+            let bullet = cmd.spawn();
+            cmd.add_Position(bullet, pos.x, pos.y);
+            cmd.add_Velocity(bullet, 500.0, 0.0);
+        }
+    }
+}
+
+system CollisionObserver {
+    read(col: CollisionEvent, cmd: Commands) {
+        cmd.despawn(col.target);
+    }
+}
+```
+
+### Методы `Commands`
+| Метод | Сигнатура | Описание |
+|---|---|---|
+| `cmd.spawn()` | `(): Entity` | Выделяет уникальный идентификатор сущности и планирует добавление в мир. Возвращает созданный `Entity`. |
+| `cmd.despawn(e)` | `(Entity): void` | Планирует гарантированное удаление сущности `e` из мира. |
+| `cmd.add_Comp(e, args...)` | `(Entity, ...): void` | Планирует добавление/обновление компонента `Comp` для сущности `e`. |
+| `cmd.set_Comp(e, args...)` | `(Entity, ...): void` | Синоним `add_Comp`. |
+| `cmd.add(e, Comp(...))` | `(Entity, Comp): void` | Планирует добавление компонента через синтаксис конструктора. |
+| `cmd.set(e, Comp(...))` | `(Entity, Comp): void` | Синоним `add(e, Comp(...))`. |
+| `cmd.remove_Comp(e)` | `(Entity): void` | Планирует удаление компонента `Comp` из сущности `e`. |
+
+### Применение команд в конвейере (`apply_commands`)
+Команды применяются автоматически на границах стадий конвейера, либо явно с помощью инструкции `apply_commands;`:
+
+```rust
+pipeline GamePipeline {
+    stage Simulation {
+        GunnerSystem;
+        LifetimeSystem;
+        apply_commands; // Немедленно применяет отложенные спавны и деспавны
+    }
+    stage Render {
+        RenderBulletsSystem;
+    }
+}
+```
+
+### Методы мутации в объекте `World`
+Для ручного управления сущностями вне систем доступны методы:
+- `world.spawn() -> Entity` — создать сущность и сразу поместить в пустой архетип 0.
+- `world.despawn(e: Entity)` — удалить сущность $O(1)$ методом swap-remove из текущей таблицы архетипа.
+- `world.apply_commands()` — принудительно применить все накопленные в буфере команды.
+
+---
+
+## 14. Справочник по CLI компилятора
 
 Сборка и запуск программ производятся с помощью интерфейса командной строки:
 

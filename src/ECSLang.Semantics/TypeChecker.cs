@@ -242,10 +242,17 @@ public sealed class TypeChecker
         {
             bool isComp = _components.ContainsKey(p.TypeName);
             bool isRes = _resources.ContainsKey(p.TypeName);
+            bool isEntity = p.TypeName == "Entity";
+            bool isCommands = p.TypeName == "Commands";
 
-            if (!isComp && !isRes)
+            if (!isComp && !isRes && !isEntity && !isCommands)
             {
-                _diagnostics.ReportError($"Unknown component or resource '{p.TypeName}' in query parameter.", p.Span);
+                _diagnostics.ReportError($"Unknown component, resource, or system parameter '{p.TypeName}' in query parameter.", p.Span);
+            }
+
+            if (isEntity && p.IsMutable)
+            {
+                _diagnostics.ReportError($"Entity parameter '{p.Name}' cannot be mutable.", p.Span);
             }
 
             if (!seenTypes.Add(p.TypeName))
@@ -261,14 +268,15 @@ public sealed class TypeChecker
             var p = sys.ReadParams[i];
             bool isEvent = _events.ContainsKey(p.TypeName);
             bool isRes = _resources.ContainsKey(p.TypeName);
+            bool isCommands = p.TypeName == "Commands";
 
             if (i == 0 && !isEvent)
             {
                 _diagnostics.ReportError($"First parameter in system 'read' must be an event type, but found '{p.TypeName}'.", p.Span);
             }
-            else if (i > 0 && !isRes)
+            else if (i > 0 && !isRes && !isCommands)
             {
-                _diagnostics.ReportError($"Additional parameters in system 'read' must be resource types, but found '{p.TypeName}'.", p.Span);
+                _diagnostics.ReportError($"Additional parameters in system 'read' must be resource types or Commands, but found '{p.TypeName}'.", p.Span);
             }
 
             if (!seenTypes.Add(p.TypeName))
@@ -431,7 +439,7 @@ public sealed class TypeChecker
             ? TypeSymbol.FromName(varDecl.TypeName)
             : initType;
 
-        if (varDecl.TypeName != null && initType != TypeSymbol.Unknown && explicitType != initType)
+        if (varDecl.TypeName != null && initType != TypeSymbol.Unknown && !AreTypesCompatible(explicitType, initType))
         {
             _diagnostics.ReportError(
                 $"Cannot initialize variable of type '{explicitType.Name}' with value of type '{initType.Name}'.",
@@ -443,6 +451,14 @@ public sealed class TypeChecker
         {
             _diagnostics.ReportError($"Variable '{varDecl.Name}' is already declared in this scope.", varDecl.Span);
         }
+    }
+
+    private static bool AreTypesCompatible(TypeSymbol expected, TypeSymbol actual)
+    {
+        if (expected == actual) return true;
+        if (expected == TypeSymbol.Unknown || actual == TypeSymbol.Unknown) return true;
+        if ((expected == TypeSymbol.Entity && actual == TypeSymbol.I32) || (expected == TypeSymbol.I32 && actual == TypeSymbol.Entity)) return true;
+        return false;
     }
 
     private void CheckAssignment(AssignmentStatement assign)
@@ -487,7 +503,7 @@ public sealed class TypeChecker
         }
 
         var valType = CheckExpression(assign.Value);
-        if (expectedType != TypeSymbol.Unknown && valType != TypeSymbol.Unknown && expectedType != valType)
+        if (expectedType != TypeSymbol.Unknown && valType != TypeSymbol.Unknown && !AreTypesCompatible(expectedType, valType))
         {
             _diagnostics.ReportError($"Cannot assign value of type '{valType.Name}' to '{assign.TargetName}{(assign.MemberName != null ? "." + assign.MemberName : "")}' of type '{expectedType.Name}'.", assign.Value.Span);
         }
@@ -858,11 +874,11 @@ public sealed class TypeChecker
             CheckExpression(arg);
         }
 
-        if (targetType == TypeSymbol.World)
+        if (targetType == TypeSymbol.World || targetType == TypeSymbol.Commands)
         {
             if (methodCall.MethodName == "spawn")
             {
-                return TypeSymbol.I32;
+                return TypeSymbol.Entity;
             }
 
             if (methodCall.MethodName.StartsWith("has_"))
@@ -874,6 +890,10 @@ public sealed class TypeChecker
                 methodCall.MethodName.StartsWith("add_") ||
                 methodCall.MethodName.StartsWith("remove_") ||
                 methodCall.MethodName.StartsWith("emit_") ||
+                methodCall.MethodName == "add" ||
+                methodCall.MethodName == "set" ||
+                methodCall.MethodName == "despawn" ||
+                methodCall.MethodName == "apply_commands" ||
                 methodCall.MethodName == "emit" ||
                 methodCall.MethodName == "swap_events" ||
                 methodCall.MethodName == "sort_hierarchy")

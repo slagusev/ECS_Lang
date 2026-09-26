@@ -54,12 +54,12 @@ public sealed record SystemSymbol(
     public bool IsEventSystem => ReadParams.Count > 0;
 
     public IReadOnlySet<string> MutComponents => QueryParams
-        .Where(q => !q.IsResource && q.IsMutable)
+        .Where(q => !q.IsResource && q.Type != TypeSymbol.Entity && q.Type != TypeSymbol.Commands && q.IsMutable)
         .Select(q => q.Type.Name)
         .ToHashSet();
 
     public IReadOnlySet<string> ConstComponents => QueryParams
-        .Where(q => !q.IsResource && !q.IsMutable)
+        .Where(q => !q.IsResource && q.Type != TypeSymbol.Entity && q.Type != TypeSymbol.Commands && !q.IsMutable)
         .Select(q => q.Type.Name)
         .ToHashSet();
 

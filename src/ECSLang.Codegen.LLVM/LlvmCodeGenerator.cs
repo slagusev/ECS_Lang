@@ -287,6 +287,11 @@ public sealed class LlvmCodeGenerator
                     evLocals[rp.Name] = resSlot;
                     evVarTypes[rp.Name] = rp.TypeName;
                 }
+                else if (rp.TypeName == "Commands")
+                {
+                    evLocals[rp.Name] = worldAlloca;
+                    evVarTypes[rp.Name] = "Commands";
+                }
             }
 
             CompileBlock(context, module, builder, sysFunc, sys.Body, evLocals, evVarTypes, ecs, putsType, putsFunc, printfType, printfFunc);
@@ -411,6 +416,22 @@ public sealed class LlvmCodeGenerator
                 int resOffset = ecs.GetResourceOffset(qp.TypeName);
                 var resSlot = builder.BuildStructGEP2(ecs.GetWorldStructType(), worldParam, (uint)resOffset, $"{qp.Name}_res_slot");
                 locals[qp.Name] = resSlot;
+            }
+            else if (qp.TypeName == "Entity")
+            {
+                var i32PtrType = LLVMTypeRef.CreatePointer(context.Int32Type, 0);
+                var entArrSlot = builder.BuildStructGEP2(ecs.GetArchetypeStructType(), curArchPtr, 3, $"{qp.Name}_arr_slot");
+                var entArrRaw = builder.BuildLoad2(i8PtrType, entArrSlot, $"{qp.Name}_arr_raw");
+                var entArrTyped = builder.BuildBitCast(entArrRaw, i32PtrType, $"{qp.Name}_arr_typed");
+                var entElemPtr = builder.BuildInBoundsGEP2(context.Int32Type, entArrTyped, new[] { curRow }, $"{qp.Name}_elem_ptr");
+                var curEntityVal = builder.BuildLoad2(context.Int32Type, entElemPtr, $"{qp.Name}_val");
+                var entAlloca = CreateEntryBlockAlloca(context, sysFunc, context.Int32Type, $"{qp.Name}_alloca");
+                builder.BuildStore(curEntityVal, entAlloca);
+                locals[qp.Name] = entAlloca;
+            }
+            else if (qp.TypeName == "Commands")
+            {
+                locals[qp.Name] = worldAlloca;
             }
         }
 
@@ -550,6 +571,23 @@ public sealed class LlvmCodeGenerator
                         builder.BuildCall2(swapFuncType, swapFunc, new[] { worldParam });
                     }
                 }
+                else if (action is ApplyCommandsAction)
+                {
+                    var applyFunc = module.GetNamedFunction("world_apply_commands");
+                    if (applyFunc.Handle != IntPtr.Zero)
+                    {
+                        var applyFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
+                        builder.BuildCall2(applyFuncType, applyFunc, new[] { worldParam });
+                    }
+                }
+            }
+
+            // Automatically apply any remaining deferred commands at stage boundary
+            var stageApplyFunc = module.GetNamedFunction("world_apply_commands");
+            if (stageApplyFunc.Handle != IntPtr.Zero)
+            {
+                var applyFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
+                builder.BuildCall2(applyFuncType, stageApplyFunc, new[] { worldParam });
             }
         }
 
@@ -1054,21 +1092,64 @@ public sealed class LlvmCodeGenerator
                 var targetVal = CompileExpression(context, module, builder, function, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                 string mTargetName = $"world_{methodCall.MethodName}";
 
-                if (methodCall.MethodName == "emit" && methodCall.Arguments.Count == 1)
+                bool isCommandsTarget = methodCall.Target is IdentifierExpression targetIdent &&
+                                       varTypes.TryGetValue(targetIdent.Name, out var tType) &&
+                                       tType == "Commands";
+
+                if (isCommandsTarget)
                 {
-                    if (methodCall.Arguments[0] is CallExpression ctorCall)
+                    if (methodCall.MethodName == "spawn")
                     {
-                        mTargetName = $"world_emit_{ctorCall.Callee}";
+                        mTargetName = "world_cmd_spawn";
+                    }
+                    else if (methodCall.MethodName == "despawn")
+                    {
+                        mTargetName = "world_cmd_despawn";
+                    }
+                    else if ((methodCall.MethodName == "add" || methodCall.MethodName == "set") &&
+                             methodCall.Arguments.Count == 2 &&
+                             methodCall.Arguments[1] is CallExpression ctorCall)
+                    {
+                        mTargetName = $"world_cmd_set_{ctorCall.Callee}";
                         var ctorFunc = module.GetNamedFunction(mTargetName);
                         if (ctorFunc.Handle != IntPtr.Zero)
                         {
-                            var ctorArgs = new List<LLVMValueRef> { targetVal };
+                            var ctorArgs = new List<LLVMValueRef>
+                            {
+                                targetVal,
+                                CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc)
+                            };
                             foreach (var arg in ctorCall.Arguments)
                             {
                                 ctorArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
                             }
                             var ctorFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(ctorFunc);
                             return builder.BuildCall2(ctorFuncType, ctorFunc, ctorArgs.ToArray(), "");
+                        }
+                    }
+                    else
+                    {
+                        mTargetName = $"world_cmd_{methodCall.MethodName}";
+                    }
+                }
+                else
+                {
+                    if (methodCall.MethodName == "emit" && methodCall.Arguments.Count == 1)
+                    {
+                        if (methodCall.Arguments[0] is CallExpression ctorCall)
+                        {
+                            mTargetName = $"world_emit_{ctorCall.Callee}";
+                            var ctorFunc = module.GetNamedFunction(mTargetName);
+                            if (ctorFunc.Handle != IntPtr.Zero)
+                            {
+                                var ctorArgs = new List<LLVMValueRef> { targetVal };
+                                foreach (var arg in ctorCall.Arguments)
+                                {
+                                    ctorArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                                }
+                                var ctorFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(ctorFunc);
+                                return builder.BuildCall2(ctorFuncType, ctorFunc, ctorArgs.ToArray(), "");
+                            }
                         }
                     }
                 }
@@ -1519,6 +1600,8 @@ public sealed class LlvmCodeGenerator
             "bool" => context.Int1Type,
             "string" or "str" => LLVMTypeRef.CreatePointer(context.Int8Type, 0),
             "World" or "world" => ecs != null ? LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0) : LLVMTypeRef.CreatePointer(context.Int8Type, 0),
+            "Commands" or "commands" => ecs != null ? LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0) : LLVMTypeRef.CreatePointer(context.Int8Type, 0),
+            "Entity" or "entity" => context.Int32Type,
             "void" => context.VoidType,
             _ => context.Int32Type
         };

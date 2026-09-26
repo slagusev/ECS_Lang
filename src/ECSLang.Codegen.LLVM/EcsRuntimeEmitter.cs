@@ -178,7 +178,11 @@ public sealed class EcsRuntimeEmitter
         // 4: entity_cap (i32)
         // 5: entity_arch (ptr to i32[])
         // 6: entity_row (ptr to i32[])
-        // 7+: embedded resource structs
+        // 7: cmd_count (i32)
+        // 8: cmd_cap (i32)
+        // 9: cmd_data (ptr to i8)
+        // 10: cmd_lock (ptr to i8, Win32 SRWLOCK)
+        // 11+: embedded resource structs
         // followed by event buffers (6 fields per event type):
         // read_count, read_cap, read_data, write_count, write_cap, write_data
         var worldFields = new List<LLVMTypeRef>
@@ -189,10 +193,14 @@ public sealed class EcsRuntimeEmitter
             _context.Int32Type,
             _context.Int32Type,
             i32PtrType,
-            i32PtrType
+            i32PtrType,
+            _context.Int32Type,
+            _context.Int32Type,
+            i8PtrType,
+            i8PtrType
         };
 
-        int resOffset = 7;
+        int resOffset = 11;
         foreach (var (resName, _) in _typeChecker.Resources)
         {
             worldFields.Add(_compStructTypes[resName]);
@@ -438,25 +446,36 @@ public sealed class EcsRuntimeEmitter
         _builder.BuildRet(typedWorld);
 
         // =========================================================================
-        // Helper: world_spawn(ptr world) -> i32 entity_id
+        // Win32 SRWLock (kernel32.lib)
         // =========================================================================
-        var spawnType = LLVMTypeRef.CreateFunction(_context.Int32Type, new[] { worldPtrType }, false);
-        var spawnFunc = _module.AddFunction("world_spawn", spawnType);
-        var spEntryBB = spawnFunc.AppendBasicBlock("entry");
-        _builder.PositionAtEnd(spEntryBB);
+        var srwFuncType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { i8PtrType }, false);
+        var srwAcquireFunc = _module.GetNamedFunction("AcquireSRWLockExclusive");
+        if (srwAcquireFunc.Handle == IntPtr.Zero)
+            srwAcquireFunc = _module.AddFunction("AcquireSRWLockExclusive", srwFuncType);
+        var srwReleaseFunc = _module.GetNamedFunction("ReleaseSRWLockExclusive");
+        if (srwReleaseFunc.Handle == IntPtr.Zero)
+            srwReleaseFunc = _module.AddFunction("ReleaseSRWLockExclusive", srwFuncType);
 
-        var worldParamSp = spawnFunc.GetParam(0);
-        var entCountSlotSp = _builder.BuildStructGEP2(_worldStructType, worldParamSp, 3, "ent_count_slot");
-        var entCapSlotSp = _builder.BuildStructGEP2(_worldStructType, worldParamSp, 4, "ent_cap_slot");
-        var entArchSlotSp = _builder.BuildStructGEP2(_worldStructType, worldParamSp, 5, "ent_arch_slot");
-        var entRowSlotSp = _builder.BuildStructGEP2(_worldStructType, worldParamSp, 6, "ent_row_slot");
+        // =========================================================================
+        // Helper: world_alloc_entity(ptr world) -> i32 entity_id
+        // =========================================================================
+        var allocEntType = LLVMTypeRef.CreateFunction(_context.Int32Type, new[] { worldPtrType }, false);
+        var allocEntFunc = _module.AddFunction("world_alloc_entity", allocEntType);
+        var alEntryBB = allocEntFunc.AppendBasicBlock("entry");
+        _builder.PositionAtEnd(alEntryBB);
 
-        var curEntCount = _builder.BuildLoad2(_context.Int32Type, entCountSlotSp, "cur_ent_count");
-        var curEntCap = _builder.BuildLoad2(_context.Int32Type, entCapSlotSp, "cur_ent_cap");
+        var worldParamAl = allocEntFunc.GetParam(0);
+        var entCountSlotAl = _builder.BuildStructGEP2(_worldStructType, worldParamAl, 3, "ent_count_slot");
+        var entCapSlotAl = _builder.BuildStructGEP2(_worldStructType, worldParamAl, 4, "ent_cap_slot");
+        var entArchSlotAl = _builder.BuildStructGEP2(_worldStructType, worldParamAl, 5, "ent_arch_slot");
+        var entRowSlotAl = _builder.BuildStructGEP2(_worldStructType, worldParamAl, 6, "ent_row_slot");
+
+        var curEntCount = _builder.BuildLoad2(_context.Int32Type, entCountSlotAl, "cur_ent_count");
+        var curEntCap = _builder.BuildLoad2(_context.Int32Type, entCapSlotAl, "cur_ent_cap");
         var needGrowEnt = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curEntCount, curEntCap, "need_grow_ent");
 
-        var growEntBB = spawnFunc.AppendBasicBlock("grow_ent");
-        var assignEntBB = spawnFunc.AppendBasicBlock("assign_ent");
+        var growEntBB = allocEntFunc.AppendBasicBlock("grow_ent");
+        var assignEntBB = allocEntFunc.AppendBasicBlock("assign_ent");
 
         _builder.BuildCondBr(needGrowEnt, growEntBB, assignEntBB);
 
@@ -464,55 +483,87 @@ public sealed class EcsRuntimeEmitter
         var entCapZero = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curEntCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "ent_cap_zero");
         var doubleEntCap = _builder.BuildMul(curEntCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 2), "double_ent_cap");
         var newEntCap = _builder.BuildSelect(entCapZero, LLVMValueRef.CreateConstInt(_context.Int32Type, 64), doubleEntCap, "new_ent_cap");
-        _builder.BuildStore(newEntCap, entCapSlotSp);
+        _builder.BuildStore(newEntCap, entCapSlotAl);
 
         var newEntCap64 = _builder.BuildZExt(newEntCap, _context.Int64Type, "new_ent_cap64");
         var bytesForEnt = _builder.BuildMul(newEntCap64, LLVMValueRef.CreateConstInt(_context.Int64Type, 4), "bytes_for_ent");
 
         // Realloc entity_arch
-        var curArchArrRaw = _builder.BuildLoad2(i32PtrType, entArchSlotSp, "cur_arch_arr");
+        var curArchArrRaw = _builder.BuildLoad2(i32PtrType, entArchSlotAl, "cur_arch_arr");
         var curArchArrI8 = _builder.BuildBitCast(curArchArrRaw, i8PtrType, "cur_arch_i8");
         var newArchArrI8 = _builder.BuildCall2(reallocType, reallocFunc, new[] { curArchArrI8, bytesForEnt }, "new_arch_i8");
         var newArchArrTyped = _builder.BuildBitCast(newArchArrI8, i32PtrType, "new_arch_typed");
-        _builder.BuildStore(newArchArrTyped, entArchSlotSp);
+        _builder.BuildStore(newArchArrTyped, entArchSlotAl);
 
         // Realloc entity_row
-        var curRowArrRaw = _builder.BuildLoad2(i32PtrType, entRowSlotSp, "cur_row_arr");
+        var curRowArrRaw = _builder.BuildLoad2(i32PtrType, entRowSlotAl, "cur_row_arr");
         var curRowArrI8 = _builder.BuildBitCast(curRowArrRaw, i8PtrType, "cur_row_i8");
         var newRowArrI8 = _builder.BuildCall2(reallocType, reallocFunc, new[] { curRowArrI8, bytesForEnt }, "new_row_i8");
         var newRowArrTyped = _builder.BuildBitCast(newRowArrI8, i32PtrType, "new_row_typed");
-        _builder.BuildStore(newRowArrTyped, entRowSlotSp);
+        _builder.BuildStore(newRowArrTyped, entRowSlotAl);
 
         _builder.BuildBr(assignEntBB);
 
         _builder.PositionAtEnd(assignEntBB);
-        var e = curEntCount;
+        var eAlloc = curEntCount;
         var nextEntCountVal = _builder.BuildAdd(curEntCount, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_ent_cnt");
-        _builder.BuildStore(nextEntCountVal, entCountSlotSp);
+        _builder.BuildStore(nextEntCountVal, entCountSlotAl);
 
-        // Add to Archetype 0 (empty archetype, mask 0)
-        var a0 = _builder.BuildCall2(getArchType, getArchFunc, new[] { worldParamSp, LLVMValueRef.CreateConstInt(_context.Int64Type, 0) }, "a0");
+        // Initialize newly allocated entity slot to unassigned (-1)
+        var curArchArrAlloc = _builder.BuildLoad2(i32PtrType, entArchSlotAl, "cur_arch_arr_alloc");
+        var eArchSlotAlloc = _builder.BuildInBoundsGEP2(_context.Int32Type, curArchArrAlloc, new[] { eAlloc }, "e_arch_slot_alloc");
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1)), eArchSlotAlloc);
 
-        var tablesSlotSp = _builder.BuildStructGEP2(_worldStructType, worldParamSp, 2, "tables_slot_sp");
-        var tablesBaseSp = _builder.BuildLoad2(archPtrType, tablesSlotSp, "tables_sp");
-        var a0Ptr = _builder.BuildInBoundsGEP2(_archStructType, tablesBaseSp, new[] { a0 }, "a0_ptr");
+        var curRowArrAlloc = _builder.BuildLoad2(i32PtrType, entRowSlotAl, "cur_row_arr_alloc");
+        var eRowSlotAlloc = _builder.BuildInBoundsGEP2(_context.Int32Type, curRowArrAlloc, new[] { eAlloc }, "e_row_slot_alloc");
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1)), eRowSlotAlloc);
+
+        _builder.BuildRet(eAlloc);
+
+        // =========================================================================
+        // Helper: world_assign_a0(ptr world, i32 entity_id) -> void
+        // =========================================================================
+        var assignA0Type = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType, _context.Int32Type }, false);
+        var assignA0Func = _module.AddFunction("world_assign_a0", assignA0Type);
+        var a0EntryBB = assignA0Func.AppendBasicBlock("entry");
+        _builder.PositionAtEnd(a0EntryBB);
+
+        var wArgA0 = assignA0Func.GetParam(0);
+        var eArgA0 = assignA0Func.GetParam(1);
+
+        var archArrA0Slot = _builder.BuildStructGEP2(_worldStructType, wArgA0, 5, "arch_arr_a0_slot");
+        var archArrA0 = _builder.BuildLoad2(i32PtrType, archArrA0Slot, "arch_arr_a0");
+        var eArchSlotA0 = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrA0, new[] { eArgA0 }, "e_arch_slot_a0");
+        var curArchValA0 = _builder.BuildLoad2(_context.Int32Type, eArchSlotA0, "cur_arch_val_a0");
+        var isUnassigned = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curArchValA0, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_unassigned");
+
+        var doAssignBB = assignA0Func.AppendBasicBlock("do_assign");
+        var exitA0BB = assignA0Func.AppendBasicBlock("exit_a0");
+        _builder.BuildCondBr(isUnassigned, doAssignBB, exitA0BB);
+
+        _builder.PositionAtEnd(doAssignBB);
+        var a0 = _builder.BuildCall2(getArchType, getArchFunc, new[] { wArgA0, LLVMValueRef.CreateConstInt(_context.Int64Type, 0) }, "a0");
+
+        var tablesSlotA0 = _builder.BuildStructGEP2(_worldStructType, wArgA0, 2, "tables_slot_a0");
+        var tablesBaseA0 = _builder.BuildLoad2(archPtrType, tablesSlotA0, "tables_a0");
+        var a0Ptr = _builder.BuildInBoundsGEP2(_archStructType, tablesBaseA0, new[] { a0 }, "a0_ptr");
         var cntSlot0 = _builder.BuildStructGEP2(_archStructType, a0Ptr, 1, "cnt_slot0");
         var curCount0 = _builder.BuildLoad2(_context.Int32Type, cntSlot0, "cur_cnt0");
         var capSlot0 = _builder.BuildStructGEP2(_archStructType, a0Ptr, 2, "cap_slot0");
         var curCap0 = _builder.BuildLoad2(_context.Int32Type, capSlot0, "cur_cap0");
         var needGrow0 = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curCount0, curCap0, "need_grow0");
 
-        var grow0BB = spawnFunc.AppendBasicBlock("grow_a0");
-        var afterGrow0BB = spawnFunc.AppendBasicBlock("after_grow_a0");
+        var grow0BB = assignA0Func.AppendBasicBlock("grow_a0");
+        var afterGrow0BB = assignA0Func.AppendBasicBlock("after_grow_a0");
         _builder.BuildCondBr(needGrow0, grow0BB, afterGrow0BB);
 
         _builder.PositionAtEnd(grow0BB);
-        _builder.BuildCall2(growArchType, growArchFunc, new[] { worldParamSp, a0 }, "");
+        _builder.BuildCall2(growArchType, growArchFunc, new[] { wArgA0, a0 }, "");
         _builder.BuildBr(afterGrow0BB);
 
         _builder.PositionAtEnd(afterGrow0BB);
-        var tablesBaseSp2 = _builder.BuildLoad2(archPtrType, tablesSlotSp, "tables_sp2");
-        var a0Ptr2 = _builder.BuildInBoundsGEP2(_archStructType, tablesBaseSp2, new[] { a0 }, "a0_ptr2");
+        var tablesBaseA0_2 = _builder.BuildLoad2(archPtrType, tablesSlotA0, "tables_a0_2");
+        var a0Ptr2 = _builder.BuildInBoundsGEP2(_archStructType, tablesBaseA0_2, new[] { a0 }, "a0_ptr2");
         var cntSlot0_2 = _builder.BuildStructGEP2(_archStructType, a0Ptr2, 1, "cnt_slot0_2");
         var row = _builder.BuildLoad2(_context.Int32Type, cntSlot0_2, "row");
         var nextCount0 = _builder.BuildAdd(row, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_cnt0");
@@ -523,19 +574,271 @@ public sealed class EcsRuntimeEmitter
         var entRaw0 = _builder.BuildLoad2(i8PtrType, entSlot0, "ent_raw0");
         var entTyped0 = _builder.BuildBitCast(entRaw0, i32PtrType, "ent_typed0");
         var entElem0 = _builder.BuildInBoundsGEP2(_context.Int32Type, entTyped0, new[] { row }, "ent_elem0");
-        _builder.BuildStore(e, entElem0);
+        _builder.BuildStore(eArgA0, entElem0);
 
         // world.entity_arch[e] = a0
-        var archArrSp = _builder.BuildLoad2(i32PtrType, entArchSlotSp, "arch_arr_sp");
-        var eArchSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrSp, new[] { e }, "e_arch_slot");
-        _builder.BuildStore(a0, eArchSlot);
+        _builder.BuildStore(a0, eArchSlotA0);
 
         // world.entity_row[e] = row
-        var rowArrSp = _builder.BuildLoad2(i32PtrType, entRowSlotSp, "row_arr_sp");
-        var eRowSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrSp, new[] { e }, "e_row_slot");
-        _builder.BuildStore(row, eRowSlot);
+        var rowArrA0Slot = _builder.BuildStructGEP2(_worldStructType, wArgA0, 6, "row_arr_a0_slot");
+        var rowArrA0 = _builder.BuildLoad2(i32PtrType, rowArrA0Slot, "row_arr_a0");
+        var eRowSlotA0 = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrA0, new[] { eArgA0 }, "e_row_slot_a0");
+        _builder.BuildStore(row, eRowSlotA0);
+        _builder.BuildBr(exitA0BB);
 
-        _builder.BuildRet(e);
+        _builder.PositionAtEnd(exitA0BB);
+        _builder.BuildRetVoid();
+
+        // =========================================================================
+        // Helper: world_spawn(ptr world) -> i32 entity_id
+        // =========================================================================
+        var spawnType = LLVMTypeRef.CreateFunction(_context.Int32Type, new[] { worldPtrType }, false);
+        var spawnFunc = _module.AddFunction("world_spawn", spawnType);
+        var spEntryBB = spawnFunc.AppendBasicBlock("entry");
+        _builder.PositionAtEnd(spEntryBB);
+
+        var worldParamSp = spawnFunc.GetParam(0);
+        var eSpawn = _builder.BuildCall2(allocEntType, allocEntFunc, new[] { worldParamSp }, "e_spawn");
+        _builder.BuildCall2(assignA0Type, assignA0Func, new[] { worldParamSp, eSpawn }, "");
+        _builder.BuildRet(eSpawn);
+
+        // =========================================================================
+        // Helper: world_despawn(ptr world, i32 entity_id) -> void
+        // =========================================================================
+        var despawnType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType, _context.Int32Type }, false);
+        var despawnFunc = _module.AddFunction("world_despawn", despawnType);
+        var dsEntryBB = despawnFunc.AppendBasicBlock("entry");
+        _builder.PositionAtEnd(dsEntryBB);
+
+        var wArgDs = despawnFunc.GetParam(0);
+        var eArgDs = despawnFunc.GetParam(1);
+
+        var entCountSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, 3, "ent_count_slot_ds");
+        var totalEntsDs = _builder.BuildLoad2(_context.Int32Type, entCountSlotDs, "total_ents_ds");
+
+        var eNonNegDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, eArgDs, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "e_non_neg_ds");
+        var eInBoundsDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, eArgDs, totalEntsDs, "e_in_bounds_ds");
+        var isValidIdDs = _builder.BuildAnd(eNonNegDs, eInBoundsDs, "is_valid_id_ds");
+
+        var checkArchBB = despawnFunc.AppendBasicBlock("check_arch");
+        var dsExitBB = despawnFunc.AppendBasicBlock("ds_exit");
+        _builder.BuildCondBr(isValidIdDs, checkArchBB, dsExitBB);
+
+        _builder.PositionAtEnd(checkArchBB);
+        var entArchSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, 5, "ent_arch_slot_ds");
+        var entRowSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, 6, "ent_row_slot_ds");
+        var tablesSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, 2, "tables_slot_ds");
+
+        var archArrDs = _builder.BuildLoad2(i32PtrType, entArchSlotDs, "arch_arr_ds");
+        var eArchSlotDsInst = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrDs, new[] { eArgDs }, "e_arch_slot_ds_inst");
+        var curArchIdxDs = _builder.BuildLoad2(_context.Int32Type, eArchSlotDsInst, "cur_arch_idx_ds");
+
+        var isAliveDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curArchIdxDs, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_alive_ds");
+        var doDespawnBB = despawnFunc.AppendBasicBlock("do_despawn");
+        _builder.BuildCondBr(isAliveDs, doDespawnBB, dsExitBB);
+
+        _builder.PositionAtEnd(doDespawnBB);
+        var rowArrDs = _builder.BuildLoad2(i32PtrType, entRowSlotDs, "row_arr_ds");
+        var eRowSlotDsInst = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrDs, new[] { eArgDs }, "e_row_slot_ds_inst");
+        var curRowDs = _builder.BuildLoad2(_context.Int32Type, eRowSlotDsInst, "cur_row_ds");
+
+        var tablesBaseDs = _builder.BuildLoad2(archPtrType, tablesSlotDs, "tables_base_ds");
+        var curArchPtrDs = _builder.BuildInBoundsGEP2(_archStructType, tablesBaseDs, new[] { curArchIdxDs }, "cur_arch_ptr_ds");
+
+        var curCntSlotDs = _builder.BuildStructGEP2(_archStructType, curArchPtrDs, 1, "cur_cnt_slot_ds");
+        var curArchCountDs = _builder.BuildLoad2(_context.Int32Type, curCntSlotDs, "cur_arch_cnt_ds");
+        var lastRowDs = _builder.BuildSub(curArchCountDs, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "last_row_ds");
+        _builder.BuildStore(lastRowDs, curCntSlotDs);
+
+        var isLastRowDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curRowDs, lastRowDs, "is_last_row_ds");
+        var doSwapDsBB = despawnFunc.AppendBasicBlock("do_swap_ds");
+        var afterSwapDsBB = despawnFunc.AppendBasicBlock("after_swap_ds");
+        _builder.BuildCondBr(isLastRowDs, afterSwapDsBB, doSwapDsBB);
+
+        _builder.PositionAtEnd(doSwapDsBB);
+        // Move entity ID from lastRow to curRow
+        var curEntSlotDs = _builder.BuildStructGEP2(_archStructType, curArchPtrDs, 3, "cur_ent_slot_ds");
+        var curEntRawDs = _builder.BuildLoad2(i8PtrType, curEntSlotDs, "cur_ent_raw_ds");
+        var curEntTypedDs = _builder.BuildBitCast(curEntRawDs, i32PtrType, "cur_ent_typed_ds");
+        var lastEntElemDs = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntTypedDs, new[] { lastRowDs }, "last_ent_elem_ds");
+        var movedEDs = _builder.BuildLoad2(_context.Int32Type, lastEntElemDs, "moved_e_ds");
+        var curEntElemDs = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntTypedDs, new[] { curRowDs }, "cur_ent_elem_ds");
+        _builder.BuildStore(movedEDs, curEntElemDs);
+
+        // Copy all active components from lastRow to curRow
+        var curMaskSlotDs = _builder.BuildStructGEP2(_archStructType, curArchPtrDs, 0, "cur_mask_slot_ds");
+        var curMaskDs = _builder.BuildLoad2(_context.Int64Type, curMaskSlotDs, "cur_mask_ds");
+        var curColsArrDs = _builder.BuildStructGEP2(_archStructType, curArchPtrDs, 4, "cur_cols_arr_ds");
+
+        for (int c = 0; c < totalComps; c++)
+        {
+            var cName = compNames[c];
+            ulong cBit = 1UL << c;
+            ulong cSize = _compSizes[cName];
+            var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
+
+            var cAnd = _builder.BuildAnd(curMaskDs, cBitVal, $"has_sw_ds_{cName}");
+            var hasC = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, cAnd, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_has_sw_ds_{cName}");
+
+            var swapCBB = despawnFunc.AppendBasicBlock($"swap_ds_{cName}");
+            var skipSwCBB = despawnFunc.AppendBasicBlock($"skip_sw_ds_{cName}");
+            _builder.BuildCondBr(hasC, swapCBB, skipSwCBB);
+
+            _builder.PositionAtEnd(swapCBB);
+            var colSlot = _builder.BuildInBoundsGEP2(_colArrayType, curColsArrDs, new[]
+            {
+                LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)c)
+            }, $"sw_col_ds_{cName}");
+            var colRaw = _builder.BuildLoad2(i8PtrType, colSlot, $"sw_raw_ds_{cName}");
+            var compTyped = _builder.BuildBitCast(colRaw, LLVMTypeRef.CreatePointer(_compStructTypes[cName], 0), $"sw_typed_ds_{cName}");
+            var srcElem = _builder.BuildInBoundsGEP2(_compStructTypes[cName], compTyped, new[] { lastRowDs }, $"sw_src_ds_{cName}");
+            var dstElem = _builder.BuildInBoundsGEP2(_compStructTypes[cName], compTyped, new[] { curRowDs }, $"sw_dst_ds_{cName}");
+            var srcI8 = _builder.BuildBitCast(srcElem, i8PtrType, "sw_src_ds_i8");
+            var dstI8 = _builder.BuildBitCast(dstElem, i8PtrType, "sw_dst_ds_i8");
+            _builder.BuildCall2(memcpyType, memcpyFunc, new[] { dstI8, srcI8, LLVMValueRef.CreateConstInt(_context.Int64Type, cSize) }, "");
+            _builder.BuildBr(skipSwCBB);
+
+            _builder.PositionAtEnd(skipSwCBB);
+        }
+
+        // Update world.entity_row[movedEDs] = curRowDs
+        var movedERowSlotDs = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrDs, new[] { movedEDs }, "moved_e_row_slot_ds");
+        _builder.BuildStore(curRowDs, movedERowSlotDs);
+        _builder.BuildBr(afterSwapDsBB);
+
+        _builder.PositionAtEnd(afterSwapDsBB);
+        // Mark despawned: world.entity_arch[e] = -1, world.entity_row[e] = -1
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1)), eArchSlotDsInst);
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1)), eRowSlotDsInst);
+        _builder.BuildBr(dsExitBB);
+
+        _builder.PositionAtEnd(dsExitBB);
+        _builder.BuildRetVoid();
+
+        // =========================================================================
+        // Helper: world_cmd_ensure_cap(ptr world, i32 needed) -> void
+        // =========================================================================
+        var ensureCapType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType, _context.Int32Type }, false);
+        var ensureCapFunc = _module.AddFunction("world_cmd_ensure_cap", ensureCapType);
+        var ecEntryBB = ensureCapFunc.AppendBasicBlock("entry");
+        _builder.PositionAtEnd(ecEntryBB);
+
+        var wArgEc = ensureCapFunc.GetParam(0);
+        var neededArg = ensureCapFunc.GetParam(1);
+
+        var cmdCountSlotEc = _builder.BuildStructGEP2(_worldStructType, wArgEc, 7, "cmd_cnt_slot_ec");
+        var cmdCapSlotEc = _builder.BuildStructGEP2(_worldStructType, wArgEc, 8, "cmd_cap_slot_ec");
+        var cmdDataSlotEc = _builder.BuildStructGEP2(_worldStructType, wArgEc, 9, "cmd_data_slot_ec");
+
+        var curCmdCount = _builder.BuildLoad2(_context.Int32Type, cmdCountSlotEc, "cur_cmd_cnt");
+        var curCmdCap = _builder.BuildLoad2(_context.Int32Type, cmdCapSlotEc, "cur_cmd_cap");
+        var neededTotal = _builder.BuildAdd(curCmdCount, neededArg, "needed_total");
+        var needGrowCmd = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, neededTotal, curCmdCap, "need_grow_cmd");
+
+        var growCmdBB = ensureCapFunc.AppendBasicBlock("grow_cmd");
+        var ecExitBB = ensureCapFunc.AppendBasicBlock("ec_exit");
+        _builder.BuildCondBr(needGrowCmd, growCmdBB, ecExitBB);
+
+        _builder.PositionAtEnd(growCmdBB);
+        var doubleCmdCap = _builder.BuildMul(curCmdCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 2), "double_cmd_cap");
+        var atLeast1K = _builder.BuildSelect(
+            _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, doubleCmdCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 1024), "lt_1k"),
+            LLVMValueRef.CreateConstInt(_context.Int32Type, 1024),
+            doubleCmdCap,
+            "at_least_1k"
+        );
+        var finalCap = _builder.BuildSelect(
+            _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, atLeast1K, neededTotal, "lt_needed"),
+            neededTotal,
+            atLeast1K,
+            "final_cap"
+        );
+        _builder.BuildStore(finalCap, cmdCapSlotEc);
+
+        var finalCap64 = _builder.BuildZExt(finalCap, _context.Int64Type, "final_cap64");
+        var curCmdDataRaw = _builder.BuildLoad2(i8PtrType, cmdDataSlotEc, "cur_cmd_data");
+        var newCmdDataRaw = _builder.BuildCall2(reallocType, reallocFunc, new[] { curCmdDataRaw, finalCap64 }, "new_cmd_data");
+        _builder.BuildStore(newCmdDataRaw, cmdDataSlotEc);
+        _builder.BuildBr(ecExitBB);
+
+        _builder.PositionAtEnd(ecExitBB);
+        _builder.BuildRetVoid();
+
+        // =========================================================================
+        // Helper: world_cmd_spawn(ptr world) -> i32 entity_id
+        // =========================================================================
+        var cmdSpawnType = LLVMTypeRef.CreateFunction(_context.Int32Type, new[] { worldPtrType }, false);
+        var cmdSpawnFunc = _module.AddFunction("world_cmd_spawn", cmdSpawnType);
+        var csEntryBB = cmdSpawnFunc.AppendBasicBlock("entry");
+        _builder.PositionAtEnd(csEntryBB);
+
+        var wArgCs = cmdSpawnFunc.GetParam(0);
+        var lockSlotCs = _builder.BuildStructGEP2(_worldStructType, wArgCs, 10, "cmd_lock_slot_cs");
+        var lockPtrCs = _builder.BuildBitCast(lockSlotCs, i8PtrType, "lock_ptr_cs");
+        _builder.BuildCall2(srwFuncType, srwAcquireFunc, new[] { lockPtrCs }, "");
+
+        var eAllocCs = _builder.BuildCall2(allocEntType, allocEntFunc, new[] { wArgCs }, "e_alloc_cs");
+        _builder.BuildCall2(ensureCapType, ensureCapFunc, new[] { wArgCs, LLVMValueRef.CreateConstInt(_context.Int32Type, 8) }, "");
+
+        var cmdCountSlotCs = _builder.BuildStructGEP2(_worldStructType, wArgCs, 7, "cmd_cnt_slot_cs");
+        var cmdDataSlotCs = _builder.BuildStructGEP2(_worldStructType, wArgCs, 9, "cmd_data_slot_cs");
+        var curCntCs = _builder.BuildLoad2(_context.Int32Type, cmdCountSlotCs, "cur_cnt_cs");
+        var dataPtrCs = _builder.BuildLoad2(i8PtrType, cmdDataSlotCs, "data_ptr_cs");
+
+        var curCntCs64 = _builder.BuildZExt(curCntCs, _context.Int64Type, "cur_cnt_cs64");
+        var writePtrCs = _builder.BuildInBoundsGEP2(_context.Int8Type, dataPtrCs, new[] { curCntCs64 }, "write_ptr_cs");
+        var writePtrCsI32 = _builder.BuildBitCast(writePtrCs, i32PtrType, "write_ptr_cs_i32");
+
+        var opSlotCs = _builder.BuildInBoundsGEP2(_context.Int32Type, writePtrCsI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 0) }, "op_slot_cs");
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, 1), opSlotCs); // OP 1: SPAWN
+
+        var eSlotCs = _builder.BuildInBoundsGEP2(_context.Int32Type, writePtrCsI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 1) }, "e_slot_cs");
+        _builder.BuildStore(eAllocCs, eSlotCs);
+
+        var newCntCs = _builder.BuildAdd(curCntCs, LLVMValueRef.CreateConstInt(_context.Int32Type, 8), "new_cnt_cs");
+        _builder.BuildStore(newCntCs, cmdCountSlotCs);
+
+        _builder.BuildCall2(srwFuncType, srwReleaseFunc, new[] { lockPtrCs }, "");
+        _builder.BuildRet(eAllocCs);
+
+        // =========================================================================
+        // Helper: world_cmd_despawn(ptr world, i32 entity_id) -> void
+        // =========================================================================
+        var cmdDespawnType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType, _context.Int32Type }, false);
+        var cmdDespawnFunc = _module.AddFunction("world_cmd_despawn", cmdDespawnType);
+        var cdEntryBB = cmdDespawnFunc.AppendBasicBlock("entry");
+        _builder.PositionAtEnd(cdEntryBB);
+
+        var wArgCd = cmdDespawnFunc.GetParam(0);
+        var eArgCd = cmdDespawnFunc.GetParam(1);
+
+        var lockSlotCd = _builder.BuildStructGEP2(_worldStructType, wArgCd, 10, "cmd_lock_slot_cd");
+        var lockPtrCd = _builder.BuildBitCast(lockSlotCd, i8PtrType, "lock_ptr_cd");
+        _builder.BuildCall2(srwFuncType, srwAcquireFunc, new[] { lockPtrCd }, "");
+
+        _builder.BuildCall2(ensureCapType, ensureCapFunc, new[] { wArgCd, LLVMValueRef.CreateConstInt(_context.Int32Type, 8) }, "");
+
+        var cmdCountSlotCd = _builder.BuildStructGEP2(_worldStructType, wArgCd, 7, "cmd_cnt_slot_cd");
+        var cmdDataSlotCd = _builder.BuildStructGEP2(_worldStructType, wArgCd, 9, "cmd_data_slot_cd");
+        var curCntCd = _builder.BuildLoad2(_context.Int32Type, cmdCountSlotCd, "cur_cnt_cd");
+        var dataPtrCd = _builder.BuildLoad2(i8PtrType, cmdDataSlotCd, "data_ptr_cd");
+
+        var curCntCd64 = _builder.BuildZExt(curCntCd, _context.Int64Type, "cur_cnt_cd64");
+        var writePtrCd = _builder.BuildInBoundsGEP2(_context.Int8Type, dataPtrCd, new[] { curCntCd64 }, "write_ptr_cd");
+        var writePtrCdI32 = _builder.BuildBitCast(writePtrCd, i32PtrType, "write_ptr_cd_i32");
+
+        var opSlotCd = _builder.BuildInBoundsGEP2(_context.Int32Type, writePtrCdI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 0) }, "op_slot_cd");
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, 2), opSlotCd); // OP 2: DESPAWN
+
+        var eSlotCd = _builder.BuildInBoundsGEP2(_context.Int32Type, writePtrCdI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 1) }, "e_slot_cd");
+        _builder.BuildStore(eArgCd, eSlotCd);
+
+        var newCntCd = _builder.BuildAdd(curCntCd, LLVMValueRef.CreateConstInt(_context.Int32Type, 8), "new_cnt_cd");
+        _builder.BuildStore(newCntCd, cmdCountSlotCd);
+
+        _builder.BuildCall2(srwFuncType, srwReleaseFunc, new[] { lockPtrCd }, "");
+        _builder.BuildRetVoid();
 
         // =========================================================================
         // Helpers for each component: world_set_Comp / world_add_Comp / world_remove_Comp / world_has_Comp
@@ -576,6 +879,18 @@ public sealed class EcsRuntimeEmitter
                 // Load entity current archetype & row
                 var archArr = _builder.BuildLoad2(i32PtrType, entArchSlotSet, "arch_arr");
                 var entArchSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, archArr, new[] { eParam }, "ent_arch_slot");
+                var curArchIdxRaw = _builder.BuildLoad2(_context.Int32Type, entArchSlot, "cur_arch_idx_raw");
+
+                var isNegArch = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curArchIdxRaw, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_neg_arch");
+                var assignA0BB = setFunc.AppendBasicBlock("set_assign_a0");
+                var contSetBB = setFunc.AppendBasicBlock("set_cont");
+                _builder.BuildCondBr(isNegArch, assignA0BB, contSetBB);
+
+                _builder.PositionAtEnd(assignA0BB);
+                _builder.BuildCall2(assignA0Type, assignA0Func, new[] { worldParamSet, eParam }, "");
+                _builder.BuildBr(contSetBB);
+
+                _builder.PositionAtEnd(contSetBB);
                 var curArchIdx = _builder.BuildLoad2(_context.Int32Type, entArchSlot, "cur_arch_idx");
 
                 var rowArr = _builder.BuildLoad2(i32PtrType, entRowSlotSet, "row_arr");
@@ -996,6 +1311,12 @@ public sealed class EcsRuntimeEmitter
             var hasArchSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrHas, new[] { hasEParam }, "has_arch_slot");
             var curArchIdxHas = _builder.BuildLoad2(_context.Int32Type, hasArchSlot, "cur_arch_idx_has");
 
+            var isAliveHas = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curArchIdxHas, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_alive_has");
+            var checkMaskBB = hasFunc.AppendBasicBlock("check_mask");
+            var retFalseBB = hasFunc.AppendBasicBlock("ret_false");
+            _builder.BuildCondBr(isAliveHas, checkMaskBB, retFalseBB);
+
+            _builder.PositionAtEnd(checkMaskBB);
             var tablesBaseHas = _builder.BuildLoad2(archPtrType, tablesSlotHas, "tables_has");
             var archPtrHas = _builder.BuildInBoundsGEP2(_archStructType, tablesBaseHas, new[] { curArchIdxHas }, "arch_ptr_has");
             var maskSlotHas = _builder.BuildStructGEP2(_archStructType, archPtrHas, 0, "mask_slot_has");
@@ -1004,7 +1325,259 @@ public sealed class EcsRuntimeEmitter
             var bitAndHas = _builder.BuildAnd(archMaskHas, compBitVal, "bit_and_has");
             var resultHas = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, bitAndHas, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), "res_has");
             _builder.BuildRet(resultHas);
+
+            _builder.PositionAtEnd(retFalseBB);
+            _builder.BuildRet(LLVMValueRef.CreateConstInt(_context.Int1Type, 0));
+
+            // 4. world_cmd_set_Comp and world_cmd_add_Comp
+            foreach (var prefix in new[] { "world_cmd_set_", "world_cmd_add_" })
+            {
+                var paramTypes = new List<LLVMTypeRef> { worldPtrType, _context.Int32Type };
+                foreach (var f in compSym.Fields)
+                {
+                    paramTypes.Add(MapType(f.Type.Name));
+                }
+
+                var cmdSetFuncType = LLVMTypeRef.CreateFunction(_context.VoidType, paramTypes.ToArray(), false);
+                var cmdSetFunc = _module.AddFunction($"{prefix}{compName}", cmdSetFuncType);
+                var cmdSetBB = cmdSetFunc.AppendBasicBlock("entry");
+                _builder.PositionAtEnd(cmdSetBB);
+
+                var wArgCmd = cmdSetFunc.GetParam(0);
+                var eArgCmd = cmdSetFunc.GetParam(1);
+
+                var lockSlotCmd = _builder.BuildStructGEP2(_worldStructType, wArgCmd, 10, "cmd_lock_slot_cset");
+                var lockPtrCmd = _builder.BuildBitCast(lockSlotCmd, i8PtrType, "lock_ptr_cset");
+                _builder.BuildCall2(srwFuncType, srwAcquireFunc, new[] { lockPtrCmd }, "");
+
+                ulong neededBytes = 12 + compSize;
+                _builder.BuildCall2(ensureCapType, ensureCapFunc, new[] { wArgCmd, LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)neededBytes) }, "");
+
+                var cmdCountSlotCSet = _builder.BuildStructGEP2(_worldStructType, wArgCmd, 7, "cmd_cnt_slot_cset");
+                var cmdDataSlotCSet = _builder.BuildStructGEP2(_worldStructType, wArgCmd, 9, "cmd_data_slot_cset");
+                var curCntCSet = _builder.BuildLoad2(_context.Int32Type, cmdCountSlotCSet, "cur_cnt_cset");
+                var dataPtrCSet = _builder.BuildLoad2(i8PtrType, cmdDataSlotCSet, "data_ptr_cset");
+
+                var curCntCSet64 = _builder.BuildZExt(curCntCSet, _context.Int64Type, "cur_cnt_cset64");
+                var writePtrCSet = _builder.BuildInBoundsGEP2(_context.Int8Type, dataPtrCSet, new[] { curCntCSet64 }, "write_ptr_cset");
+                var writePtrCSetI32 = _builder.BuildBitCast(writePtrCSet, i32PtrType, "write_ptr_cset_i32");
+
+                var opSlotCSet = _builder.BuildInBoundsGEP2(_context.Int32Type, writePtrCSetI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 0) }, "op_slot_cset");
+                _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, 3), opSlotCSet); // OP 3: SET
+
+                var eSlotCSet = _builder.BuildInBoundsGEP2(_context.Int32Type, writePtrCSetI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 1) }, "e_slot_cset");
+                _builder.BuildStore(eArgCmd, eSlotCSet);
+
+                var compIdSlotCSet = _builder.BuildInBoundsGEP2(_context.Int32Type, writePtrCSetI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 2) }, "comp_id_slot_cset");
+                _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)k), compIdSlotCSet);
+
+                var payloadRaw = _builder.BuildInBoundsGEP2(_context.Int8Type, writePtrCSet, new[] { LLVMValueRef.CreateConstInt(_context.Int64Type, 12) }, "payload_raw");
+                var payloadTyped = _builder.BuildBitCast(payloadRaw, LLVMTypeRef.CreatePointer(compStructType, 0), "payload_typed");
+
+                for (int f = 0; f < compSym.Fields.Count; f++)
+                {
+                    var fArg = cmdSetFunc.GetParam((uint)(2 + f));
+                    var fSlot = _builder.BuildStructGEP2(compStructType, payloadTyped, (uint)f, $"f_slot_{f}");
+                    _builder.BuildStore(fArg, fSlot);
+                }
+
+                var newCntCSet = _builder.BuildAdd(curCntCSet, LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)neededBytes), "new_cnt_cset");
+                _builder.BuildStore(newCntCSet, cmdCountSlotCSet);
+
+                _builder.BuildCall2(srwFuncType, srwReleaseFunc, new[] { lockPtrCmd }, "");
+                _builder.BuildRetVoid();
+            }
+
+            // 5. world_cmd_remove_Comp
+            {
+                var cmdRemFuncType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType, _context.Int32Type }, false);
+                var cmdRemFunc = _module.AddFunction($"world_cmd_remove_{compName}", cmdRemFuncType);
+                var cmdRemBB = cmdRemFunc.AppendBasicBlock("entry");
+                _builder.PositionAtEnd(cmdRemBB);
+
+                var wArgRem = cmdRemFunc.GetParam(0);
+                var eArgRem = cmdRemFunc.GetParam(1);
+
+                var lockSlotRem = _builder.BuildStructGEP2(_worldStructType, wArgRem, 10, "cmd_lock_slot_crem");
+                var lockPtrRem = _builder.BuildBitCast(lockSlotRem, i8PtrType, "lock_ptr_crem");
+                _builder.BuildCall2(srwFuncType, srwAcquireFunc, new[] { lockPtrRem }, "");
+
+                _builder.BuildCall2(ensureCapType, ensureCapFunc, new[] { wArgRem, LLVMValueRef.CreateConstInt(_context.Int32Type, 12) }, "");
+
+                var cmdCountSlotCRem = _builder.BuildStructGEP2(_worldStructType, wArgRem, 7, "cmd_cnt_slot_crem");
+                var cmdDataSlotCRem = _builder.BuildStructGEP2(_worldStructType, wArgRem, 9, "cmd_data_slot_crem");
+                var curCntCRem = _builder.BuildLoad2(_context.Int32Type, cmdCountSlotCRem, "cur_cnt_crem");
+                var dataPtrCRem = _builder.BuildLoad2(i8PtrType, cmdDataSlotCRem, "data_ptr_crem");
+
+                var curCntCRem64 = _builder.BuildZExt(curCntCRem, _context.Int64Type, "cur_cnt_crem64");
+                var writePtrCRem = _builder.BuildInBoundsGEP2(_context.Int8Type, dataPtrCRem, new[] { curCntCRem64 }, "write_ptr_crem");
+                var writePtrCRemI32 = _builder.BuildBitCast(writePtrCRem, i32PtrType, "write_ptr_crem_i32");
+
+                var opSlotCRem = _builder.BuildInBoundsGEP2(_context.Int32Type, writePtrCRemI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 0) }, "op_slot_crem");
+                _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, 4), opSlotCRem); // OP 4: REMOVE
+
+                var eSlotCRem = _builder.BuildInBoundsGEP2(_context.Int32Type, writePtrCRemI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 1) }, "e_slot_crem");
+                _builder.BuildStore(eArgRem, eSlotCRem);
+
+                var compIdSlotCRem = _builder.BuildInBoundsGEP2(_context.Int32Type, writePtrCRemI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 2) }, "comp_id_slot_crem");
+                _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)k), compIdSlotCRem);
+
+                var newCntCRem = _builder.BuildAdd(curCntCRem, LLVMValueRef.CreateConstInt(_context.Int32Type, 12), "new_cnt_crem");
+                _builder.BuildStore(newCntCRem, cmdCountSlotCRem);
+
+                _builder.BuildCall2(srwFuncType, srwReleaseFunc, new[] { lockPtrRem }, "");
+                _builder.BuildRetVoid();
+            }
         }
+
+        // =========================================================================
+        // Helper: world_apply_commands(ptr world) -> void
+        // =========================================================================
+        var applyCmdType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType }, false);
+        var applyCmdFunc = _module.AddFunction("world_apply_commands", applyCmdType);
+        var acEntryBB = applyCmdFunc.AppendBasicBlock("entry");
+        _builder.PositionAtEnd(acEntryBB);
+
+        var wArgAc = applyCmdFunc.GetParam(0);
+        var cmdCountSlotAc = _builder.BuildStructGEP2(_worldStructType, wArgAc, 7, "cmd_cnt_slot_ac");
+        var cmdDataSlotAc = _builder.BuildStructGEP2(_worldStructType, wArgAc, 9, "cmd_data_slot_ac");
+
+        var totalCmdBytes = _builder.BuildLoad2(_context.Int32Type, cmdCountSlotAc, "total_cmd_bytes");
+        var hasCmds = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, totalCmdBytes, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "has_cmds");
+
+        var loopHeadBB = applyCmdFunc.AppendBasicBlock("ac_loop_head");
+        var acExitBB = applyCmdFunc.AppendBasicBlock("ac_exit");
+        _builder.BuildCondBr(hasCmds, loopHeadBB, acExitBB);
+
+        _builder.PositionAtEnd(loopHeadBB);
+        var offsetAlloca = _builder.BuildAlloca(_context.Int32Type, "ac_offset");
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, 0), offsetAlloca);
+
+        var loopCondBB = applyCmdFunc.AppendBasicBlock("ac_loop_cond");
+        var loopBodyBB = applyCmdFunc.AppendBasicBlock("ac_loop_body");
+        _builder.BuildBr(loopCondBB);
+
+        _builder.PositionAtEnd(loopCondBB);
+        var curOffset = _builder.BuildLoad2(_context.Int32Type, offsetAlloca, "cur_offset");
+        var hasMoreCmds = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curOffset, totalCmdBytes, "has_more_cmds");
+        _builder.BuildCondBr(hasMoreCmds, loopBodyBB, acExitBB);
+
+        _builder.PositionAtEnd(loopBodyBB);
+        var dataPtrAc = _builder.BuildLoad2(i8PtrType, cmdDataSlotAc, "data_ptr_ac");
+        var curOffset64 = _builder.BuildZExt(curOffset, _context.Int64Type, "cur_offset64");
+        var curCmdPtr = _builder.BuildInBoundsGEP2(_context.Int8Type, dataPtrAc, new[] { curOffset64 }, "cur_cmd_ptr");
+        var curCmdPtrI32 = _builder.BuildBitCast(curCmdPtr, i32PtrType, "cur_cmd_ptr_i32");
+
+        var opSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, curCmdPtrI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 0) }, "op_slot");
+        var opVal = _builder.BuildLoad2(_context.Int32Type, opSlot, "op_val");
+
+        var eSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, curCmdPtrI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 1) }, "e_slot");
+        var eVal = _builder.BuildLoad2(_context.Int32Type, eSlot, "e_val");
+
+        var opSpawnBB = applyCmdFunc.AppendBasicBlock("op_spawn");
+        var opDespawnBB = applyCmdFunc.AppendBasicBlock("op_despawn");
+        var opSetBB = applyCmdFunc.AppendBasicBlock("op_set");
+        var opRemoveBB = applyCmdFunc.AppendBasicBlock("op_remove");
+        var opDefaultBB = applyCmdFunc.AppendBasicBlock("op_default");
+
+        var switchInst = _builder.BuildSwitch(opVal, opDefaultBB, 4);
+        switchInst.AddCase(LLVMValueRef.CreateConstInt(_context.Int32Type, 1), opSpawnBB);
+        switchInst.AddCase(LLVMValueRef.CreateConstInt(_context.Int32Type, 2), opDespawnBB);
+        switchInst.AddCase(LLVMValueRef.CreateConstInt(_context.Int32Type, 3), opSetBB);
+        switchInst.AddCase(LLVMValueRef.CreateConstInt(_context.Int32Type, 4), opRemoveBB);
+
+        // OP 1: SPAWN
+        _builder.PositionAtEnd(opSpawnBB);
+        _builder.BuildCall2(assignA0Type, assignA0Func, new[] { wArgAc, eVal }, "");
+        var nextOff1 = _builder.BuildAdd(curOffset, LLVMValueRef.CreateConstInt(_context.Int32Type, 8), "next_off_1");
+        _builder.BuildStore(nextOff1, offsetAlloca);
+        _builder.BuildBr(loopCondBB);
+
+        // OP 2: DESPAWN
+        _builder.PositionAtEnd(opDespawnBB);
+        _builder.BuildCall2(despawnType, despawnFunc, new[] { wArgAc, eVal }, "");
+        var nextOff2 = _builder.BuildAdd(curOffset, LLVMValueRef.CreateConstInt(_context.Int32Type, 8), "next_off_2");
+        _builder.BuildStore(nextOff2, offsetAlloca);
+        _builder.BuildBr(loopCondBB);
+
+        // OP 3: SET
+        _builder.PositionAtEnd(opSetBB);
+        var compIdSlotSet = _builder.BuildInBoundsGEP2(_context.Int32Type, curCmdPtrI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 2) }, "comp_id_slot_set");
+        var compIdValSet = _builder.BuildLoad2(_context.Int32Type, compIdSlotSet, "comp_id_set");
+        var payloadPtrSet = _builder.BuildInBoundsGEP2(_context.Int8Type, curCmdPtr, new[] { LLVMValueRef.CreateConstInt(_context.Int64Type, 12) }, "payload_ptr_set");
+
+        var setDefBB = applyCmdFunc.AppendBasicBlock("set_def");
+        var setSwitch = _builder.BuildSwitch(compIdValSet, setDefBB, (uint)Math.Max(1, totalComps));
+
+        for (int k = 0; k < totalComps; k++)
+        {
+            var compName = compNames[k];
+            var compSym = _typeChecker.Components[compName];
+            ulong compSize = _compSizes[compName];
+            var compCaseBB = applyCmdFunc.AppendBasicBlock($"set_case_{compName}");
+            setSwitch.AddCase(LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)k), compCaseBB);
+
+            _builder.PositionAtEnd(compCaseBB);
+            var setFuncK = _module.GetNamedFunction($"world_set_{compName}");
+            var setFuncKType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(setFuncK);
+            var typedPayloadK = _builder.BuildBitCast(payloadPtrSet, LLVMTypeRef.CreatePointer(_compStructTypes[compName], 0), $"typed_payload_{compName}");
+
+            var setArgs = new List<LLVMValueRef> { wArgAc, eVal };
+            for (int f = 0; f < compSym.Fields.Count; f++)
+            {
+                var fSlot = _builder.BuildStructGEP2(_compStructTypes[compName], typedPayloadK, (uint)f, $"p_f_{f}");
+                var fVal = _builder.BuildLoad2(MapType(compSym.Fields[f].Type.Name), fSlot, $"f_val_{f}");
+                setArgs.Add(fVal);
+            }
+            _builder.BuildCall2(setFuncKType, setFuncK, setArgs.ToArray(), "");
+            var nextOffSetK = _builder.BuildAdd(curOffset, LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)(12 + compSize)), $"next_off_set_{compName}");
+            _builder.BuildStore(nextOffSetK, offsetAlloca);
+            _builder.BuildBr(loopCondBB);
+        }
+
+        _builder.PositionAtEnd(setDefBB);
+        var nextOffSetDef = _builder.BuildAdd(curOffset, LLVMValueRef.CreateConstInt(_context.Int32Type, 12), "next_off_set_def");
+        _builder.BuildStore(nextOffSetDef, offsetAlloca);
+        _builder.BuildBr(loopCondBB);
+
+        // OP 4: REMOVE
+        _builder.PositionAtEnd(opRemoveBB);
+        var compIdSlotRem = _builder.BuildInBoundsGEP2(_context.Int32Type, curCmdPtrI32, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 2) }, "comp_id_slot_rem");
+        var compIdValRem = _builder.BuildLoad2(_context.Int32Type, compIdSlotRem, "comp_id_rem");
+
+        var remDefBB = applyCmdFunc.AppendBasicBlock("rem_def");
+        var remSwitch = _builder.BuildSwitch(compIdValRem, remDefBB, (uint)Math.Max(1, totalComps));
+
+        for (int k = 0; k < totalComps; k++)
+        {
+            var compName = compNames[k];
+            var remCaseBB = applyCmdFunc.AppendBasicBlock($"rem_case_{compName}");
+            remSwitch.AddCase(LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)k), remCaseBB);
+
+            _builder.PositionAtEnd(remCaseBB);
+            var remFuncK = _module.GetNamedFunction($"world_remove_{compName}");
+            var remFuncKType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(remFuncK);
+            _builder.BuildCall2(remFuncKType, remFuncK, new[] { wArgAc, eVal }, "");
+            var nextOffRemK = _builder.BuildAdd(curOffset, LLVMValueRef.CreateConstInt(_context.Int32Type, 12), $"next_off_rem_{compName}");
+            _builder.BuildStore(nextOffRemK, offsetAlloca);
+            _builder.BuildBr(loopCondBB);
+        }
+
+        _builder.PositionAtEnd(remDefBB);
+        var nextOffRemDef = _builder.BuildAdd(curOffset, LLVMValueRef.CreateConstInt(_context.Int32Type, 12), "next_off_rem_def");
+        _builder.BuildStore(nextOffRemDef, offsetAlloca);
+        _builder.BuildBr(loopCondBB);
+
+        // Default Opcode Fallback
+        _builder.PositionAtEnd(opDefaultBB);
+        var nextOffDef = _builder.BuildAdd(curOffset, LLVMValueRef.CreateConstInt(_context.Int32Type, 4), "next_off_def");
+        _builder.BuildStore(nextOffDef, offsetAlloca);
+        _builder.BuildBr(loopCondBB);
+
+        // acExitBB: reset cmd_count = 0 and return
+        _builder.PositionAtEnd(acExitBB);
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, 0), cmdCountSlotAc);
+        _builder.BuildRetVoid();
 
         // =========================================================================
         // Helpers for resources: world_set_Time(ptr world, dt)
@@ -1407,6 +1980,8 @@ public sealed class EcsRuntimeEmitter
             "bool" => _context.Int1Type,
             "string" or "str" => LLVMTypeRef.CreatePointer(_context.Int8Type, 0),
             "World" or "world" => LLVMTypeRef.CreatePointer(_worldStructType, 0),
+            "Commands" or "commands" => LLVMTypeRef.CreatePointer(_worldStructType, 0),
+            "Entity" or "entity" => _context.Int32Type,
             _ => _compStructTypes.TryGetValue(typeName, out var st) ? st : _context.Int32Type
         };
     }

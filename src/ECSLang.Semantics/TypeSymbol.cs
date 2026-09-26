@@ -12,11 +12,13 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
     public static readonly TypeSymbol String = new("string");
     public static readonly TypeSymbol Void = new("void");
     public static readonly TypeSymbol World = new("World", IsPrimitive: false);
+    public static readonly TypeSymbol Commands = new("Commands", IsPrimitive: false);
+    public static readonly TypeSymbol Entity = new("Entity", IsPrimitive: true);
     public static readonly TypeSymbol Unknown = new("<unknown>");
 
     public bool IsNumeric => this == I32 || this == I64 || this == U32 || this == U64 || this == F32 || this == F64;
     public bool IsFloatingPoint => this == F32 || this == F64;
-    public bool IsInteger => this == I32 || this == I64 || this == U32 || this == U64;
+    public bool IsInteger => this == I32 || this == I64 || this == U32 || this == U64 || this == Entity;
     public bool IsArray => Name.StartsWith("[") && Name.EndsWith("]");
 
     public bool TryGetArrayInfo(out TypeSymbol elementType, out int length)
@@ -50,6 +52,8 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
         "bool" => Bool,
         "string" or "str" => String,
         "World" or "world" => World,
+        "Commands" or "commands" => Commands,
+        "Entity" or "entity" => Entity,
         "void" => Void,
         null => Unknown,
         _ => new TypeSymbol(name, IsPrimitive: false)

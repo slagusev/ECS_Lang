@@ -1,0 +1,65 @@
+// Stage 15 Multi-threaded Command Buffer Test:
+// Two parallel systems modifying the world concurrently via cmd: Commands
+
+component Particle {
+    id: i32,
+    ttl: i32
+}
+
+component Spawner {
+    count: i32
+}
+
+system ParticleWorkerA {
+    query(e: Entity, mut p: Particle, cmd: Commands) {
+        p.ttl = p.ttl - 1;
+        if p.ttl <= 0 {
+            cmd.despawn(e);
+        }
+    }
+}
+
+system SpawnerWorkerB {
+    query(e: Entity, mut s: Spawner, cmd: Commands) {
+        if s.count > 0 {
+            let p = cmd.spawn();
+            cmd.add_Particle(p, 999, 5);
+            s.count = s.count - 1;
+        }
+    }
+}
+
+pipeline ParallelCommandPipeline {
+    stage Simulation {
+        parallel {
+            ParticleWorkerA;
+            SpawnerWorkerB;
+        }
+        apply_commands;
+    }
+}
+
+fn main(): i32 {
+    println("=== Parallel Command Buffer Thread-Safety Test ===");
+
+    let mut world = ecs::create_world();
+
+    // Spawn 100 particles that will be updated/despawned
+    for i in 0..100 {
+        let p = world.spawn();
+        world.add_Particle(p, i, 1); // TTL = 1, will despawn on tick 1
+    }
+
+    // Spawn 10 spawners
+    for i in 0..10 {
+        let s = world.spawn();
+        world.add_Spawner(s, 5);
+    }
+
+    println("Ticking parallel pipeline across threads...");
+    ParallelCommandPipeline(world);
+    ParallelCommandPipeline(world);
+
+    println("=== Parallel Command Buffer Test Passed! ===");
+    return 0;
+}

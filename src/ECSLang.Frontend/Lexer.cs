@@ -38,6 +38,7 @@ public sealed class Lexer
         ["swap_events"] = TokenType.SwapEvents,
         ["enum"] = TokenType.Enum,
         ["match"] = TokenType.Match,
+        ["apply_commands"] = TokenType.ApplyCommands,
         ["true"] = TokenType.True,
         ["false"] = TokenType.False,
     };

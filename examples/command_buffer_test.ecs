@@ -1,0 +1,103 @@
+// Comprehensive Stage 15 Test: Deferred Command Buffer (Commands, apply_commands, spawn, despawn)
+
+component Position {
+    x: f32,
+    y: f32
+}
+
+component Velocity {
+    dx: f32,
+    dy: f32
+}
+
+component Bullet {
+    damage: i32
+}
+
+component Health {
+    hp: i32
+}
+
+// Spawner system: finds entities at x > 100.0 and spawns a bullet
+system BulletSpawner {
+    query(e: Entity, pos: Position, vel: Velocity, cmd: Commands) {
+        if pos.x > 100.0 {
+            println("BulletSpawner: firing bullet from entity %d at x=%f!", e, pos.x);
+            let b = cmd.spawn();
+            cmd.add_Position(b, pos.x, pos.y);
+            cmd.add_Velocity(b, 50.0, 0.0);
+            cmd.add_Bullet(b, 25);
+        }
+    }
+}
+
+// Movement system
+system MovementSystem {
+    query(e: Entity, mut pos: Position, vel: Velocity) {
+        pos.x = pos.x + vel.dx;
+        pos.y = pos.y + vel.dy;
+    }
+}
+
+// Cleaner system: despawns entities with hp <= 0
+system HealthReaper {
+    query(e: Entity, h: Health, cmd: Commands) {
+        if h.hp <= 0 {
+            println("HealthReaper: despawning dead entity %d with hp=%d!", e, h.hp);
+            cmd.despawn(e);
+        }
+    }
+}
+
+// Bullet Counter system
+system BulletReporter {
+    query(e: Entity, b: Bullet, pos: Position) {
+        println("Bullet active: entity %d, damage=%d at x=%f", e, b.damage, pos.x);
+    }
+}
+
+pipeline GamePipeline {
+    stage Update {
+        MovementSystem;
+        BulletSpawner;
+        HealthReaper;
+        apply_commands;
+    }
+    stage Render {
+        BulletReporter;
+    }
+}
+
+fn main(): i32 {
+    println("=== Command Buffer & Entity Mutation Test ===");
+
+    let mut world = ecs::create_world();
+
+    // Spawn 2 initial entities
+    // Entity 0: player that will move past 100.0 and trigger BulletSpawner
+    let p = world.spawn();
+    world.add_Position(p, 90.0, 10.0);
+    world.add_Velocity(p, 20.0, 0.0); // Next frame x will be 110.0 > 100.0
+
+    // Entity 1: an enemy with 0 HP that will be despawned by HealthReaper
+    let enemy = world.spawn();
+    world.add_Position(enemy, 50.0, 50.0);
+    world.add_Health(enemy, 0);
+
+    println("Initial entities spawned.");
+    println("Running pipeline tick 1...");
+    GamePipeline(world);
+
+    println("Checking if enemy was despawned...");
+    if world.has_Health(enemy) {
+        println("ERROR: Enemy still has Health!");
+    } else {
+        println("SUCCESS: Enemy entity was cleanly despawned by Command Buffer!");
+    }
+
+    println("Running pipeline tick 2...");
+    GamePipeline(world);
+
+    println("=== Command Buffer Test Finished Successfully ===");
+    return 0;
+}
