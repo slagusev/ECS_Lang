@@ -144,6 +144,24 @@ public sealed class LlvmCodeGenerator
         var freeType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType }, false);
         var freeFunc = module.AddFunction("free", freeType);
 
+        // C runtime string & formatting functions
+        var sprintfType = LLVMTypeRef.CreateFunction(context.Int32Type, new[] { i8PtrType, i8PtrType }, true);
+        module.AddFunction("sprintf", sprintfType);
+
+        var strlenType = LLVMTypeRef.CreateFunction(context.Int64Type, new[] { i8PtrType }, false);
+        module.AddFunction("strlen", strlenType);
+
+        var strcmpType = LLVMTypeRef.CreateFunction(context.Int32Type, new[] { i8PtrType, i8PtrType }, false);
+        module.AddFunction("strcmp", strcmpType);
+
+        // C runtime math functions
+        module.AddFunction("sqrtf", LLVMTypeRef.CreateFunction(context.FloatType, new[] { context.FloatType }, false));
+        module.AddFunction("sinf", LLVMTypeRef.CreateFunction(context.FloatType, new[] { context.FloatType }, false));
+        module.AddFunction("cosf", LLVMTypeRef.CreateFunction(context.FloatType, new[] { context.FloatType }, false));
+        module.AddFunction("floorf", LLVMTypeRef.CreateFunction(context.FloatType, new[] { context.FloatType }, false));
+        module.AddFunction("ceilf", LLVMTypeRef.CreateFunction(context.FloatType, new[] { context.FloatType }, false));
+        module.AddFunction("rand", LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false));
+
         // Raylib C ABI declarations
         module.AddFunction("InitWindow", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, i8PtrType }, false));
         module.AddFunction("WindowShouldClose", LLVMTypeRef.CreateFunction(context.Int1Type, Array.Empty<LLVMTypeRef>(), false));
@@ -1189,6 +1207,14 @@ public sealed class LlvmCodeGenerator
                 return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
 
             case MemberAccessExpression mem:
+                if (_typeChecker.GetNodeType(mem.Target) == TypeSymbol.String && mem.MemberName is "len" or "length")
+                {
+                    var strVal = CompileExpression(context, module, builder, function, mem.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var strlenFunc = module.GetNamedFunction("strlen");
+                    var strlenType = LLVMTypeRef.CreateFunction(context.Int64Type, new[] { i8PtrType }, false);
+                    var len64 = builder.BuildCall2(strlenType, strlenFunc, new[] { strVal }, "slen64");
+                    return builder.BuildTrunc(len64, context.Int32Type, "slen32");
+                }
                 if (mem.Target is IdentifierExpression enumId && _typeChecker.Enums.TryGetValue(enumId.Name, out var enumSym))
                 {
                     if (enumSym.Members.TryGetValue(mem.MemberName, out var mSym))
@@ -1198,7 +1224,7 @@ public sealed class LlvmCodeGenerator
                 }
                 if (mem.Target is IdentifierExpression targetId && locals.TryGetValue(targetId.Name, out var structPtr))
                 {
-                    if (varTypes.TryGetValue(targetId.Name, out var structTypeName))
+                    if (varTypes.TryGetValue(targetId.Name, out var structTypeName) && _typeChecker.Structs.ContainsKey(structTypeName))
                     {
                         var structType = ecs.GetComponentStructType(structTypeName);
                         int offset = ecs.GetFieldOffset(structTypeName, mem.MemberName);
@@ -1258,6 +1284,21 @@ public sealed class LlvmCodeGenerator
 
             case MethodCallExpression methodCall:
                 var targetVal = CompileExpression(context, module, builder, function, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                var targetType = _typeChecker.GetNodeType(methodCall.Target);
+
+                if (methodCall.MethodName == "to_string")
+                {
+                    return EmitToString(context, module, builder, targetVal, targetType, i8PtrType);
+                }
+
+                if (methodCall.MethodName is "len" or "length")
+                {
+                    var strlenFunc = module.GetNamedFunction("strlen");
+                    var strlenType = LLVMTypeRef.CreateFunction(context.Int64Type, new[] { i8PtrType }, false);
+                    var len64 = builder.BuildCall2(strlenType, strlenFunc, new[] { targetVal }, "slen64");
+                    return builder.BuildTrunc(len64, context.Int32Type, "slen32");
+                }
+
                 string mTargetName = $"world_{methodCall.MethodName}";
 
                 bool isCommandsTarget = methodCall.Target is IdentifierExpression targetIdent &&
@@ -1351,8 +1392,37 @@ public sealed class LlvmCodeGenerator
                 };
 
             case BinaryExpression bin:
+                var leftType = _typeChecker.GetNodeType(bin.Left);
+                var rightType = _typeChecker.GetNodeType(bin.Right);
                 var left = CompileExpression(context, module, builder, function, bin.Left, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                 var right = CompileExpression(context, module, builder, function, bin.Right, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+
+                // String operations
+                if (leftType == TypeSymbol.String || rightType == TypeSymbol.String)
+                {
+                    if (bin.Operator == BinaryOperator.Add)
+                    {
+                        var leftStr = EmitToString(context, module, builder, left, leftType, i8PtrType);
+                        var rightStr = EmitToString(context, module, builder, right, rightType, i8PtrType);
+                        var concatFn = GetOrCreateStringConcatFunction(context, module, i8PtrType);
+                        var concatFnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i8PtrType }, false);
+                        return builder.BuildCall2(concatFnType, concatFn, new[] { leftStr, rightStr }, "str_add");
+                    }
+                    if (bin.Operator == BinaryOperator.Equal)
+                    {
+                        var eqFn = GetOrCreateStringEq(context, module, i8PtrType);
+                        var eqFnType = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { i8PtrType, i8PtrType }, false);
+                        return builder.BuildCall2(eqFnType, eqFn, new[] { left, right }, "str_eq");
+                    }
+                    if (bin.Operator == BinaryOperator.NotEqual)
+                    {
+                        var eqFn = GetOrCreateStringEq(context, module, i8PtrType);
+                        var eqFnType = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { i8PtrType, i8PtrType }, false);
+                        var eq = builder.BuildCall2(eqFnType, eqFn, new[] { left, right }, "str_eq");
+                        return builder.BuildNot(eq, "str_neq");
+                    }
+                }
+
                 bool isFloat = left.TypeOf == context.FloatType || right.TypeOf == context.FloatType;
 
                 return bin.Operator switch
@@ -1467,6 +1537,150 @@ public sealed class LlvmCodeGenerator
                     var f = module.GetNamedFunction("GetTickCount");
                     var ft = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
                     return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "tick_count");
+                }
+                else if (call.Callee == "to_string")
+                {
+                    var arg = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var argType = _typeChecker.GetNodeType(call.Arguments[0]);
+                    return EmitToString(context, module, builder, arg, argType, i8PtrType);
+                }
+                else if (call.Callee == "str_concat")
+                {
+                    var arg1 = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var arg2 = CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var t1 = _typeChecker.GetNodeType(call.Arguments[0]);
+                    var t2 = _typeChecker.GetNodeType(call.Arguments[1]);
+                    var s1 = EmitToString(context, module, builder, arg1, t1, i8PtrType);
+                    var s2 = EmitToString(context, module, builder, arg2, t2, i8PtrType);
+                    var concatFn = GetOrCreateStringConcatFunction(context, module, i8PtrType);
+                    var concatFnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i8PtrType }, false);
+                    return builder.BuildCall2(concatFnType, concatFn, new[] { s1, s2 }, "str_concat");
+                }
+                else if (call.Callee is "str_len" or "string_length")
+                {
+                    var arg = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var strlenFunc = module.GetNamedFunction("strlen");
+                    var strlenType = LLVMTypeRef.CreateFunction(context.Int64Type, new[] { i8PtrType }, false);
+                    var len64 = builder.BuildCall2(strlenType, strlenFunc, new[] { arg }, "strlen_call");
+                    return builder.BuildTrunc(len64, context.Int32Type, "len_i32");
+                }
+                else if (call.Callee is "sqrt" or "sin" or "cos" or "floor" or "ceil")
+                {
+                    var arg = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var fVal = EnsureFloat(context, builder, arg);
+                    string cName = call.Callee switch
+                    {
+                        "sqrt" => "sqrtf",
+                        "sin" => "sinf",
+                        "cos" => "cosf",
+                        "floor" => "floorf",
+                        "ceil" => "ceilf",
+                        _ => "sqrtf"
+                    };
+                    var fn = module.GetNamedFunction(cName);
+                    var fnType = LLVMTypeRef.CreateFunction(context.FloatType, new[] { context.FloatType }, false);
+                    return builder.BuildCall2(fnType, fn, new[] { fVal }, $"{call.Callee}_call");
+                }
+                else if (call.Callee == "abs")
+                {
+                    var arg = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    if (arg.TypeOf == context.FloatType || arg.TypeOf == context.DoubleType)
+                    {
+                        var fVal = EnsureFloat(context, builder, arg);
+                        var zero = LLVMValueRef.CreateConstReal(context.FloatType, 0.0);
+                        var isNeg = builder.BuildFCmp(LLVMRealPredicate.LLVMRealOLT, fVal, zero, "is_neg_f");
+                        var negVal = builder.BuildFNeg(fVal, "fneg_val");
+                        return builder.BuildSelect(isNeg, negVal, fVal, "abs_res_f");
+                    }
+                    else
+                    {
+                        var iVal = EnsureInt32(context, builder, arg);
+                        var isNeg = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, iVal, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "is_neg");
+                        var negVal = builder.BuildNeg(iVal, "neg_val");
+                        return builder.BuildSelect(isNeg, negVal, iVal, "abs_res");
+                    }
+                }
+                else if (call.Callee == "min")
+                {
+                    var a = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var bVal = CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    if (a.TypeOf == context.FloatType || bVal.TypeOf == context.FloatType)
+                    {
+                        var fa = EnsureFloat(context, builder, a);
+                        var fb = EnsureFloat(context, builder, bVal);
+                        var cmp = builder.BuildFCmp(LLVMRealPredicate.LLVMRealOLT, fa, fb, "min_cmp");
+                        return builder.BuildSelect(cmp, fa, fb, "min_val");
+                    }
+                    else
+                    {
+                        var ia = EnsureInt32(context, builder, a);
+                        var ib = EnsureInt32(context, builder, bVal);
+                        var cmp = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, ia, ib, "min_cmp");
+                        return builder.BuildSelect(cmp, ia, ib, "min_val");
+                    }
+                }
+                else if (call.Callee == "max")
+                {
+                    var a = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var bVal = CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    if (a.TypeOf == context.FloatType || bVal.TypeOf == context.FloatType)
+                    {
+                        var fa = EnsureFloat(context, builder, a);
+                        var fb = EnsureFloat(context, builder, bVal);
+                        var cmp = builder.BuildFCmp(LLVMRealPredicate.LLVMRealOGT, fa, fb, "max_cmp");
+                        return builder.BuildSelect(cmp, fa, fb, "max_val");
+                    }
+                    else
+                    {
+                        var ia = EnsureInt32(context, builder, a);
+                        var ib = EnsureInt32(context, builder, bVal);
+                        var cmp = builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, ia, ib, "max_cmp");
+                        return builder.BuildSelect(cmp, ia, ib, "max_val");
+                    }
+                }
+                else if (call.Callee == "clamp")
+                {
+                    var valArg = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var minArg = CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var maxArg = CompileExpression(context, module, builder, function, call.Arguments[2], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    if (valArg.TypeOf == context.FloatType || minArg.TypeOf == context.FloatType || maxArg.TypeOf == context.FloatType)
+                    {
+                        var fv = EnsureFloat(context, builder, valArg);
+                        var fmin = EnsureFloat(context, builder, minArg);
+                        var fmax = EnsureFloat(context, builder, maxArg);
+                        var cmpMin = builder.BuildFCmp(LLVMRealPredicate.LLVMRealOLT, fv, fmin, "cmp_min");
+                        var clamp1 = builder.BuildSelect(cmpMin, fmin, fv, "clamp1");
+                        var cmpMax = builder.BuildFCmp(LLVMRealPredicate.LLVMRealOGT, clamp1, fmax, "cmp_max");
+                        return builder.BuildSelect(cmpMax, fmax, clamp1, "clamp_res");
+                    }
+                    else
+                    {
+                        var iv = EnsureInt32(context, builder, valArg);
+                        var imin = EnsureInt32(context, builder, minArg);
+                        var imax = EnsureInt32(context, builder, maxArg);
+                        var cmpMin = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, iv, imin, "cmp_min");
+                        var clamp1 = builder.BuildSelect(cmpMin, imin, iv, "clamp1");
+                        var cmpMax = builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, clamp1, imax, "cmp_max");
+                        return builder.BuildSelect(cmpMax, imax, clamp1, "clamp_res");
+                    }
+                }
+                else if (call.Callee == "rand")
+                {
+                    var randFn = module.GetNamedFunction("rand");
+                    var randFnType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(randFnType, randFn, Array.Empty<LLVMValueRef>(), "rand_val");
+                }
+                else if (call.Callee == "rand_range")
+                {
+                    var minVal = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var maxVal = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, call.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    var randFn = module.GetNamedFunction("rand");
+                    var randFnType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                    var r = builder.BuildCall2(randFnType, randFn, Array.Empty<LLVMValueRef>(), "rand_r");
+                    var diff = builder.BuildSub(maxVal, minVal, "diff");
+                    var span = builder.BuildAdd(diff, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "span");
+                    var rem = builder.BuildSRem(r, span, "rem");
+                    return builder.BuildAdd(minVal, rem, "rand_in_range");
                 }
                 else if (call.Callee is "ecs::create_world" or "create_world")
                 {
@@ -1837,5 +2051,200 @@ public sealed class LlvmCodeGenerator
                 null);
             builder.CurrentDebugLocation = LlvmApi.MetadataAsValue(context, loc);
         }
+    }
+
+    private LLVMValueRef GetOrCreateStringConcatFunction(LLVMContextRef context, LLVMModuleRef module, LLVMTypeRef i8PtrType)
+    {
+        var fn = module.GetNamedFunction("rt_str_concat");
+        if (fn.Handle != IntPtr.Zero) return fn;
+
+        var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i8PtrType }, false);
+        fn = module.AddFunction("rt_str_concat", fnType);
+        var entry = fn.AppendBasicBlock("entry");
+        var b = context.CreateBuilder();
+        b.PositionAtEnd(entry);
+
+        var s1 = fn.GetParam(0);
+        var s2 = fn.GetParam(1);
+
+        var strlenFunc = module.GetNamedFunction("strlen");
+        var strlenType = LLVMTypeRef.CreateFunction(context.Int64Type, new[] { i8PtrType }, false);
+
+        var len1 = b.BuildCall2(strlenType, strlenFunc, new[] { s1 }, "len1");
+        var len2 = b.BuildCall2(strlenType, strlenFunc, new[] { s2 }, "len2");
+        var totalLen = b.BuildAdd(len1, len2, "totallen");
+        var allocSize = b.BuildAdd(totalLen, LLVMValueRef.CreateConstInt(context.Int64Type, 1), "allocsize");
+
+        var mallocFunc = module.GetNamedFunction("malloc");
+        var mallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int64Type }, false);
+        var newBuf = b.BuildCall2(mallocType, mallocFunc, new[] { allocSize }, "newbuf");
+
+        var memcpyFunc = module.GetNamedFunction("memcpy");
+        var memcpyType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i8PtrType, context.Int64Type }, false);
+
+        b.BuildCall2(memcpyType, memcpyFunc, new[] { newBuf, s1, len1 }, "");
+
+        var dest2 = b.BuildInBoundsGEP2(context.Int8Type, newBuf, new[] { len1 }, "dest2");
+        b.BuildCall2(memcpyType, memcpyFunc, new[] { dest2, s2, len2 }, "");
+
+        var nullPos = b.BuildInBoundsGEP2(context.Int8Type, newBuf, new[] { totalLen }, "nullpos");
+        b.BuildStore(LLVMValueRef.CreateConstInt(context.Int8Type, 0), nullPos);
+
+        b.BuildRet(newBuf);
+        b.Dispose();
+        return fn;
+    }
+
+    private LLVMValueRef GetOrCreateToStringI32(LLVMContextRef context, LLVMModuleRef module, LLVMTypeRef i8PtrType)
+    {
+        var fn = module.GetNamedFunction("rt_to_string_i32");
+        if (fn.Handle != IntPtr.Zero) return fn;
+
+        var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int32Type }, false);
+        fn = module.AddFunction("rt_to_string_i32", fnType);
+        var entry = fn.AppendBasicBlock("entry");
+        var b = context.CreateBuilder();
+        b.PositionAtEnd(entry);
+
+        var val = fn.GetParam(0);
+        var mallocFunc = module.GetNamedFunction("malloc");
+        var mallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int64Type }, false);
+        var buf = b.BuildCall2(mallocType, mallocFunc, new[] { LLVMValueRef.CreateConstInt(context.Int64Type, 32) }, "buf");
+
+        var sprintfFunc = module.GetNamedFunction("sprintf");
+        var sprintfType = LLVMTypeRef.CreateFunction(context.Int32Type, new[] { i8PtrType, i8PtrType }, true);
+        var fmt = b.BuildGlobalStringPtr("%d", "fmt_d");
+        b.BuildCall2(sprintfType, sprintfFunc, new[] { buf, fmt, val }, "");
+
+        b.BuildRet(buf);
+        b.Dispose();
+        return fn;
+    }
+
+    private LLVMValueRef GetOrCreateToStringF32(LLVMContextRef context, LLVMModuleRef module, LLVMTypeRef i8PtrType)
+    {
+        var fn = module.GetNamedFunction("rt_to_string_f32");
+        if (fn.Handle != IntPtr.Zero) return fn;
+
+        var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.FloatType }, false);
+        fn = module.AddFunction("rt_to_string_f32", fnType);
+        var entry = fn.AppendBasicBlock("entry");
+        var b = context.CreateBuilder();
+        b.PositionAtEnd(entry);
+
+        var val = fn.GetParam(0);
+        var valDbl = b.BuildFPExt(val, context.DoubleType, "val_dbl");
+        var mallocFunc = module.GetNamedFunction("malloc");
+        var mallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int64Type }, false);
+        var buf = b.BuildCall2(mallocType, mallocFunc, new[] { LLVMValueRef.CreateConstInt(context.Int64Type, 32) }, "buf");
+
+        var sprintfFunc = module.GetNamedFunction("sprintf");
+        var sprintfType = LLVMTypeRef.CreateFunction(context.Int32Type, new[] { i8PtrType, i8PtrType }, true);
+        var fmt = b.BuildGlobalStringPtr("%.2f", "fmt_f");
+        b.BuildCall2(sprintfType, sprintfFunc, new[] { buf, fmt, valDbl }, "");
+
+        b.BuildRet(buf);
+        b.Dispose();
+        return fn;
+    }
+
+    private LLVMValueRef GetOrCreateToStringBool(LLVMContextRef context, LLVMModuleRef module, LLVMTypeRef i8PtrType)
+    {
+        var fn = module.GetNamedFunction("rt_to_string_bool");
+        if (fn.Handle != IntPtr.Zero) return fn;
+
+        var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int1Type }, false);
+        fn = module.AddFunction("rt_to_string_bool", fnType);
+        var entry = fn.AppendBasicBlock("entry");
+        var b = context.CreateBuilder();
+        b.PositionAtEnd(entry);
+
+        var val = fn.GetParam(0);
+        var strTrue = b.BuildGlobalStringPtr("true", "str_true");
+        var strFalse = b.BuildGlobalStringPtr("false", "str_false");
+        var res = b.BuildSelect(val, strTrue, strFalse, "sel_bool");
+
+        b.BuildRet(res);
+        b.Dispose();
+        return fn;
+    }
+
+    private LLVMValueRef GetOrCreateStringEq(LLVMContextRef context, LLVMModuleRef module, LLVMTypeRef i8PtrType)
+    {
+        var fn = module.GetNamedFunction("rt_str_eq");
+        if (fn.Handle != IntPtr.Zero) return fn;
+
+        var fnType = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { i8PtrType, i8PtrType }, false);
+        fn = module.AddFunction("rt_str_eq", fnType);
+        var entry = fn.AppendBasicBlock("entry");
+        var b = context.CreateBuilder();
+        b.PositionAtEnd(entry);
+
+        var s1 = fn.GetParam(0);
+        var s2 = fn.GetParam(1);
+        var strcmpFunc = module.GetNamedFunction("strcmp");
+        var strcmpType = LLVMTypeRef.CreateFunction(context.Int32Type, new[] { i8PtrType, i8PtrType }, false);
+        var cmp = b.BuildCall2(strcmpType, strcmpFunc, new[] { s1, s2 }, "cmp");
+        var eq = b.BuildICmp(LLVMIntPredicate.LLVMIntEQ, cmp, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "eq");
+
+        b.BuildRet(eq);
+        b.Dispose();
+        return fn;
+    }
+
+    private LLVMValueRef EmitToString(
+        LLVMContextRef context,
+        LLVMModuleRef module,
+        LLVMBuilderRef builder,
+        LLVMValueRef val,
+        TypeSymbol type,
+        LLVMTypeRef i8PtrType)
+    {
+        if (type == TypeSymbol.String)
+        {
+            return val;
+        }
+
+        if (type == TypeSymbol.I32 || type == TypeSymbol.Entity)
+        {
+            var fn = GetOrCreateToStringI32(context, module, i8PtrType);
+            var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int32Type }, false);
+            return builder.BuildCall2(fnType, fn, new[] { val }, "str_i32");
+        }
+
+        if (type == TypeSymbol.F32)
+        {
+            var fn = GetOrCreateToStringF32(context, module, i8PtrType);
+            var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.FloatType }, false);
+            return builder.BuildCall2(fnType, fn, new[] { val }, "str_f32");
+        }
+
+        if (type == TypeSymbol.Bool)
+        {
+            var fn = GetOrCreateToStringBool(context, module, i8PtrType);
+            var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int1Type }, false);
+            return builder.BuildCall2(fnType, fn, new[] { val }, "str_bool");
+        }
+
+        if (val.TypeOf == context.Int32Type)
+        {
+            var fn = GetOrCreateToStringI32(context, module, i8PtrType);
+            var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int32Type }, false);
+            return builder.BuildCall2(fnType, fn, new[] { val }, "str_i32");
+        }
+        if (val.TypeOf == context.FloatType)
+        {
+            var fn = GetOrCreateToStringF32(context, module, i8PtrType);
+            var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.FloatType }, false);
+            return builder.BuildCall2(fnType, fn, new[] { val }, "str_f32");
+        }
+        if (val.TypeOf == context.Int1Type)
+        {
+            var fn = GetOrCreateToStringBool(context, module, i8PtrType);
+            var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int1Type }, false);
+            return builder.BuildCall2(fnType, fn, new[] { val }, "str_bool");
+        }
+
+        return val;
     }
 }

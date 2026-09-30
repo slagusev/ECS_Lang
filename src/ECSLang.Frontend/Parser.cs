@@ -772,6 +772,12 @@ public sealed class Parser
             return new StringLiteralExpression(token.Text, token.Span);
         }
 
+        if (token.Type == TokenType.InterpolatedString)
+        {
+            Advance();
+            return ParseInterpolatedString(token.Text, token.Span);
+        }
+
         if (token.Type == TokenType.NumberLiteral)
         {
             Advance();
@@ -825,6 +831,60 @@ public sealed class Parser
         TokenType.Star or TokenType.Slash or TokenType.Percent => 6,
         _ => 0
     };
+
+    private ExpressionNode ParseInterpolatedString(string text, SourceSpan span)
+    {
+        var parts = new List<ExpressionNode>();
+        int i = 0;
+        int len = text.Length;
+
+        while (i < len)
+        {
+            int braceOpen = text.IndexOf('{', i);
+            if (braceOpen < 0)
+            {
+                parts.Add(new StringLiteralExpression(text.Substring(i), span));
+                break;
+            }
+
+            if (braceOpen > i)
+            {
+                parts.Add(new StringLiteralExpression(text.Substring(i, braceOpen - i), span));
+            }
+
+            int braceClose = text.IndexOf('}', braceOpen + 1);
+            if (braceClose < 0)
+            {
+                _diagnostics.ReportError("Unclosed '{' in interpolated string.", span);
+                break;
+            }
+
+            string exprText = text.Substring(braceOpen + 1, braceClose - braceOpen - 1).Trim();
+            if (exprText.Length > 0)
+            {
+                var subLexer = new Lexer(exprText, span.FilePath, _diagnostics);
+                var subTokens = subLexer.TokenizeAll();
+                var subParser = new Parser(subTokens, _diagnostics);
+                var exprNode = subParser.ParseExpression();
+                parts.Add(new CallExpression("to_string", new[] { exprNode }, span));
+            }
+
+            i = braceClose + 1;
+        }
+
+        if (parts.Count == 0)
+        {
+            return new StringLiteralExpression("", span);
+        }
+
+        ExpressionNode result = parts[0];
+        for (int p = 1; p < parts.Count; p++)
+        {
+            result = new BinaryExpression(result, BinaryOperator.Add, parts[p], span);
+        }
+
+        return result;
+    }
 
     private static BinaryOperator TokenToBinaryOp(TokenType type) => type switch
     {

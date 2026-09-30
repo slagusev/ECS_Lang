@@ -11,6 +11,7 @@ public enum TokenType
     // Literals & Identifiers
     Identifier,
     StringLiteral,
+    InterpolatedString,
     NumberLiteral,
     True,
     False,

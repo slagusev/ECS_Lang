@@ -156,6 +156,50 @@ public sealed class Lexer
             return new Token(TokenType.NumberLiteral, text, new SourceSpan(_filePath, startLine, startCol, text.Length));
         }
 
+        // Interpolated string literals: $"score: {score}" or f"score: {score}"
+        if ((Current == '$' || Current == 'f') && Peek(1) == '"')
+        {
+            Advance(); // $ or f
+            Advance(); // "
+            var sb = new StringBuilder();
+            while (Current != '\0' && Current != '"')
+            {
+                if (Current == '\\')
+                {
+                    Advance();
+                    sb.Append(Current switch
+                    {
+                        'n' => '\n',
+                        't' => '\t',
+                        'r' => '\r',
+                        '\\' => '\\',
+                        '"' => '"',
+                        '{' => '{',
+                        '}' => '}',
+                        '0' => '\0',
+                        _ => Current
+                    });
+                }
+                else
+                {
+                    sb.Append(Current);
+                }
+                Advance();
+            }
+
+            if (Current == '"')
+            {
+                Advance();
+            }
+            else
+            {
+                _diagnostics.ReportError("Unterminated interpolated string literal.", new SourceSpan(_filePath, startLine, startCol, _position - startPos));
+            }
+
+            string content = sb.ToString();
+            return new Token(TokenType.InterpolatedString, content, new SourceSpan(_filePath, startLine, startCol, _position - startPos));
+        }
+
         // Identifiers & Keywords
         if (char.IsLetter(Current) || Current == '_')
         {

@@ -714,6 +714,10 @@ public sealed class TypeChecker
         }
 
         var targetType = CheckExpression(mem.Target);
+        if (targetType == TypeSymbol.String && mem.MemberName is "len" or "length")
+        {
+            return TypeSymbol.I32;
+        }
         return GetMemberType(targetType, mem.MemberName, mem.Span);
     }
 
@@ -721,6 +725,11 @@ public sealed class TypeChecker
     {
         var leftType = CheckExpression(bin.Left);
         var rightType = CheckExpression(bin.Right);
+
+        if (bin.Operator == BinaryOperator.Add && (leftType == TypeSymbol.String || rightType == TypeSymbol.String))
+        {
+            return TypeSymbol.String;
+        }
 
         if (bin.Operator is BinaryOperator.LogicalAnd or BinaryOperator.LogicalOr)
         {
@@ -808,6 +817,37 @@ public sealed class TypeChecker
         if (call.Callee is "get_time" or "rl_get_time")
         {
             return TypeSymbol.F64;
+        }
+
+        // Built-in string functions
+        if (call.Callee is "to_string" or "str_concat")
+        {
+            return TypeSymbol.String;
+        }
+
+        if (call.Callee is "str_len" or "string_length")
+        {
+            return TypeSymbol.I32;
+        }
+
+        // Built-in math functions
+        if (call.Callee is "sqrt" or "sin" or "cos" or "floor" or "ceil")
+        {
+            return (call.Arguments.Count > 0 && _nodeTypes.TryGetValue(call.Arguments[0], out var argT) && argT == TypeSymbol.F64)
+                ? TypeSymbol.F64
+                : TypeSymbol.F32;
+        }
+
+        if (call.Callee is "abs" or "min" or "max" or "clamp")
+        {
+            return (call.Arguments.Count > 0 && _nodeTypes.TryGetValue(call.Arguments[0], out var argT))
+                ? argT
+                : TypeSymbol.I32;
+        }
+
+        if (call.Callee is "rand" or "rand_range")
+        {
+            return TypeSymbol.I32;
         }
 
         if (call.Callee is "ecs::create_world" or "create_world")
@@ -900,6 +940,16 @@ public sealed class TypeChecker
             {
                 return TypeSymbol.Void;
             }
+        }
+
+        if (methodCall.MethodName == "to_string")
+        {
+            return TypeSymbol.String;
+        }
+
+        if (targetType == TypeSymbol.String && methodCall.MethodName is "len" or "length")
+        {
+            return TypeSymbol.I32;
         }
 
         _diagnostics.ReportError($"Type '{targetType.Name}' does not have a method '{methodCall.MethodName}'.", methodCall.Span);
