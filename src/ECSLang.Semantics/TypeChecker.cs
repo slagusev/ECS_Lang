@@ -921,7 +921,8 @@ public sealed class TypeChecker
             "play_sound" or "rl_play_sound" or "stop_sound" or "rl_stop_sound" or
             "pause_sound" or "rl_pause_sound" or "resume_sound" or "rl_resume_sound" or
             "set_sound_volume" or "rl_set_sound_volume" or "unload_sound" or "rl_unload_sound" or
-            "begin_mode_2d" or "rl_begin_mode_2d" or "end_mode_2d" or "rl_end_mode_2d")
+            "begin_mode_2d" or "rl_begin_mode_2d" or "end_mode_2d" or "rl_end_mode_2d" or
+            "render_profiler" or "render_debug_overlay" or "ecs::render_profiler")
         {
             return TypeSymbol.Void;
         }
@@ -1117,7 +1118,9 @@ public sealed class TypeChecker
                 methodCall.MethodName == "apply_commands" ||
                 methodCall.MethodName == "emit" ||
                 methodCall.MethodName == "swap_events" ||
-                methodCall.MethodName == "sort_hierarchy")
+                methodCall.MethodName == "sort_hierarchy" ||
+                methodCall.MethodName == "render_profiler" ||
+                methodCall.MethodName == "render_debug_overlay")
             {
                 return TypeSymbol.Void;
             }

@@ -166,6 +166,7 @@ public sealed class LlvmCodeGenerator
 
         // Raylib C ABI declarations
         module.AddFunction("InitWindow", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, i8PtrType }, false));
+        module.AddFunction("IsWindowReady", LLVMTypeRef.CreateFunction(context.Int1Type, Array.Empty<LLVMTypeRef>(), false));
         module.AddFunction("WindowShouldClose", LLVMTypeRef.CreateFunction(context.Int1Type, Array.Empty<LLVMTypeRef>(), false));
         module.AddFunction("CloseWindow", LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false));
         module.AddFunction("SetTargetFPS", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type }, false));
@@ -177,6 +178,7 @@ public sealed class LlvmCodeGenerator
         module.AddFunction("ClearBackground", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type }, false));
         module.AddFunction("DrawText", LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false));
         module.AddFunction("DrawRectangle", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false));
+        module.AddFunction("DrawRectangleLines", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false));
         module.AddFunction("DrawCircle", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.FloatType, context.Int32Type }, false));
         module.AddFunction("DrawLine", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false));
         module.AddFunction("IsKeyDown", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
@@ -238,6 +240,7 @@ public sealed class LlvmCodeGenerator
 
         // Emit Multi-Archetype Runtime (spawn, add, remove, has, setters, sort)
         ecsEmitter.EmitMultiArchetypeRuntime(dataLayout, reallocType, reallocFunc, memcpyType, memcpyFunc, memsetType, memsetFunc, mallocType, mallocFunc, freeType, freeFunc);
+        ecsEmitter.EmitProfilerRuntime(dataLayout);
 
         // Forward-declare regular functions and impl methods so any function or system can call them
         foreach (var decl in program.Declarations)
@@ -1701,6 +1704,10 @@ public sealed class LlvmCodeGenerator
                 }
 
                 string mTargetName = $"world_{methodCall.MethodName}";
+                if (methodCall.MethodName == "render_debug_overlay")
+                {
+                    mTargetName = "world_render_profiler";
+                }
 
                 bool isCommandsTarget = methodCall.Target is IdentifierExpression targetIdent &&
                                        varTypes.TryGetValue(targetIdent.Name, out var tType) &&
@@ -2124,6 +2131,13 @@ public sealed class LlvmCodeGenerator
                     var f = module.GetNamedFunction("WindowShouldClose");
                     var ft = LLVMTypeRef.CreateFunction(context.Int1Type, Array.Empty<LLVMTypeRef>(), false);
                     return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "should_close");
+                }
+                else if (call.Callee is "render_profiler" or "render_debug_overlay" or "ecs::render_profiler")
+                {
+                    var f = module.GetNamedFunction("world_render_profiler");
+                    var ft = LLVMTypeRef.CreateFunction(context.VoidType, new[] { LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0) }, false);
+                    var w = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    return builder.BuildCall2(ft, f, new[] { w }, "");
                 }
                 else if (call.Callee is "close_window" or "rl_close_window")
                 {

@@ -126,7 +126,7 @@ fn main(): i32 {
         draw_line(0, 75, 800, 75, 45, 52, 72);
 
         draw_text("ECSLang + Raylib Native Graphics Demo", 24, 16, 22, 255, 255, 255);
-        draw_text("Use [<-] [->] or [A] [D] to move paddle | ESC or [X] to close", 24, 46, 15, 170, 185, 205);
+        draw_text("Use [<-] [->] or [A] [D] to move paddle | ESC to close | F1: ECS Profiler", 24, 46, 15, 170, 185, 205);
         draw_text("60 FPS", 710, 24, 22, 90, 240, 130);
 
         // Execute ECS Game Loop (MovementSystem + BallRenderSystem)
@@ -134,6 +134,9 @@ fn main(): i32 {
 
         // Render player paddle
         draw_rectangle(paddle_x, paddle_y, paddle_w, paddle_h, 70, 200, 250);
+
+        // Render visual ECS Profiler & Inspector overlay (toggled with F1)
+        world.render_profiler();
 
         end_drawing();
     }
