@@ -440,13 +440,25 @@ public sealed class LlvmCodeGenerator
             return;
         }
 
-        // Compute required query component mask
+        // Compute required query component mask and without mask
         ulong requiredMask = 0;
         foreach (var qp in sys.QueryParams)
         {
             if (_typeChecker.Components.ContainsKey(qp.TypeName))
             {
                 requiredMask |= ecs.GetComponentMask(qp.TypeName);
+            }
+        }
+        ulong withoutMask = 0;
+        foreach (var filter in sys.Filters)
+        {
+            if (filter.Kind == QueryFilterKind.With && _typeChecker.Components.ContainsKey(filter.ComponentName))
+            {
+                requiredMask |= ecs.GetComponentMask(filter.ComponentName);
+            }
+            else if (filter.Kind == QueryFilterKind.Without && _typeChecker.Components.ContainsKey(filter.ComponentName))
+            {
+                withoutMask |= ecs.GetComponentMask(filter.ComponentName);
             }
         }
         var reqMaskVal = LLVMValueRef.CreateConstInt(context.Int64Type, requiredMask);
@@ -470,7 +482,7 @@ public sealed class LlvmCodeGenerator
         var hasMoreArchs = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curArchIdx, numArchs, "has_more_archs");
         builder.BuildCondBr(hasMoreArchs, archBodyBB, sysExitBB);
 
-        // arch_body: check if archetype matches requiredMask
+        // arch_body: check if archetype matches requiredMask and does not contain withoutMask
         builder.PositionAtEnd(archBodyBB);
         var archPtrType = LLVMTypeRef.CreatePointer(ecs.GetArchetypeStructType(), 0);
         var archTablesSlot = builder.BuildStructGEP2(ecs.GetWorldStructType(), worldParam, 2, "world_arch_tables_slot");
@@ -481,7 +493,19 @@ public sealed class LlvmCodeGenerator
         var archMask = builder.BuildLoad2(context.Int64Type, maskSlot, "arch_mask");
 
         var andMask = builder.BuildAnd(archMask, reqMaskVal, "and_mask");
-        var isMatch = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, andMask, reqMaskVal, "is_match");
+        var hasReq = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, andMask, reqMaskVal, "has_req");
+        LLVMValueRef isMatch;
+        if (withoutMask != 0)
+        {
+            var withoutMaskVal = LLVMValueRef.CreateConstInt(context.Int64Type, withoutMask);
+            var andWithout = builder.BuildAnd(archMask, withoutMaskVal, "and_without");
+            var hasNoWithout = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, andWithout, LLVMValueRef.CreateConstInt(context.Int64Type, 0), "has_no_without");
+            isMatch = builder.BuildAnd(hasReq, hasNoWithout, "is_match");
+        }
+        else
+        {
+            isMatch = hasReq;
+        }
 
         var checkCountBB = sysFunc.AppendBasicBlock("check_count");
         builder.BuildCondBr(isMatch, checkCountBB, nextArchBB);
@@ -1224,7 +1248,11 @@ public sealed class LlvmCodeGenerator
                 }
                 if (mem.Target is IdentifierExpression targetId && locals.TryGetValue(targetId.Name, out var structPtr))
                 {
-                    if (varTypes.TryGetValue(targetId.Name, out var structTypeName) && _typeChecker.Structs.ContainsKey(structTypeName))
+                    if (varTypes.TryGetValue(targetId.Name, out var structTypeName) &&
+                        (_typeChecker.Structs.ContainsKey(structTypeName) ||
+                         _typeChecker.Components.ContainsKey(structTypeName) ||
+                         _typeChecker.Resources.ContainsKey(structTypeName) ||
+                         _typeChecker.Events.ContainsKey(structTypeName)))
                     {
                         var structType = ecs.GetComponentStructType(structTypeName);
                         int offset = ecs.GetFieldOffset(structTypeName, mem.MemberName);

@@ -55,15 +55,38 @@ public sealed record QueryParameter(
     SourceSpan Span
 ) : AstNode(Span);
 
+public enum QueryFilterKind
+{
+    With,
+    Without
+}
+
+public sealed record QueryFilter(
+    QueryFilterKind Kind,
+    string ComponentName,
+    SourceSpan Span
+) : AstNode(Span);
+
 public sealed record SystemDeclaration(
     string Name,
     IReadOnlyList<QueryParameter> QueryParams,
     IReadOnlyList<QueryParameter> ReadParams,
+    IReadOnlyList<QueryFilter> Filters,
     BlockStatement Body,
     SourceSpan Span
 ) : DeclarationNode(Span)
 {
     public bool IsEventSystem => ReadParams.Count > 0;
+
+    public SystemDeclaration(
+        string name,
+        IReadOnlyList<QueryParameter> queryParams,
+        IReadOnlyList<QueryParameter> readParams,
+        BlockStatement body,
+        SourceSpan span)
+        : this(name, queryParams, readParams, Array.Empty<QueryFilter>(), body, span)
+    {
+    }
 }
 
 public sealed record FunctionDeclaration(

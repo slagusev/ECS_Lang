@@ -333,21 +333,21 @@ fn main(): i32 {
   - Генерация случайных чисел: `rand()` и `rand_range(min, max)`.
 - [x] Сквозной тест: [`examples/strings_math_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/strings_math_test.ecs), успешно пройден как в Debug (`-O0`), так и в Release (`-O3`).
 
-### [ ] Этап 20: Продвинутые фильтры запросов ECS (`without` и `with`)
-- [ ] Синтаксис фильтров в запросах систем:
+### [x] Этап 20: Продвинутые фильтры запросов ECS (`without` и `with`)
+- [x] Синтаксис фильтров в запросах систем:
   - Исключение компонентов: `system S { query(mut pos: Position, vel: Velocity, without: Frozen, without: Dead) { ... } }`
   - Маркерные компоненты (без загрузки данных в стек): `system S { query(e: Entity, with: Player, mut health: Health) { ... } }`
-- [ ] Расширение AST и фронтенда:
+- [x] Расширение AST и фронтенда:
   - Ключевые слова `without` и `with` в `Lexer` и `Token`.
-  - Поля `WithComponents` и `WithoutComponents` в узле `SystemDeclarationStatement`.
+  - Поле `Filters` (`IReadOnlyList<QueryFilter>`) в узле `SystemDeclaration`.
   - Парсинг фильтров в сигнатуре `query(...)` в `Parser.cs`.
-- [ ] Семантический анализ (`TypeChecker.cs`):
+- [x] Семантический анализ (`TypeChecker.cs`):
   - Проверка, что типы в `with` и `without` являются объявленными компонентами (`component`).
   - Проверка на конфликты: компонент не может одновременно присутствовать в `query` / `with` и в `without`.
-- [ ] Генерация машинного кода в LLVM IR (`LlvmCodeGenerator.cs`):
-  - Фильтрация архетипов мира перед входом в цикл системы: отбираются только архетипы, содержащие все компоненты `query` + `with` и не содержащие ни одного компонента `without`.
+- [x] Генерация машинного кода в LLVM IR (`LlvmCodeGenerator.cs`):
+  - Фильтрация архетипов мира перед входом в цикл системы: отбираются только архетипы `(archMask & requiredMask == requiredMask) && (archMask & withoutMask == 0)`.
   - Отсутствие runtime-оверхеда во внутреннем цикле (zero-overhead loop).
-- [ ] Сквозной тест: [`examples/query_filters_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/query_filters_test.ecs).
+- [x] Сквозной тест: [`examples/query_filters_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/query_filters_test.ecs), успешно пройден как в Debug (`-O0`), так и в Release (`-O3`).
 
 ### [ ] Этап 21: Текстуры, Спрайты, Аудио и 2D Камера (Raylib Media)
 - [ ] Поддержка дескрипторов Raylib ресурсов: `Texture2D`, `Sound`, `Music`, `Camera2D`.

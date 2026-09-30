@@ -287,7 +287,49 @@ public sealed class TypeChecker
             readParams.Add(new QueryParamSymbol(p.IsMutable, p.Name, TypeSymbol.FromName(p.TypeName), isRes, p.Span));
         }
 
-        _systems[sys.Name] = new SystemSymbol(sys.Name, queryParams, readParams, sys.Span);
+        var withTypes = new HashSet<string>(StringComparer.Ordinal);
+        var withoutTypes = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var filter in sys.Filters)
+        {
+            if (!_components.ContainsKey(filter.ComponentName))
+            {
+                _diagnostics.ReportError($"Filter component '{filter.ComponentName}' in system '{sys.Name}' is not a declared component.", filter.Span);
+            }
+
+            if (filter.Kind == QueryFilterKind.With)
+            {
+                if (seenTypes.Contains(filter.ComponentName))
+                {
+                    _diagnostics.ReportError($"Component '{filter.ComponentName}' is already in query parameters of system '{sys.Name}'.", filter.Span);
+                }
+                if (!withTypes.Add(filter.ComponentName))
+                {
+                    _diagnostics.ReportError($"Duplicate 'with' filter for component '{filter.ComponentName}' in system '{sys.Name}'.", filter.Span);
+                }
+                if (withoutTypes.Contains(filter.ComponentName))
+                {
+                    _diagnostics.ReportError($"Conflicting filters: component '{filter.ComponentName}' cannot be both 'with' and 'without' in system '{sys.Name}'.", filter.Span);
+                }
+            }
+            else if (filter.Kind == QueryFilterKind.Without)
+            {
+                if (seenTypes.Contains(filter.ComponentName))
+                {
+                    _diagnostics.ReportError($"Conflicting query: component '{filter.ComponentName}' cannot be both queried and 'without' in system '{sys.Name}'.", filter.Span);
+                }
+                if (!withoutTypes.Add(filter.ComponentName))
+                {
+                    _diagnostics.ReportError($"Duplicate 'without' filter for component '{filter.ComponentName}' in system '{sys.Name}'.", filter.Span);
+                }
+                if (withTypes.Contains(filter.ComponentName))
+                {
+                    _diagnostics.ReportError($"Conflicting filters: component '{filter.ComponentName}' cannot be both 'with' and 'without' in system '{sys.Name}'.", filter.Span);
+                }
+            }
+        }
+
+        _systems[sys.Name] = new SystemSymbol(sys.Name, queryParams, readParams, sys.Filters, sys.Span);
 
         // System Body Scope
         var sysScope = new Scope(_currentScope);

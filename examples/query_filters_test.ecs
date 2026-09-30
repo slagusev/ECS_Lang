@@ -1,0 +1,123 @@
+// ECS-Lang: Query Filters Test (with and without)
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+component Frozen {
+    duration: f32,
+}
+
+component Health {
+    hp: i32,
+}
+
+component Player {
+    id: i32,
+}
+
+resource TestStats {
+    normal_moves: i32,
+    player_heals: i32,
+}
+
+// Система движения двигает только незамороженные сущности (without: Frozen)
+system MovementSystem {
+    query(mut pos: Position, vel: Velocity, mut stats: TestStats, without: Frozen) {
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+        stats.normal_moves += 1;
+    }
+}
+
+// Система регенерации лечит только сущности с компонентом-маркером Player (with: Player)
+system PlayerRegenSystem {
+    query(mut h: Health, mut stats: TestStats, with: Player) {
+        h.hp += 10;
+        stats.player_heals += 1;
+    }
+}
+
+// Система проверки счетчиков
+system VerifyCountersSystem {
+    query(e: Entity, pos: Position, stats: TestStats, without: Frozen) {
+        println($"Verification: normal_moves = {stats.normal_moves} (Expected: 3)");
+        println($"Verification: player_heals = {stats.player_heals} (Expected: 3)");
+        if stats.normal_moves == 3 && stats.player_heals == 3 {
+            println("--- EXACT COUNTER MATCH VERIFIED! ---");
+        } else {
+            println("--- COUNTER MISMATCH! ---");
+        }
+    }
+}
+
+pipeline TestPipeline {
+    stage Update {
+        MovementSystem;
+        PlayerRegenSystem;
+    }
+}
+
+pipeline VerifyPipeline {
+    stage Verify {
+        VerifyCountersSystem;
+    }
+}
+
+fn main(): i32 {
+    println("--- START QUERY FILTERS TEST ---");
+    let mut world = ecs::create_world();
+    world.set_TestStats(0, 0);
+
+    // 1. Обычный движущийся объект (Position + Velocity)
+    let e_normal = world.spawn();
+    world.set_Position(e_normal, 0.0, 0.0);
+    world.set_Velocity(e_normal, 5.0, 10.0);
+
+    // 2. Замороженный объект (Position + Velocity + Frozen)
+    let e_frozen = world.spawn();
+    world.set_Position(e_frozen, 100.0, 100.0);
+    world.set_Velocity(e_frozen, 5.0, 10.0);
+    world.set_Frozen(e_frozen, 2.0);
+
+    // 3. Игрок со здоровьем (Health + Player)
+    let e_player = world.spawn();
+    world.set_Health(e_player, 80);
+    world.set_Player(e_player, 1);
+
+    // 4. Враг со здоровьем (Health, без Player)
+    let e_enemy = world.spawn();
+    world.set_Health(e_enemy, 50);
+
+    println("Running 3 simulation steps...");
+    TestPipeline(world);
+    TestPipeline(world);
+    TestPipeline(world);
+
+    println("=== Component Presence Checks ===");
+    let has_norm_pos = world.has_Position(e_normal);
+    let has_froz = world.has_Frozen(e_frozen);
+    let has_player = world.has_Player(e_player);
+    let has_enemy_player = world.has_Player(e_enemy);
+
+    println($"has_Position(e_normal): {has_norm_pos} (Expected: true)");
+    println($"has_Frozen(e_frozen): {has_froz} (Expected: true)");
+    println($"has_Player(e_player): {has_player} (Expected: true)");
+    println($"has_Player(e_enemy): {has_enemy_player} (Expected: false)");
+
+    VerifyPipeline(world);
+
+    if has_norm_pos && has_froz && has_player && !has_enemy_player {
+        println("--- ALL QUERY FILTER CHECKS PASSED! ---");
+        return 0;
+    } else {
+        println("--- QUERY FILTER CHECK FAILED! ---");
+        return 1;
+    }
+}

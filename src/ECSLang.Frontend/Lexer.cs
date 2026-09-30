@@ -40,6 +40,8 @@ public sealed class Lexer
         ["match"] = TokenType.Match,
         ["apply_commands"] = TokenType.ApplyCommands,
         ["import"] = TokenType.Import,
+        ["with"] = TokenType.With,
+        ["without"] = TokenType.Without,
         ["true"] = TokenType.True,
         ["false"] = TokenType.False,
     };

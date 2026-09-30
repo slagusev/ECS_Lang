@@ -269,6 +269,7 @@ public sealed class Parser
 
         var queryParams = new List<QueryParameter>();
         var readParams = new List<QueryParameter>();
+        var filters = new List<QueryFilter>();
 
         if (Check(TokenType.Query))
         {
@@ -278,18 +279,35 @@ public sealed class Parser
             {
                 do
                 {
-                    bool isMut = false;
-                    if (Check(TokenType.Mut))
+                    if (Check(TokenType.Without) || (Check(TokenType.Identifier) && Current.Text == "without"))
                     {
-                        isMut = true;
-                        Advance();
+                        var tok = Advance();
+                        Match(TokenType.Colon, "Expected ':' after 'without'.");
+                        var compName = Match(TokenType.Identifier, "Expected component name after 'without:'.");
+                        filters.Add(new QueryFilter(QueryFilterKind.Without, compName.Text, tok.Span));
                     }
+                    else if (Check(TokenType.With) || (Check(TokenType.Identifier) && Current.Text == "with"))
+                    {
+                        var tok = Advance();
+                        Match(TokenType.Colon, "Expected ':' after 'with'.");
+                        var compName = Match(TokenType.Identifier, "Expected component name after 'with:'.");
+                        filters.Add(new QueryFilter(QueryFilterKind.With, compName.Text, tok.Span));
+                    }
+                    else
+                    {
+                        bool isMut = false;
+                        if (Check(TokenType.Mut))
+                        {
+                            isMut = true;
+                            Advance();
+                        }
 
-                    var paramName = Match(TokenType.Identifier, "Expected query parameter name.");
-                    Match(TokenType.Colon, "Expected ':' after query parameter name.");
-                    var paramType = Match(TokenType.Identifier, "Expected component or resource type name.");
+                        var paramName = Match(TokenType.Identifier, "Expected query parameter name.");
+                        Match(TokenType.Colon, "Expected ':' after query parameter name.");
+                        var paramType = Match(TokenType.Identifier, "Expected component or resource type name.");
 
-                    queryParams.Add(new QueryParameter(isMut, paramName.Text, paramType.Text, paramName.Span));
+                        queryParams.Add(new QueryParameter(isMut, paramName.Text, paramType.Text, paramName.Span));
+                    }
                 } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
             }
             Match(TokenType.CloseParen, "Expected ')' after query parameters.");
@@ -326,7 +344,7 @@ public sealed class Parser
         var body = ParseBlockStatement();
         Match(TokenType.CloseBrace, "Expected '}' to close system.");
 
-        return new SystemDeclaration(nameTok.Text, queryParams, readParams, body, sysTok.Span);
+        return new SystemDeclaration(nameTok.Text, queryParams, readParams, filters, body, sysTok.Span);
     }
 
     private PipelineDeclaration ParsePipelineDeclaration()

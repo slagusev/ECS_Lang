@@ -1,4 +1,5 @@
 using ECSLang.Core;
+using ECSLang.Core.AST;
 
 namespace ECSLang.Semantics;
 
@@ -48,9 +49,19 @@ public sealed record SystemSymbol(
     string Name,
     IReadOnlyList<QueryParamSymbol> QueryParams,
     IReadOnlyList<QueryParamSymbol> ReadParams,
+    IReadOnlyList<QueryFilter> Filters,
     SourceSpan Span
 )
 {
+    public SystemSymbol(
+        string name,
+        IReadOnlyList<QueryParamSymbol> queryParams,
+        IReadOnlyList<QueryParamSymbol> readParams,
+        SourceSpan span)
+        : this(name, queryParams, readParams, Array.Empty<QueryFilter>(), span)
+    {
+    }
+
     public bool IsEventSystem => ReadParams.Count > 0;
 
     public IReadOnlySet<string> MutComponents => QueryParams
