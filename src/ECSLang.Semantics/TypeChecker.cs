@@ -527,6 +527,21 @@ public sealed class TypeChecker
             ? TypeSymbol.FromName(varDecl.TypeName)
             : initType;
 
+        if (explicitType.IsDynamicArray && varDecl.Initializer is ArrayLiteralExpression arrLit)
+        {
+            explicitType.TryGetDynamicArrayElement(out var expectedElem);
+            foreach (var el in arrLit.Elements)
+            {
+                var elType = CheckExpression(el);
+                if (expectedElem != TypeSymbol.Unknown && elType != TypeSymbol.Unknown && !AreTypesCompatible(expectedElem, elType))
+                {
+                    _diagnostics.ReportError($"Array element of type '{elType.Name}' is not compatible with '{expectedElem.Name}'.", el.Span);
+                }
+            }
+            _nodeTypes[arrLit] = explicitType;
+            initType = explicitType;
+        }
+
         if (varDecl.TypeName != null && initType != TypeSymbol.Unknown && !AreTypesCompatible(explicitType, initType))
         {
             _diagnostics.ReportError(
@@ -546,6 +561,13 @@ public sealed class TypeChecker
         if (expected == actual) return true;
         if (expected == TypeSymbol.Unknown || actual == TypeSymbol.Unknown) return true;
         if ((expected == TypeSymbol.Entity && actual == TypeSymbol.I32) || (expected == TypeSymbol.I32 && actual == TypeSymbol.Entity)) return true;
+        if (expected.IsDynamicArray && actual.Name == "[]") return true;
+        if (expected.IsDynamicArray && actual.IsDynamicArray)
+        {
+            expected.TryGetDynamicArrayElement(out var expElem);
+            actual.TryGetDynamicArrayElement(out var actElem);
+            return AreTypesCompatible(expElem, actElem);
+        }
         return false;
     }
 
@@ -583,6 +605,10 @@ public sealed class TypeChecker
             if (expectedType.TryGetArrayInfo(out var elemType, out _))
             {
                 expectedType = elemType;
+            }
+            else if (expectedType.TryGetDynamicArrayElement(out var dynElem))
+            {
+                expectedType = dynElem;
             }
             else
             {
@@ -774,6 +800,11 @@ public sealed class TypeChecker
             return elemType;
         }
 
+        if (targetType.TryGetDynamicArrayElement(out var dynElem))
+        {
+            return dynElem;
+        }
+
         _diagnostics.ReportError($"Type '{targetType.Name}' is not indexable.", idxExpr.Span);
         return TypeSymbol.Unknown;
     }
@@ -803,6 +834,10 @@ public sealed class TypeChecker
 
         var targetType = CheckExpression(mem.Target);
         if (targetType == TypeSymbol.String && mem.MemberName is "len" or "length")
+        {
+            return TypeSymbol.I32;
+        }
+        if (targetType.IsDynamicArray && mem.MemberName is "len" or "length" or "capacity")
         {
             return TypeSymbol.I32;
         }
@@ -857,6 +892,11 @@ public sealed class TypeChecker
         foreach (var arg in call.Arguments)
         {
             CheckExpression(arg);
+        }
+
+        if (call.Callee.StartsWith("Vec<") || call.Callee.StartsWith("List<"))
+        {
+            return TypeSymbol.FromName(call.Callee);
         }
 
         if (call.Callee is "println" or "print")
@@ -1091,6 +1131,58 @@ public sealed class TypeChecker
         if (targetType == TypeSymbol.String && methodCall.MethodName is "len" or "length")
         {
             return TypeSymbol.I32;
+        }
+
+        if (targetType.IsDynamicArray)
+        {
+            targetType.TryGetDynamicArrayElement(out var elemType);
+            if (methodCall.MethodName == "push")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'push' expects exactly 1 argument.", methodCall.Span);
+                }
+                else
+                {
+                    var argType = GetNodeType(methodCall.Arguments[0]);
+                    if (elemType != TypeSymbol.Unknown && argType != TypeSymbol.Unknown && !AreTypesCompatible(elemType, argType))
+                    {
+                        _diagnostics.ReportError($"Argument 1 of 'push' expects type '{elemType.Name}', but got '{argType.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Void;
+                return TypeSymbol.Void;
+            }
+
+            if (methodCall.MethodName == "pop")
+            {
+                if (methodCall.Arguments.Count != 0)
+                {
+                    _diagnostics.ReportError("Method 'pop' expects 0 arguments.", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = elemType;
+                return elemType;
+            }
+
+            if (methodCall.MethodName is "len" or "length" or "capacity")
+            {
+                if (methodCall.Arguments.Count != 0)
+                {
+                    _diagnostics.ReportError($"Method '{methodCall.MethodName}' expects 0 arguments.", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = TypeSymbol.I32;
+                return TypeSymbol.I32;
+            }
+
+            if (methodCall.MethodName == "clear")
+            {
+                if (methodCall.Arguments.Count != 0)
+                {
+                    _diagnostics.ReportError("Method 'clear' expects 0 arguments.", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Void;
+                return TypeSymbol.Void;
+            }
         }
 
         _diagnostics.ReportError($"Type '{targetType.Name}' does not have a method '{methodCall.MethodName}'.", methodCall.Span);

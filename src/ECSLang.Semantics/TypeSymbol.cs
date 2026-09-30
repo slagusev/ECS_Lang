@@ -20,10 +20,12 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
     public bool IsFloatingPoint => this == F32 || this == F64;
     public bool IsInteger => this == I32 || this == I64 || this == U32 || this == U64 || this == Entity;
     public bool IsArray => Name.StartsWith("[") && Name.EndsWith("]");
+    public bool IsFixedArray => IsArray && Name.Contains(";");
+    public bool IsDynamicArray => IsArray && !Name.Contains(";");
 
     public bool TryGetArrayInfo(out TypeSymbol elementType, out int length)
     {
-        if (IsArray)
+        if (IsFixedArray)
         {
             var inner = Name.Substring(1, Name.Length - 2);
             var parts = inner.Split(';');
@@ -39,23 +41,50 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
         return false;
     }
 
+    public bool TryGetDynamicArrayElement(out TypeSymbol elementType)
+    {
+        if (IsDynamicArray)
+        {
+            var inner = Name.Substring(1, Name.Length - 2).Trim();
+            elementType = FromName(inner);
+            return true;
+        }
+        elementType = Unknown;
+        return false;
+    }
+
     public static TypeSymbol CreateArray(TypeSymbol elem, int length) => new($"[{elem.Name}; {length}]", IsPrimitive: false);
 
-    public static TypeSymbol FromName(string? name) => name switch
+    public static TypeSymbol CreateDynamicArray(TypeSymbol elem) => new($"[{elem.Name}]", IsPrimitive: false);
+
+    public static TypeSymbol FromName(string? name)
     {
-        "i32" or "int" => I32,
-        "i64" => I64,
-        "u32" => U32,
-        "u64" => U64,
-        "f32" or "float" => F32,
-        "f64" or "double" => F64,
-        "bool" => Bool,
-        "string" or "str" => String,
-        "World" or "world" => World,
-        "Commands" or "commands" => Commands,
-        "Entity" or "entity" => Entity,
-        "void" => Void,
-        null => Unknown,
-        _ => new TypeSymbol(name, IsPrimitive: false)
-    };
+        if (name == null) return Unknown;
+        if (name.StartsWith("Vec<") && name.EndsWith(">"))
+        {
+            var inner = name.Substring(4, name.Length - 5).Trim();
+            return CreateDynamicArray(FromName(inner));
+        }
+        if (name.StartsWith("List<") && name.EndsWith(">"))
+        {
+            var inner = name.Substring(5, name.Length - 6).Trim();
+            return CreateDynamicArray(FromName(inner));
+        }
+        return name switch
+        {
+            "i32" or "int" => I32,
+            "i64" => I64,
+            "u32" => U32,
+            "u64" => U64,
+            "f32" or "float" => F32,
+            "f64" or "double" => F64,
+            "bool" => Bool,
+            "string" or "str" => String,
+            "World" or "world" => World,
+            "Commands" or "commands" => Commands,
+            "Entity" or "entity" => Entity,
+            "void" => Void,
+            _ => new TypeSymbol(name, IsPrimitive: false)
+        };
+    }
 }

@@ -16,6 +16,7 @@ public sealed class LlvmCodeGenerator
     private LLVMMetadataRef _diCompileUnit;
     private LLVMMetadataRef _diFile;
     private LLVMMetadataRef? _currentSubprogram;
+    private LLVMTargetDataRef _dataLayout;
 
     static LlvmCodeGenerator()
     {
@@ -74,6 +75,7 @@ public sealed class LlvmCodeGenerator
 
         module.Target = targetTriple;
         var dataLayout = targetMachine.CreateTargetDataLayout();
+        _dataLayout = dataLayout;
         sbyte* dataLayoutStr = LlvmApi.CopyStringRepOfTargetData(dataLayout);
         module.DataLayout = Marshal.PtrToStringAnsi((IntPtr)dataLayoutStr) ?? "";
         LlvmApi.DisposeMessage(dataLayoutStr);
@@ -1053,10 +1055,26 @@ public sealed class LlvmCodeGenerator
                         {
                             if (assign.Index != null && varTypes.TryGetValue(assign.TargetName, out var arrTypeName))
                             {
-                                var arrType = MapType(context, arrTypeName, ecs);
+                                var arrTypeSym = TypeSymbol.FromName(arrTypeName);
                                 var idxVal = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, assign.Index, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
-                                var zero = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
-                                destPtr = builder.BuildInBoundsGEP2(arrType, targetPtr, new[] { zero, idxVal }, $"{assign.TargetName}_elem_gep");
+
+                                if (arrTypeSym.IsDynamicArray)
+                                {
+                                    arrTypeSym.TryGetDynamicArrayElement(out var dynElemSym);
+                                    var dynElemType = MapType(context, dynElemSym.Name, ecs);
+                                    var dynArrStructType = MapType(context, arrTypeSym.Name, ecs);
+                                    var elemPtrType = LLVMTypeRef.CreatePointer(dynElemType, 0);
+
+                                    var dataSlot = builder.BuildStructGEP2(dynArrStructType, targetPtr, 0, $"{assign.TargetName}_data_slot");
+                                    var dataPtr = builder.BuildLoad2(elemPtrType, dataSlot, $"{assign.TargetName}_data_ptr");
+                                    destPtr = builder.BuildInBoundsGEP2(dynElemType, dataPtr, new[] { idxVal }, $"{assign.TargetName}_elem_gep");
+                                }
+                                else
+                                {
+                                    var arrType = MapType(context, arrTypeName, ecs);
+                                    var zero = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                                    destPtr = builder.BuildInBoundsGEP2(arrType, targetPtr, new[] { zero, idxVal }, $"{assign.TargetName}_elem_gep");
+                                }
                             }
                             else
                             {
@@ -1342,13 +1360,34 @@ public sealed class LlvmCodeGenerator
                 return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
 
             case MemberAccessExpression mem:
-                if (_typeChecker.GetNodeType(mem.Target) == TypeSymbol.String && mem.MemberName is "len" or "length")
+                var memTargetType = _typeChecker.GetNodeType(mem.Target);
+                if (memTargetType == TypeSymbol.String && mem.MemberName is "len" or "length")
                 {
                     var strVal = CompileExpression(context, module, builder, function, mem.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     var strlenFunc = module.GetNamedFunction("strlen");
                     var strlenType = LLVMTypeRef.CreateFunction(context.Int64Type, new[] { i8PtrType }, false);
                     var len64 = builder.BuildCall2(strlenType, strlenFunc, new[] { strVal }, "slen64");
                     return builder.BuildTrunc(len64, context.Int32Type, "slen32");
+                }
+                if (memTargetType.IsDynamicArray && mem.MemberName is "len" or "length" or "capacity")
+                {
+                    var dynArrStructType = MapType(context, memTargetType.Name, ecs);
+                    LLVMValueRef dynStructPtr;
+                    if (mem.Target is IdentifierExpression dynTargetId && locals.TryGetValue(dynTargetId.Name, out var idPtr))
+                    {
+                        dynStructPtr = idPtr;
+                    }
+                    else
+                    {
+                        var tv = CompileExpression(context, module, builder, function, mem.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var tempAlloca = CreateEntryBlockAlloca(context, function, dynArrStructType, "dyn_tmp");
+                        builder.BuildStore(tv, tempAlloca);
+                        dynStructPtr = tempAlloca;
+                    }
+
+                    uint fieldIdx = mem.MemberName == "capacity" ? 2u : 1u;
+                    var fieldSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, fieldIdx, $"dyn_{mem.MemberName}_slot");
+                    return builder.BuildLoad2(context.Int32Type, fieldSlot, $"dyn_{mem.MemberName}_val");
                 }
                 if (mem.Target is IdentifierExpression enumId && _typeChecker.Enums.TryGetValue(enumId.Name, out var enumSym))
                 {
@@ -1376,22 +1415,100 @@ public sealed class LlvmCodeGenerator
 
             case ArrayLiteralExpression arrLit:
                 var arrTypeSym = _typeChecker.GetNodeType(arrLit);
-                var llvmArrType = MapType(context, arrTypeSym.Name, ecs);
-                var arrAlloca = CreateEntryBlockAlloca(context, function, llvmArrType, "arr_lit");
-                var zeroConst = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
-                for (int i = 0; i < arrLit.Elements.Count; i++)
+                if (arrTypeSym.IsDynamicArray)
                 {
-                    var elemVal = CompileExpression(context, module, builder, function, arrLit.Elements[i], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
-                    var idxVal = LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)i);
-                    var elemGEP = builder.BuildInBoundsGEP2(llvmArrType, arrAlloca, new[] { zeroConst, idxVal }, $"arr_elem_{i}");
-                    builder.BuildStore(elemVal, elemGEP);
+                    arrTypeSym.TryGetDynamicArrayElement(out var dynElemSym);
+                    var dynElemType = MapType(context, dynElemSym.Name, ecs);
+                    var dynArrStructType = MapType(context, arrTypeSym.Name, ecs);
+                    var dynArrAlloca = CreateEntryBlockAlloca(context, function, dynArrStructType, "dyn_arr");
+
+                    int elemCount = arrLit.Elements.Count;
+                    if (elemCount == 0)
+                    {
+                        var dataZero = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(dynElemType, 0));
+                        var zeroInt = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+
+                        var p0 = builder.BuildStructGEP2(dynArrStructType, dynArrAlloca, 0, "dyn_data_slot");
+                        builder.BuildStore(dataZero, p0);
+                        var p1 = builder.BuildStructGEP2(dynArrStructType, dynArrAlloca, 1, "dyn_len_slot");
+                        builder.BuildStore(zeroInt, p1);
+                        var p2 = builder.BuildStructGEP2(dynArrStructType, dynArrAlloca, 2, "dyn_cap_slot");
+                        builder.BuildStore(zeroInt, p2);
+                    }
+                    else
+                    {
+                        ulong elemSize = Math.Max(1, LlvmApi.ABISizeOfType(_dataLayout, dynElemType));
+                        ulong totalBytes = (ulong)elemCount * elemSize;
+                        var mallocFunc = module.GetNamedFunction("malloc");
+                        var mallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int64Type }, false);
+                        var rawBuf = builder.BuildCall2(mallocType, mallocFunc, new[] { LLVMValueRef.CreateConstInt(context.Int64Type, totalBytes) }, "dyn_buf");
+                        var typedBuf = builder.BuildBitCast(rawBuf, LLVMTypeRef.CreatePointer(dynElemType, 0), "dyn_buf_typed");
+
+                        for (int i = 0; i < elemCount; i++)
+                        {
+                            var elemVal = CompileExpression(context, module, builder, function, arrLit.Elements[i], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                            var idxVal = LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)i);
+                            var elemGEP = builder.BuildInBoundsGEP2(dynElemType, typedBuf, new[] { idxVal }, $"dyn_elem_{i}");
+                            builder.BuildStore(elemVal, elemGEP);
+                        }
+
+                        var countVal = LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)elemCount);
+                        var p0 = builder.BuildStructGEP2(dynArrStructType, dynArrAlloca, 0, "dyn_data_slot");
+                        builder.BuildStore(typedBuf, p0);
+                        var p1 = builder.BuildStructGEP2(dynArrStructType, dynArrAlloca, 1, "dyn_len_slot");
+                        builder.BuildStore(countVal, p1);
+                        var p2 = builder.BuildStructGEP2(dynArrStructType, dynArrAlloca, 2, "dyn_cap_slot");
+                        builder.BuildStore(countVal, p2);
+                    }
+
+                    return builder.BuildLoad2(dynArrStructType, dynArrAlloca, "dyn_arr_val");
                 }
-                return builder.BuildLoad2(llvmArrType, arrAlloca, "arr_lit_val");
+                else
+                {
+                    var llvmArrType = MapType(context, arrTypeSym.Name, ecs);
+                    var arrAlloca = CreateEntryBlockAlloca(context, function, llvmArrType, "arr_lit");
+                    var zeroConst = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                    for (int i = 0; i < arrLit.Elements.Count; i++)
+                    {
+                        var elemVal = CompileExpression(context, module, builder, function, arrLit.Elements[i], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var idxVal = LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)i);
+                        var elemGEP = builder.BuildInBoundsGEP2(llvmArrType, arrAlloca, new[] { zeroConst, idxVal }, $"arr_elem_{i}");
+                        builder.BuildStore(elemVal, elemGEP);
+                    }
+                    return builder.BuildLoad2(llvmArrType, arrAlloca, "arr_lit_val");
+                }
 
             case IndexExpression idxExpr:
                 var elemType = MapType(context, _typeChecker.GetNodeType(idxExpr).Name, ecs);
                 var indexVal = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, idxExpr.Index, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
                 var zeroIdx = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+
+                var idxTargetType = _typeChecker.GetNodeType(idxExpr.Target);
+                if (idxTargetType.IsDynamicArray)
+                {
+                    idxTargetType.TryGetDynamicArrayElement(out var dynElemSym);
+                    var dynElemType = MapType(context, dynElemSym.Name, ecs);
+                    var dynArrStructType = MapType(context, idxTargetType.Name, ecs);
+                    var elemPtrType = LLVMTypeRef.CreatePointer(dynElemType, 0);
+
+                    LLVMValueRef dynStructPtr;
+                    if (idxExpr.Target is IdentifierExpression dynTargetId && locals.TryGetValue(dynTargetId.Name, out var idPtr))
+                    {
+                        dynStructPtr = idPtr;
+                    }
+                    else
+                    {
+                        var tv = CompileExpression(context, module, builder, function, idxExpr.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var tempAlloca = CreateEntryBlockAlloca(context, function, dynArrStructType, "dyn_tmp");
+                        builder.BuildStore(tv, tempAlloca);
+                        dynStructPtr = tempAlloca;
+                    }
+
+                    var dataSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 0, "dyn_data_slot");
+                    var dataPtr = builder.BuildLoad2(elemPtrType, dataSlot, "dyn_data_ptr");
+                    var elemGEP = builder.BuildInBoundsGEP2(dynElemType, dataPtr, new[] { indexVal }, "dyn_elem_gep");
+                    return builder.BuildLoad2(dynElemType, elemGEP, "dyn_elem_val");
+                }
 
                 if (idxExpr.Target is IdentifierExpression idxTargetId && locals.TryGetValue(idxTargetId.Name, out var targetArrPtr))
                 {
@@ -1422,8 +1539,112 @@ public sealed class LlvmCodeGenerator
                 return builder.BuildLoad2(elemType, fallbackElemGEP, "tmp_elem_val");
 
             case MethodCallExpression methodCall:
-                var targetVal = CompileExpression(context, module, builder, function, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                 var targetType = _typeChecker.GetNodeType(methodCall.Target);
+
+                if (targetType.IsDynamicArray)
+                {
+                    targetType.TryGetDynamicArrayElement(out var dynElemSym);
+                    var dynElemType = MapType(context, dynElemSym.Name, ecs);
+                    var dynArrStructType = MapType(context, targetType.Name, ecs);
+                    var elemPtrType = LLVMTypeRef.CreatePointer(dynElemType, 0);
+
+                    LLVMValueRef dynStructPtr;
+                    if (methodCall.Target is IdentifierExpression dynTargetId && locals.TryGetValue(dynTargetId.Name, out var idPtr))
+                    {
+                        dynStructPtr = idPtr;
+                    }
+                    else
+                    {
+                        var tv = CompileExpression(context, module, builder, function, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var tempAlloca = CreateEntryBlockAlloca(context, function, dynArrStructType, "dyn_tmp");
+                        builder.BuildStore(tv, tempAlloca);
+                        dynStructPtr = tempAlloca;
+                    }
+
+                    if (methodCall.MethodName is "len" or "length" or "capacity")
+                    {
+                        uint fieldIdx = methodCall.MethodName == "capacity" ? 2u : 1u;
+                        var fieldSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, fieldIdx, $"dyn_{methodCall.MethodName}_slot");
+                        return builder.BuildLoad2(context.Int32Type, fieldSlot, $"dyn_{methodCall.MethodName}_val");
+                    }
+
+                    if (methodCall.MethodName == "clear")
+                    {
+                        var lenSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 1, "dyn_len_slot");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), lenSlot);
+                        return LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                    }
+
+                    if (methodCall.MethodName == "push")
+                    {
+                        var itemVal = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+
+                        var dataSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 0, "dyn_data_slot");
+                        var lenSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 1, "dyn_len_slot");
+                        var capSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 2, "dyn_cap_slot");
+
+                        var curLen = builder.BuildLoad2(context.Int32Type, lenSlot, "cur_len");
+                        var curCap = builder.BuildLoad2(context.Int32Type, capSlot, "cur_cap");
+
+                        var isFull = builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curLen, curCap, "is_full");
+
+                        var growBB = function.AppendBasicBlock("dyn_grow");
+                        var insertBB = function.AppendBasicBlock("dyn_insert");
+
+                        builder.BuildCondBr(isFull, growBB, insertBB);
+
+                        // growBB:
+                        builder.PositionAtEnd(growBB);
+                        var isCapZero = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curCap, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "is_cap_zero");
+                        var doubleCap = builder.BuildMul(curCap, LLVMValueRef.CreateConstInt(context.Int32Type, 2), "double_cap");
+                        var newCap = builder.BuildSelect(isCapZero, LLVMValueRef.CreateConstInt(context.Int32Type, 4), doubleCap, "new_cap");
+                        builder.BuildStore(newCap, capSlot);
+
+                        // realloc(data, newCap * sizeof(elem))
+                        ulong elemSize = Math.Max(1, LlvmApi.ABISizeOfType(_dataLayout, dynElemType));
+                        var newCap64 = builder.BuildZExt(newCap, context.Int64Type, "new_cap_64");
+                        var newSizeBytes = builder.BuildMul(newCap64, LLVMValueRef.CreateConstInt(context.Int64Type, elemSize), "new_size_bytes");
+
+                        var oldData = builder.BuildLoad2(elemPtrType, dataSlot, "old_data");
+                        var oldDataRaw = builder.BuildBitCast(oldData, i8PtrType, "old_data_raw");
+
+                        var reallocFunc = module.GetNamedFunction("realloc");
+                        var reallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, context.Int64Type }, false);
+                        var newDataRaw = builder.BuildCall2(reallocType, reallocFunc, new[] { oldDataRaw, newSizeBytes }, "new_data_raw");
+                        var newDataTyped = builder.BuildBitCast(newDataRaw, elemPtrType, "new_data_typed");
+                        builder.BuildStore(newDataTyped, dataSlot);
+
+                        builder.BuildBr(insertBB);
+
+                        // insertBB:
+                        builder.PositionAtEnd(insertBB);
+                        var curDataAfter = builder.BuildLoad2(elemPtrType, dataSlot, "cur_data_after");
+                        var curLenAfter = builder.BuildLoad2(context.Int32Type, lenSlot, "cur_len_after");
+                        var insertGEP = builder.BuildInBoundsGEP2(dynElemType, curDataAfter, new[] { curLenAfter }, "insert_elem_gep");
+                        builder.BuildStore(itemVal, insertGEP);
+
+                        var nextLen = builder.BuildAdd(curLenAfter, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "next_len");
+                        builder.BuildStore(nextLen, lenSlot);
+
+                        return LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                    }
+
+                    if (methodCall.MethodName == "pop")
+                    {
+                        var dataSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 0, "dyn_data_slot");
+                        var lenSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 1, "dyn_len_slot");
+
+                        var curLen = builder.BuildLoad2(context.Int32Type, lenSlot, "cur_len");
+                        var newLen = builder.BuildSub(curLen, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "new_len");
+                        builder.BuildStore(newLen, lenSlot);
+
+                        var curData = builder.BuildLoad2(elemPtrType, dataSlot, "cur_data");
+                        var elemGEP = builder.BuildInBoundsGEP2(dynElemType, curData, new[] { newLen }, "pop_elem_gep");
+                        return builder.BuildLoad2(dynElemType, elemGEP, "pop_val");
+                    }
+                }
+
+                var targetVal = CompileExpression(context, module, builder, function, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
 
                 if (methodCall.MethodName == "to_string")
                 {
@@ -1638,6 +1859,27 @@ public sealed class LlvmCodeGenerator
                 };
 
             case CallExpression call:
+                if (call.Callee.StartsWith("Vec<") || call.Callee.StartsWith("List<"))
+                {
+                    var dynTypeSym = TypeSymbol.FromName(call.Callee);
+                    dynTypeSym.TryGetDynamicArrayElement(out var dynElemSym);
+                    var dynElemType = MapType(context, dynElemSym.Name, ecs);
+                    var dynArrStructType = MapType(context, dynTypeSym.Name, ecs);
+                    var dynArrAlloca = CreateEntryBlockAlloca(context, function, dynArrStructType, "vec_init");
+
+                    var dataZero = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(dynElemType, 0));
+                    var zeroInt = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+
+                    var p0 = builder.BuildStructGEP2(dynArrStructType, dynArrAlloca, 0, "dyn_data_slot");
+                    builder.BuildStore(dataZero, p0);
+                    var p1 = builder.BuildStructGEP2(dynArrStructType, dynArrAlloca, 1, "dyn_len_slot");
+                    builder.BuildStore(zeroInt, p1);
+                    var p2 = builder.BuildStructGEP2(dynArrStructType, dynArrAlloca, 2, "dyn_cap_slot");
+                    builder.BuildStore(zeroInt, p2);
+
+                    return builder.BuildLoad2(dynArrStructType, dynArrAlloca, "vec_val");
+                }
+
                 if (call.Callee is "println" or "print")
                 {
                     bool addNewline = call.Callee == "println";
@@ -2403,6 +2645,13 @@ public sealed class LlvmCodeGenerator
             {
                 var elemType = MapType(context, parts[0].Trim(), ecs);
                 return LLVMTypeRef.CreateArray(elemType, len);
+            }
+            else
+            {
+                // Dynamic array: [T] => { T* data, i32 length, i32 capacity }
+                var elemType = MapType(context, inner.Trim(), ecs);
+                var elemPtrType = LLVMTypeRef.CreatePointer(elemType, 0);
+                return LLVMTypeRef.CreateStruct(new[] { elemPtrType, context.Int32Type, context.Int32Type }, false);
             }
         }
 

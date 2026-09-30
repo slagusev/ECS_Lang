@@ -1,0 +1,77 @@
+// End-to-end verification test for Stage 23: Dynamic Arrays (Vec<T> / List<T> / [T])
+
+component ItemList {
+    id: i32,
+}
+
+system ArrayConsumerSystem {
+    query(item: ItemList) {
+        let mut local_vec = Vec<i32>();
+        local_vec.push(item.id * 10);
+        local_vec.push(item.id * 20);
+        println("Inside ECS System: local_vec len=%d, item 0=%d, item 1=%d", local_vec.len(), local_vec[0], local_vec[1]);
+    }
+}
+
+pipeline TestPipeline {
+    stage Process {
+        ArrayConsumerSystem;
+    }
+}
+
+fn main(): i32 {
+    println("=== Stage 23: Dynamic Arrays (Vec<T> / List<T> / [T]) Test ===");
+
+    // 1. Creation via Vec<i32>()
+    let mut numbers = Vec<i32>();
+    println("Initial len: %d, capacity: %d", numbers.len(), numbers.capacity());
+
+    // 2. Push elements and verify automatic reallocation
+    numbers.push(10);
+    numbers.push(20);
+    numbers.push(30);
+    numbers.push(40);
+    numbers.push(50);
+
+    println("After 5 pushes: len=%d, capacity=%d", numbers.len(), numbers.capacity());
+    println("Element at 0: %d (expected 10)", numbers[0]);
+    println("Element at 2: %d (expected 30)", numbers[2]);
+    println("Element at 4: %d (expected 50)", numbers[4]);
+
+    // 3. Modifying elements by index
+    numbers[1] = 25;
+    numbers[3] = 45;
+    println("After modification: numbers[1]=%d (expected 25), numbers[3]=%d (expected 45)", numbers[1], numbers[3]);
+
+    // 4. Pop element
+    let last = numbers.pop();
+    println("Popped element: %d (expected 50), new len: %d (expected 4)", last, numbers.len());
+
+    // 5. For-in loop iteration
+    println("Iterating over Vec with for-in loop:");
+    for val in numbers {
+        println("  Item: %d", val);
+    }
+
+    // 6. Clear
+    numbers.clear();
+    println("After clear: len=%d (expected 0)", numbers.len());
+
+    // 7. Float dynamic array with [f32] syntax
+    let mut floats: [f32] = [];
+    floats.push(1.5);
+    floats.push(2.5);
+    floats.push(3.5);
+    println("Float vector len: %d, elem 0: %f, elem 2: %f", floats.len(), floats[0], floats[2]);
+
+    // 8. Integration with ECS World
+    println("--- Testing Dynamic Arrays in ECS System ---");
+    let mut world = ecs::create_world();
+    let e = world.spawn();
+    world.set_ItemList(e, 7);
+
+    TestPipeline(world);
+
+    println("=== All Stage 23 Dynamic Array tests PASSED! ===");
+    return 0;
+}

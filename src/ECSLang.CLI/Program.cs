@@ -135,6 +135,11 @@ public static class Program
         }
 
         // 5. Linker
+        var outDir = Path.GetDirectoryName(Path.GetFullPath(outputExe));
+        if (!string.IsNullOrEmpty(outDir) && !Directory.Exists(outDir))
+        {
+            Directory.CreateDirectory(outDir);
+        }
         var linker = new MsvcLinker(diagnostics);
         bool linkSuccess = linker.Link(tempObj, outputExe, options);
 

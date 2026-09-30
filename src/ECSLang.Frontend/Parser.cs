@@ -127,12 +127,24 @@ public sealed class Parser
         {
             Advance(); // [
             var elemType = ParseTypeAnnotation();
-            Match(TokenType.Semicolon, "Expected ';' between array element type and length.");
-            var lenTok = Match(TokenType.NumberLiteral, "Expected array length number.");
-            Match(TokenType.CloseBracket, "Expected ']' to close array type.");
-            return $"[{elemType}; {lenTok.Text}]";
+            if (Check(TokenType.Semicolon))
+            {
+                Advance(); // ;
+                var lenTok = Match(TokenType.NumberLiteral, "Expected array length number.");
+                Match(TokenType.CloseBracket, "Expected ']' to close array type.");
+                return $"[{elemType}; {lenTok.Text}]";
+            }
+            Match(TokenType.CloseBracket, "Expected ']' to close dynamic array type.");
+            return $"[{elemType}]";
         }
         var idTok = Match(TokenType.Identifier, "Expected type name.");
+        if ((idTok.Text == "Vec" || idTok.Text == "List") && Check(TokenType.Less))
+        {
+            Advance(); // <
+            var elemType = ParseTypeAnnotation();
+            Match(TokenType.Greater, "Expected '>' to close generic type.");
+            return $"[{elemType}]";
+        }
         return idTok.Text;
     }
 
@@ -662,16 +674,35 @@ public sealed class Parser
         return new WhileStatement(cond, body, whileTok.Span);
     }
 
-    private ForStatement ParseForStatement()
+    private StatementNode ParseForStatement()
     {
         var forTok = Match(TokenType.For);
         var varName = Match(TokenType.Identifier, "Expected variable name after 'for'.");
         Match(TokenType.In, "Expected 'in' after variable name in for-loop.");
-        var startExpr = ParseExpression();
-        Match(TokenType.DotDot, "Expected '..' in range.");
-        var endExpr = ParseExpression();
-        var body = ParseBlockStatement();
-        return new ForStatement(varName.Text, startExpr, endExpr, body, forTok.Span);
+        var startOrColl = ParseExpression();
+        if (Check(TokenType.DotDot))
+        {
+            Advance(); // ..
+            var endExpr = ParseExpression();
+            var body = ParseBlockStatement();
+            return new ForStatement(varName.Text, startOrColl, endExpr, body, forTok.Span);
+        }
+        else
+        {
+            // 'for item in collection { ... }'
+            var body = ParseBlockStatement();
+            var idxName = $"__idx_{varName.Text}_{forTok.Span.Line}_{forTok.Span.Column}";
+            var zeroExpr = new NumberLiteralExpression("0", false, forTok.Span);
+            var lenCall = new MethodCallExpression(startOrColl, "len", Array.Empty<ExpressionNode>(), forTok.Span);
+            var idxIdent = new IdentifierExpression(idxName, forTok.Span);
+            var itemIdxExpr = new IndexExpression(startOrColl, idxIdent, forTok.Span);
+            var itemLetStmt = new VariableDeclarationStatement(varName.Text, false, null, itemIdxExpr, forTok.Span);
+
+            var newStmts = new List<StatementNode> { itemLetStmt };
+            newStmts.AddRange(body.Statements);
+            var newBody = new BlockStatement(newStmts, body.Span);
+            return new ForStatement(idxName, zeroExpr, lenCall, newBody, forTok.Span);
+        }
     }
 
     private MatchStatement ParseMatchStatement()
@@ -851,6 +882,24 @@ public sealed class Parser
         {
             Advance();
             string identName = token.Text;
+
+            if ((identName == "Vec" || identName == "List") && Check(TokenType.Less))
+            {
+                Advance(); // <
+                var elemType = ParseTypeAnnotation();
+                Match(TokenType.Greater, "Expected '>' to close generic type.");
+                Match(TokenType.OpenParen, "Expected '(' after generic type.");
+                var genArgs = new List<ExpressionNode>();
+                if (!Check(TokenType.CloseParen))
+                {
+                    do
+                    {
+                        genArgs.Add(ParseExpression());
+                    } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                }
+                Match(TokenType.CloseParen, "Expected ')' after constructor argument list.");
+                return new CallExpression($"Vec<{elemType}>", genArgs, token.Span);
+            }
 
             while (Check(TokenType.ColonColon))
             {
