@@ -26,6 +26,9 @@ public sealed class EcsRuntimeEmitter
     private LLVMTypeRef _archStructType;
     private LLVMTypeRef _colArrayType;
     private LLVMTypeRef _worldStructType;
+    private int _nameIndexWorldOffset = -1;
+
+    public int NameIndexWorldOffset => _nameIndexWorldOffset;
 
     public EcsRuntimeEmitter(
         LLVMContextRef context,
@@ -217,6 +220,12 @@ public sealed class EcsRuntimeEmitter
             worldFields.Add(_context.Int32Type); // write_cap
             worldFields.Add(i8PtrType);          // write_data
         }
+
+        // Entity name index: HashMap<string, entity> (entries_ptr, count, cap)
+        _nameIndexWorldOffset = worldFields.Count;
+        worldFields.Add(i8PtrType);          // name_index_entries (ptr)
+        worldFields.Add(_context.Int32Type); // name_index_count (i32)
+        worldFields.Add(_context.Int32Type); // name_index_cap (i32)
 
         _worldStructType = _context.CreateNamedStruct("struct.EcsWorld");
         _worldStructType.StructSetBody(worldFields.ToArray(), false);
@@ -2179,6 +2188,18 @@ public sealed class EcsRuntimeEmitter
                 var elemType = MapType(parts[0].Trim());
                 return LLVMTypeRef.CreateArray(elemType, len);
             }
+            else
+            {
+                var elemType = MapType(inner.Trim());
+                var elemPtrType = LLVMTypeRef.CreatePointer(elemType, 0);
+                return LLVMTypeRef.CreateStruct(new[] { elemPtrType, _context.Int32Type, _context.Int32Type }, false);
+            }
+        }
+
+        if ((typeName.StartsWith("Map<") || typeName.StartsWith("HashMap<")) && typeName.EndsWith(">"))
+        {
+            var i8Ptr = LLVMTypeRef.CreatePointer(_context.Int8Type, 0);
+            return LLVMTypeRef.CreateStruct(new[] { i8Ptr, _context.Int32Type, _context.Int32Type }, false);
         }
 
         return typeName switch

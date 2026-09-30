@@ -145,6 +145,15 @@ public sealed class Parser
             Match(TokenType.Greater, "Expected '>' to close generic type.");
             return $"[{elemType}]";
         }
+        if ((idTok.Text == "HashMap" || idTok.Text == "Map") && Check(TokenType.Less))
+        {
+            Advance(); // <
+            var keyType = ParseTypeAnnotation();
+            Match(TokenType.Comma, "Expected ',' between Map key and value types.");
+            var valType = ParseTypeAnnotation();
+            Match(TokenType.Greater, "Expected '>' to close generic type.");
+            return $"Map<{keyType}, {valType}>";
+        }
         return idTok.Text;
     }
 
@@ -899,6 +908,26 @@ public sealed class Parser
                 }
                 Match(TokenType.CloseParen, "Expected ')' after constructor argument list.");
                 return new CallExpression($"Vec<{elemType}>", genArgs, token.Span);
+            }
+
+            if ((identName == "HashMap" || identName == "Map") && Check(TokenType.Less))
+            {
+                Advance(); // <
+                var keyType = ParseTypeAnnotation();
+                Match(TokenType.Comma, "Expected ',' between Map key and value types.");
+                var valType = ParseTypeAnnotation();
+                Match(TokenType.Greater, "Expected '>' to close generic type.");
+                Match(TokenType.OpenParen, "Expected '(' after generic type.");
+                var genArgs = new List<ExpressionNode>();
+                if (!Check(TokenType.CloseParen))
+                {
+                    do
+                    {
+                        genArgs.Add(ParseExpression());
+                    } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                }
+                Match(TokenType.CloseParen, "Expected ')' after constructor argument list.");
+                return new CallExpression($"Map<{keyType}, {valType}>", genArgs, token.Span);
             }
 
             while (Check(TokenType.ColonColon))

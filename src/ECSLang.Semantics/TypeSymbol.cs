@@ -22,6 +22,7 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
     public bool IsArray => Name.StartsWith("[") && Name.EndsWith("]");
     public bool IsFixedArray => IsArray && Name.Contains(";");
     public bool IsDynamicArray => IsArray && !Name.Contains(";");
+    public bool IsMap => Name.StartsWith("Map<") && Name.EndsWith(">");
 
     public bool TryGetArrayInfo(out TypeSymbol elementType, out int length)
     {
@@ -53,9 +54,34 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
         return false;
     }
 
+    public bool TryGetMapInfo(out TypeSymbol keyType, out TypeSymbol valueType)
+    {
+        if (IsMap)
+        {
+            var inner = Name.Substring(4, Name.Length - 5);
+            int depth = 0;
+            for (int i = 0; i < inner.Length; i++)
+            {
+                if (inner[i] == '<' || inner[i] == '[') depth++;
+                else if (inner[i] == '>' || inner[i] == ']') depth--;
+                else if (inner[i] == ',' && depth == 0)
+                {
+                    keyType = FromName(inner.Substring(0, i).Trim());
+                    valueType = FromName(inner.Substring(i + 1).Trim());
+                    return true;
+                }
+            }
+        }
+        keyType = Unknown;
+        valueType = Unknown;
+        return false;
+    }
+
     public static TypeSymbol CreateArray(TypeSymbol elem, int length) => new($"[{elem.Name}; {length}]", IsPrimitive: false);
 
     public static TypeSymbol CreateDynamicArray(TypeSymbol elem) => new($"[{elem.Name}]", IsPrimitive: false);
+
+    public static TypeSymbol CreateMap(TypeSymbol key, TypeSymbol val) => new($"Map<{key.Name}, {val.Name}>", IsPrimitive: false);
 
     public static TypeSymbol FromName(string? name)
     {
@@ -69,6 +95,23 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
         {
             var inner = name.Substring(5, name.Length - 6).Trim();
             return CreateDynamicArray(FromName(inner));
+        }
+        if ((name.StartsWith("HashMap<") && name.EndsWith(">")) || (name.StartsWith("Map<") && name.EndsWith(">")))
+        {
+            int prefixLen = name.StartsWith("HashMap<") ? 8 : 4;
+            var inner = name.Substring(prefixLen, name.Length - prefixLen - 1);
+            int depth = 0;
+            for (int i = 0; i < inner.Length; i++)
+            {
+                if (inner[i] == '<' || inner[i] == '[') depth++;
+                else if (inner[i] == '>' || inner[i] == ']') depth--;
+                else if (inner[i] == ',' && depth == 0)
+                {
+                    var k = FromName(inner.Substring(0, i).Trim());
+                    var v = FromName(inner.Substring(i + 1).Trim());
+                    return CreateMap(k, v);
+                }
+            }
         }
         return name switch
         {

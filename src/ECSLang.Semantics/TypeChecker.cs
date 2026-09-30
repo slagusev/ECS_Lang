@@ -597,22 +597,34 @@ public sealed class TypeChecker
         if (assign.Index != null)
         {
             var indexType = CheckExpression(assign.Index);
-            if (!indexType.IsInteger)
-            {
-                _diagnostics.ReportError("Array index must be an integer.", assign.Index.Span);
-            }
 
-            if (expectedType.TryGetArrayInfo(out var elemType, out _))
+            if (expectedType.TryGetMapInfo(out var mapKeyType, out var mapValType))
             {
-                expectedType = elemType;
-            }
-            else if (expectedType.TryGetDynamicArrayElement(out var dynElem))
-            {
-                expectedType = dynElem;
+                if (!AreTypesCompatible(mapKeyType, indexType))
+                {
+                    _diagnostics.ReportError($"Map key of type '{expectedType.Name}' expects '{mapKeyType.Name}', but got '{indexType.Name}'.", assign.Index.Span);
+                }
+                expectedType = mapValType;
             }
             else
             {
-                _diagnostics.ReportError($"Type '{expectedType.Name}' is not indexable.", assign.Span);
+                if (!indexType.IsInteger)
+                {
+                    _diagnostics.ReportError("Array index must be an integer.", assign.Index.Span);
+                }
+
+                if (expectedType.TryGetArrayInfo(out var elemType, out _))
+                {
+                    expectedType = elemType;
+                }
+                else if (expectedType.TryGetDynamicArrayElement(out var dynElem))
+                {
+                    expectedType = dynElem;
+                }
+                else
+                {
+                    _diagnostics.ReportError($"Type '{expectedType.Name}' is not indexable.", assign.Span);
+                }
             }
         }
 
@@ -790,6 +802,15 @@ public sealed class TypeChecker
         var targetType = CheckExpression(idxExpr.Target);
         var indexType = CheckExpression(idxExpr.Index);
 
+        if (targetType.TryGetMapInfo(out var mapKeyType, out var mapValType))
+        {
+            if (!AreTypesCompatible(mapKeyType, indexType))
+            {
+                _diagnostics.ReportError($"Map key of type '{targetType.Name}' expects '{mapKeyType.Name}', but got '{indexType.Name}'.", idxExpr.Index.Span);
+            }
+            return mapValType;
+        }
+
         if (!indexType.IsInteger)
         {
             _diagnostics.ReportError("Array index must be an integer.", idxExpr.Index.Span);
@@ -838,6 +859,10 @@ public sealed class TypeChecker
             return TypeSymbol.I32;
         }
         if (targetType.IsDynamicArray && mem.MemberName is "len" or "length" or "capacity")
+        {
+            return TypeSymbol.I32;
+        }
+        if (targetType.IsMap && mem.MemberName is "len" or "length" or "capacity" or "count")
         {
             return TypeSymbol.I32;
         }
@@ -894,7 +919,8 @@ public sealed class TypeChecker
             CheckExpression(arg);
         }
 
-        if (call.Callee.StartsWith("Vec<") || call.Callee.StartsWith("List<"))
+        if (call.Callee.StartsWith("Vec<") || call.Callee.StartsWith("List<") ||
+            call.Callee.StartsWith("Map<") || call.Callee.StartsWith("HashMap<"))
         {
             return TypeSymbol.FromName(call.Callee);
         }
@@ -1103,6 +1129,65 @@ public sealed class TypeChecker
                 return TypeSymbol.Entity;
             }
 
+            if (methodCall.MethodName == "get_by_name")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'get_by_name' expects 1 argument (entity name string).", methodCall.Span);
+                }
+                else
+                {
+                    var aType = GetNodeType(methodCall.Arguments[0]);
+                    if (aType != TypeSymbol.String && aType != TypeSymbol.Unknown)
+                    {
+                        _diagnostics.ReportError($"Argument 1 of 'get_by_name' expects type 'string', but got '{aType.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Entity;
+                return TypeSymbol.Entity;
+            }
+
+            if (methodCall.MethodName == "has_name")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'has_name' expects 1 argument (entity name string).", methodCall.Span);
+                }
+                else
+                {
+                    var aType = GetNodeType(methodCall.Arguments[0]);
+                    if (aType != TypeSymbol.String && aType != TypeSymbol.Unknown)
+                    {
+                        _diagnostics.ReportError($"Argument 1 of 'has_name' expects type 'string', but got '{aType.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Bool;
+                return TypeSymbol.Bool;
+            }
+
+            if (methodCall.MethodName == "set_name")
+            {
+                if (methodCall.Arguments.Count != 2)
+                {
+                    _diagnostics.ReportError("Method 'set_name' expects 2 arguments (entity, name string).", methodCall.Span);
+                }
+                else
+                {
+                    var eType = GetNodeType(methodCall.Arguments[0]);
+                    var nType = GetNodeType(methodCall.Arguments[1]);
+                    if (!eType.IsInteger && eType != TypeSymbol.Unknown)
+                    {
+                        _diagnostics.ReportError($"Argument 1 of 'set_name' expects type 'Entity' or integer, but got '{eType.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                    if (nType != TypeSymbol.String && nType != TypeSymbol.Unknown)
+                    {
+                        _diagnostics.ReportError($"Argument 2 of 'set_name' expects type 'string', but got '{nType.Name}'.", methodCall.Arguments[1].Span);
+                    }
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Void;
+                return TypeSymbol.Void;
+            }
+
             if (methodCall.MethodName.StartsWith("has_"))
             {
                 return TypeSymbol.Bool;
@@ -1168,6 +1253,108 @@ public sealed class TypeChecker
             }
 
             if (methodCall.MethodName is "len" or "length" or "capacity")
+            {
+                if (methodCall.Arguments.Count != 0)
+                {
+                    _diagnostics.ReportError($"Method '{methodCall.MethodName}' expects 0 arguments.", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = TypeSymbol.I32;
+                return TypeSymbol.I32;
+            }
+
+            if (methodCall.MethodName == "clear")
+            {
+                if (methodCall.Arguments.Count != 0)
+                {
+                    _diagnostics.ReportError("Method 'clear' expects 0 arguments.", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Void;
+                return TypeSymbol.Void;
+            }
+        }
+
+        if (targetType.IsMap)
+        {
+            targetType.TryGetMapInfo(out var keyType, out var valType);
+
+            if (methodCall.MethodName is "insert" or "put")
+            {
+                if (methodCall.Arguments.Count != 2)
+                {
+                    _diagnostics.ReportError($"Method '{methodCall.MethodName}' expects 2 arguments (key, value).", methodCall.Span);
+                }
+                else
+                {
+                    var kArg = GetNodeType(methodCall.Arguments[0]);
+                    var vArg = GetNodeType(methodCall.Arguments[1]);
+                    if (keyType != TypeSymbol.Unknown && kArg != TypeSymbol.Unknown && !AreTypesCompatible(keyType, kArg))
+                    {
+                        _diagnostics.ReportError($"Argument 1 of '{methodCall.MethodName}' expects key type '{keyType.Name}', but got '{kArg.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                    if (valType != TypeSymbol.Unknown && vArg != TypeSymbol.Unknown && !AreTypesCompatible(valType, vArg))
+                    {
+                        _diagnostics.ReportError($"Argument 2 of '{methodCall.MethodName}' expects value type '{valType.Name}', but got '{vArg.Name}'.", methodCall.Arguments[1].Span);
+                    }
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Void;
+                return TypeSymbol.Void;
+            }
+
+            if (methodCall.MethodName == "get")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'get' expects 1 argument (key).", methodCall.Span);
+                }
+                else
+                {
+                    var kArg = GetNodeType(methodCall.Arguments[0]);
+                    if (keyType != TypeSymbol.Unknown && kArg != TypeSymbol.Unknown && !AreTypesCompatible(keyType, kArg))
+                    {
+                        _diagnostics.ReportError($"Argument 1 of 'get' expects key type '{keyType.Name}', but got '{kArg.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                }
+                _nodeTypes[methodCall] = valType;
+                return valType;
+            }
+
+            if (methodCall.MethodName is "contains" or "has")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError($"Method '{methodCall.MethodName}' expects 1 argument (key).", methodCall.Span);
+                }
+                else
+                {
+                    var kArg = GetNodeType(methodCall.Arguments[0]);
+                    if (keyType != TypeSymbol.Unknown && kArg != TypeSymbol.Unknown && !AreTypesCompatible(keyType, kArg))
+                    {
+                        _diagnostics.ReportError($"Argument 1 of '{methodCall.MethodName}' expects key type '{keyType.Name}', but got '{kArg.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Bool;
+                return TypeSymbol.Bool;
+            }
+
+            if (methodCall.MethodName == "remove")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'remove' expects 1 argument (key).", methodCall.Span);
+                }
+                else
+                {
+                    var kArg = GetNodeType(methodCall.Arguments[0]);
+                    if (keyType != TypeSymbol.Unknown && kArg != TypeSymbol.Unknown && !AreTypesCompatible(keyType, kArg))
+                    {
+                        _diagnostics.ReportError($"Argument 1 of 'remove' expects key type '{keyType.Name}', but got '{kArg.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Bool;
+                return TypeSymbol.Bool;
+            }
+
+            if (methodCall.MethodName is "len" or "length" or "count" or "capacity")
             {
                 if (methodCall.Arguments.Count != 0)
                 {

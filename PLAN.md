@@ -382,12 +382,12 @@ fn main(): i32 {
 - [x] Интеграция в интерактивную игру [`examples/raylib_game.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/raylib_game.ecs).
 - [x] Сквозной тест профайлера: [`examples/profiler_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/profiler_test.ecs), проверен в Debug (`-O0`) и Release (`-O3`).
 
-### [ ] Этап 25: Хэш-таблицы (`HashMap<K, V>`) и именованная индексация
-- [ ] Встроенная обобщенная хэш-таблица `HashMap<K, V>` (открытая адресация / Robin Hood hashing) для $O(1)$ поиска.
-- [ ] Индексация сущностей по строковым именам, тегам и идентификаторам (`world.get_by_name("player")`).
-- [ ] Кэширование ресурсов и ассетов по путям (текстуры, звуки).
-- [ ] Методы `.insert(k, v)`, `.get(k)`, `.contains(k)`, `.remove(k)`, `.len()`, `.clear()`.
-- [ ] Сквозной тест ассоциативных коллекций.
+### [x] Этап 25: Хэш-таблицы (`HashMap<K, V>`) и именованная индексация
+- [x] Встроенная обобщенная хэш-таблица `HashMap<K, V>` / `Map<K, V>` (открытая адресация, линейное пробирование, FNV-1a для строк, мультипликативный хэш Кнута для целых чисел и сущностей, bitcast для вещественных).
+- [x] Индексация сущностей по строковым именам в структуре `World`: `world.set_name(entity, name)`, `world.get_by_name(name) -> entity`, `world.has_name(name) -> bool`.
+- [x] Методы `.insert(k, v)`, `.get(k)`, индексирование `map[k]` и `map[k] = v`, `.contains(k)`, `.remove(k)`, `.len()`, `.capacity()`, `.clear()`.
+- [x] Автоматический рехэшинг при коэффициенте заполнения $> 70\%$ с выделением степени двойки.
+- [x] Сквозной тест ассоциативных коллекций и именованной индексации: [`examples/hashmap_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/hashmap_test.ecs), успешно пройден как в Debug (`-O0`), так и в Release (`-O3`).
 
 ### [ ] Этап 26: Аренное управление памятью строк (`World` String Arena)
 - [ ] Встроенный аренный аллокатор строк в структуре контекста `World` (монолитные чанки памяти).

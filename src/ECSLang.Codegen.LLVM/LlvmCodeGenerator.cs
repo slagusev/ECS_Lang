@@ -17,6 +17,7 @@ public sealed class LlvmCodeGenerator
     private LLVMMetadataRef _diFile;
     private LLVMMetadataRef? _currentSubprogram;
     private LLVMTargetDataRef _dataLayout;
+    private HashMapEmitter? _mapEmitter;
 
     static LlvmCodeGenerator()
     {
@@ -79,6 +80,7 @@ public sealed class LlvmCodeGenerator
         sbyte* dataLayoutStr = LlvmApi.CopyStringRepOfTargetData(dataLayout);
         module.DataLayout = Marshal.PtrToStringAnsi((IntPtr)dataLayoutStr) ?? "";
         LlvmApi.DisposeMessage(dataLayoutStr);
+        _mapEmitter = new HashMapEmitter(context, module, _dataLayout);
 
         // Debug Info Setup (CodeView / PDB on Windows)
         if (_options.GenerateDebugInfo)
@@ -1061,7 +1063,16 @@ public sealed class LlvmCodeGenerator
                                 var arrTypeSym = TypeSymbol.FromName(arrTypeName);
                                 var idxVal = EnsureInt32(context, builder, CompileExpression(context, module, builder, function, assign.Index, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
 
-                                if (arrTypeSym.IsDynamicArray)
+                                if (arrTypeSym.IsMap)
+                                {
+                                    arrTypeSym.TryGetMapInfo(out var mapKeySym, out var mapValSym);
+                                    var keyVal = CompileExpression(context, module, builder, function, assign.Index, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                                    var insertFunc = _mapEmitter!.GetOrCreateInsert(mapKeySym.Name, mapValSym.Name, (t) => MapType(context, t, ecs));
+                                    var ifType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(insertFunc);
+                                    builder.BuildCall2(ifType, insertFunc, new[] { targetPtr, keyVal, newVal }, "");
+                                    break;
+                                }
+                                else if (arrTypeSym.IsDynamicArray)
                                 {
                                     arrTypeSym.TryGetDynamicArrayElement(out var dynElemSym);
                                     var dynElemType = MapType(context, dynElemSym.Name, ecs);
@@ -1392,6 +1403,26 @@ public sealed class LlvmCodeGenerator
                     var fieldSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, fieldIdx, $"dyn_{mem.MemberName}_slot");
                     return builder.BuildLoad2(context.Int32Type, fieldSlot, $"dyn_{mem.MemberName}_val");
                 }
+                if (memTargetType.IsMap && mem.MemberName is "len" or "length" or "count" or "capacity")
+                {
+                    var mapStructType = MapType(context, memTargetType.Name, ecs);
+                    LLVMValueRef mapStructPtr;
+                    if (mem.Target is IdentifierExpression mapTargetId && locals.TryGetValue(mapTargetId.Name, out var idPtr))
+                    {
+                        mapStructPtr = idPtr;
+                    }
+                    else
+                    {
+                        var tv = CompileExpression(context, module, builder, function, mem.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var tempAlloca = CreateEntryBlockAlloca(context, function, mapStructType, "map_tmp");
+                        builder.BuildStore(tv, tempAlloca);
+                        mapStructPtr = tempAlloca;
+                    }
+
+                    uint fieldIdx = mem.MemberName == "capacity" ? 2u : 1u;
+                    var fieldSlot = builder.BuildStructGEP2(mapStructType, mapStructPtr, fieldIdx, $"map_{mem.MemberName}_slot");
+                    return builder.BuildLoad2(context.Int32Type, fieldSlot, $"map_{mem.MemberName}_val");
+                }
                 if (mem.Target is IdentifierExpression enumId && _typeChecker.Enums.TryGetValue(enumId.Name, out var enumSym))
                 {
                     if (enumSym.Members.TryGetValue(mem.MemberName, out var mSym))
@@ -1487,6 +1518,30 @@ public sealed class LlvmCodeGenerator
                 var zeroIdx = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
 
                 var idxTargetType = _typeChecker.GetNodeType(idxExpr.Target);
+                if (idxTargetType.IsMap)
+                {
+                    idxTargetType.TryGetMapInfo(out var mapKeySym, out var mapValSym);
+                    var mapKeyVal = CompileExpression(context, module, builder, function, idxExpr.Index, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var mapStructType = MapType(context, idxTargetType.Name, ecs);
+
+                    LLVMValueRef mapStructPtr;
+                    if (idxExpr.Target is IdentifierExpression mapTargetId && locals.TryGetValue(mapTargetId.Name, out var idPtr))
+                    {
+                        mapStructPtr = idPtr;
+                    }
+                    else
+                    {
+                        var tv = CompileExpression(context, module, builder, function, idxExpr.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var tempAlloca = CreateEntryBlockAlloca(context, function, mapStructType, "map_tmp");
+                        builder.BuildStore(tv, tempAlloca);
+                        mapStructPtr = tempAlloca;
+                    }
+
+                    var getFunc = _mapEmitter!.GetOrCreateGet(mapKeySym.Name, mapValSym.Name, (t) => MapType(context, t, ecs));
+                    var gfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(getFunc);
+                    return builder.BuildCall2(gfType, getFunc, new[] { mapStructPtr, mapKeyVal }, "map_get_idx");
+                }
+
                 if (idxTargetType.IsDynamicArray)
                 {
                     idxTargetType.TryGetDynamicArrayElement(out var dynElemSym);
@@ -1647,6 +1702,74 @@ public sealed class LlvmCodeGenerator
                     }
                 }
 
+                if (targetType.IsMap)
+                {
+                    targetType.TryGetMapInfo(out var mapKeySym, out var mapValSym);
+                    var mapStructType = MapType(context, targetType.Name, ecs);
+
+                    LLVMValueRef mapStructPtr;
+                    if (methodCall.Target is IdentifierExpression mapTargetId && locals.TryGetValue(mapTargetId.Name, out var idPtr))
+                    {
+                        mapStructPtr = idPtr;
+                    }
+                    else
+                    {
+                        var tv = CompileExpression(context, module, builder, function, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var tempAlloca = CreateEntryBlockAlloca(context, function, mapStructType, "map_tmp");
+                        builder.BuildStore(tv, tempAlloca);
+                        mapStructPtr = tempAlloca;
+                    }
+
+                    if (methodCall.MethodName is "len" or "length" or "count" or "capacity")
+                    {
+                        uint fieldIdx = methodCall.MethodName == "capacity" ? 2u : 1u;
+                        var fieldSlot = builder.BuildStructGEP2(mapStructType, mapStructPtr, fieldIdx, $"map_{methodCall.MethodName}_slot");
+                        return builder.BuildLoad2(context.Int32Type, fieldSlot, $"map_{methodCall.MethodName}_val");
+                    }
+
+                    if (methodCall.MethodName is "insert" or "put")
+                    {
+                        var kArg = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var vArg = CompileExpression(context, module, builder, function, methodCall.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var insertFunc = _mapEmitter!.GetOrCreateInsert(mapKeySym.Name, mapValSym.Name, (t) => MapType(context, t, ecs));
+                        var ifType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(insertFunc);
+                        builder.BuildCall2(ifType, insertFunc, new[] { mapStructPtr, kArg, vArg }, "");
+                        return LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                    }
+
+                    if (methodCall.MethodName == "get")
+                    {
+                        var kArg = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var getFunc = _mapEmitter!.GetOrCreateGet(mapKeySym.Name, mapValSym.Name, (t) => MapType(context, t, ecs));
+                        var gfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(getFunc);
+                        return builder.BuildCall2(gfType, getFunc, new[] { mapStructPtr, kArg }, "map_get_val");
+                    }
+
+                    if (methodCall.MethodName is "contains" or "has")
+                    {
+                        var kArg = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var containsFunc = _mapEmitter!.GetOrCreateContains(mapKeySym.Name, mapValSym.Name, (t) => MapType(context, t, ecs));
+                        var cfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(containsFunc);
+                        return builder.BuildCall2(cfType, containsFunc, new[] { mapStructPtr, kArg }, "map_contains_val");
+                    }
+
+                    if (methodCall.MethodName == "remove")
+                    {
+                        var kArg = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var removeFunc = _mapEmitter!.GetOrCreateRemove(mapKeySym.Name, mapValSym.Name, (t) => MapType(context, t, ecs));
+                        var rfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(removeFunc);
+                        return builder.BuildCall2(rfType, removeFunc, new[] { mapStructPtr, kArg }, "map_remove_val");
+                    }
+
+                    if (methodCall.MethodName == "clear")
+                    {
+                        var clearFunc = _mapEmitter!.GetOrCreateClear(mapKeySym.Name, mapValSym.Name, (t) => MapType(context, t, ecs));
+                        var cfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(clearFunc);
+                        builder.BuildCall2(cfType, clearFunc, new[] { mapStructPtr }, "");
+                        return LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                    }
+                }
+
                 var targetVal = CompileExpression(context, module, builder, function, methodCall.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
 
                 if (methodCall.MethodName == "to_string")
@@ -1701,6 +1824,35 @@ public sealed class LlvmCodeGenerator
                     var smFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(structMethodFunc);
                     string smCallName = smFuncType.ReturnType == context.VoidType ? "" : $"{methodCall.MethodName}_call";
                     return builder.BuildCall2(smFuncType, structMethodFunc, smArgs.ToArray(), smCallName);
+                }
+
+                if (methodCall.MethodName == "set_name" && ecs != null && ecs.NameIndexWorldOffset >= 0)
+                {
+                    var entArg = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var nameArg = CompileExpression(context, module, builder, function, methodCall.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var nameMapPtr = builder.BuildStructGEP2(ecs.GetWorldStructType(), targetVal, (uint)ecs.NameIndexWorldOffset, "name_map_ptr");
+                    var insertFunc = _mapEmitter!.GetOrCreateInsert("string", "Entity", (t) => MapType(context, t, ecs));
+                    var ifType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(insertFunc);
+                    builder.BuildCall2(ifType, insertFunc, new[] { nameMapPtr, nameArg, entArg }, "");
+                    return LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                }
+
+                if (methodCall.MethodName == "get_by_name" && ecs != null && ecs.NameIndexWorldOffset >= 0)
+                {
+                    var nameArg = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var nameMapPtr = builder.BuildStructGEP2(ecs.GetWorldStructType(), targetVal, (uint)ecs.NameIndexWorldOffset, "name_map_ptr");
+                    var getFunc = _mapEmitter!.GetOrCreateGet("string", "Entity", (t) => MapType(context, t, ecs));
+                    var gfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(getFunc);
+                    return builder.BuildCall2(gfType, getFunc, new[] { nameMapPtr, nameArg }, "ent_by_name");
+                }
+
+                if (methodCall.MethodName == "has_name" && ecs != null && ecs.NameIndexWorldOffset >= 0)
+                {
+                    var nameArg = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var nameMapPtr = builder.BuildStructGEP2(ecs.GetWorldStructType(), targetVal, (uint)ecs.NameIndexWorldOffset, "name_map_ptr");
+                    var containsFunc = _mapEmitter!.GetOrCreateContains("string", "Entity", (t) => MapType(context, t, ecs));
+                    var cfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(containsFunc);
+                    return builder.BuildCall2(cfType, containsFunc, new[] { nameMapPtr, nameArg }, "has_name_val");
                 }
 
                 string mTargetName = $"world_{methodCall.MethodName}";
@@ -1885,6 +2037,27 @@ public sealed class LlvmCodeGenerator
                     builder.BuildStore(zeroInt, p2);
 
                     return builder.BuildLoad2(dynArrStructType, dynArrAlloca, "vec_val");
+                }
+
+                if (call.Callee.StartsWith("Map<") || call.Callee.StartsWith("HashMap<"))
+                {
+                    var mapTypeSym = TypeSymbol.FromName(call.Callee);
+                    mapTypeSym.TryGetMapInfo(out var kSym, out var vSym);
+                    var mapStructType = MapType(context, mapTypeSym.Name, ecs);
+                    var entryStructType = _mapEmitter!.GetEntryType(kSym.Name, vSym.Name, (t) => MapType(context, t, ecs));
+                    var mapAlloca = CreateEntryBlockAlloca(context, function, mapStructType, "map_init");
+
+                    var nullEntries = LLVMValueRef.CreateConstPointerNull(LLVMTypeRef.CreatePointer(entryStructType, 0));
+                    var zeroInt = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+
+                    var p0 = builder.BuildStructGEP2(mapStructType, mapAlloca, 0, "map_entries_slot");
+                    builder.BuildStore(nullEntries, p0);
+                    var p1 = builder.BuildStructGEP2(mapStructType, mapAlloca, 1, "map_count_slot");
+                    builder.BuildStore(zeroInt, p1);
+                    var p2 = builder.BuildStructGEP2(mapStructType, mapAlloca, 2, "map_cap_slot");
+                    builder.BuildStore(zeroInt, p2);
+
+                    return builder.BuildLoad2(mapStructType, mapAlloca, "map_val");
                 }
 
                 if (call.Callee is "println" or "print")
@@ -2667,6 +2840,18 @@ public sealed class LlvmCodeGenerator
                 var elemPtrType = LLVMTypeRef.CreatePointer(elemType, 0);
                 return LLVMTypeRef.CreateStruct(new[] { elemPtrType, context.Int32Type, context.Int32Type }, false);
             }
+        }
+
+        if (typeName != null && (typeName.StartsWith("Map<") || typeName.StartsWith("HashMap<")) && typeName.EndsWith(">"))
+        {
+            var mapTypeSym = TypeSymbol.FromName(typeName);
+            mapTypeSym.TryGetMapInfo(out var kSym, out var vSym);
+            if (_mapEmitter != null)
+            {
+                return _mapEmitter.GetMapType(kSym.Name, vSym.Name, (t) => MapType(context, t, ecs));
+            }
+            var i8Ptr = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
+            return LLVMTypeRef.CreateStruct(new[] { i8Ptr, context.Int32Type, context.Int32Type }, false);
         }
 
         if (typeName != null && _typeChecker.Structs.ContainsKey(typeName) && ecs != null)
