@@ -145,6 +145,22 @@ public sealed class Parser
             Match(TokenType.Greater, "Expected '>' to close generic type.");
             return $"[{elemType}]";
         }
+        if (idTok.Text == "Option" && Check(TokenType.Less))
+        {
+            Advance(); // <
+            var innerType = ParseTypeAnnotation();
+            Match(TokenType.Greater, "Expected '>' to close Option generic type.");
+            return $"Option<{innerType}>";
+        }
+        if (idTok.Text == "Result" && Check(TokenType.Less))
+        {
+            Advance(); // <
+            var okType = ParseTypeAnnotation();
+            Match(TokenType.Comma, "Expected ',' between Result Ok and Err types.");
+            var errType = ParseTypeAnnotation();
+            Match(TokenType.Greater, "Expected '>' to close Result generic type.");
+            return $"Result<{okType}, {errType}>";
+        }
         if ((idTok.Text == "HashMap" || idTok.Text == "Map") && Check(TokenType.Less))
         {
             Advance(); // <
@@ -928,6 +944,62 @@ public sealed class Parser
                 }
                 Match(TokenType.CloseParen, "Expected ')' after constructor argument list.");
                 return new CallExpression($"Map<{keyType}, {valType}>", genArgs, token.Span);
+            }
+
+            if (identName == "Option" && Check(TokenType.Less))
+            {
+                Advance(); // <
+                var innerType = ParseTypeAnnotation();
+                Match(TokenType.Greater, "Expected '>' to close Option generic type.");
+                if (Check(TokenType.ColonColon))
+                {
+                    Advance(); // ::
+                    var variantTok = Match(TokenType.Identifier, "Expected variant name after '::'.");
+                    if (Check(TokenType.OpenParen))
+                    {
+                        Advance(); // (
+                        var genArgs = new List<ExpressionNode>();
+                        if (!Check(TokenType.CloseParen))
+                        {
+                            do
+                            {
+                                genArgs.Add(ParseExpression());
+                            } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                        }
+                        Match(TokenType.CloseParen, "Expected ')' after argument list.");
+                        return new CallExpression($"Option<{innerType}>::{variantTok.Text}", genArgs, token.Span);
+                    }
+                    return new IdentifierExpression($"Option<{innerType}>::{variantTok.Text}", token.Span);
+                }
+            }
+
+            if (identName == "Result" && Check(TokenType.Less))
+            {
+                Advance(); // <
+                var okType = ParseTypeAnnotation();
+                Match(TokenType.Comma, "Expected ',' between Result Ok and Err types.");
+                var errType = ParseTypeAnnotation();
+                Match(TokenType.Greater, "Expected '>' to close Result generic type.");
+                if (Check(TokenType.ColonColon))
+                {
+                    Advance(); // ::
+                    var variantTok = Match(TokenType.Identifier, "Expected variant name after '::'.");
+                    if (Check(TokenType.OpenParen))
+                    {
+                        Advance(); // (
+                        var genArgs = new List<ExpressionNode>();
+                        if (!Check(TokenType.CloseParen))
+                        {
+                            do
+                            {
+                                genArgs.Add(ParseExpression());
+                            } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                        }
+                        Match(TokenType.CloseParen, "Expected ')' after argument list.");
+                        return new CallExpression($"Result<{okType}, {errType}>::{variantTok.Text}", genArgs, token.Span);
+                    }
+                    return new IdentifierExpression($"Result<{okType}, {errType}>::{variantTok.Text}", token.Span);
+                }
             }
 
             while (Check(TokenType.ColonColon))

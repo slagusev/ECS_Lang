@@ -450,6 +450,8 @@ public sealed class TypeChecker
         }
     }
 
+    private TypeSymbol? _currentExpectedReturnType;
+
     private void CheckFunction(FunctionDeclaration fn)
     {
         var fnScope = new Scope(_currentScope);
@@ -465,14 +467,27 @@ public sealed class TypeChecker
             }
         }
 
+        var oldRet = _currentExpectedReturnType;
+        _currentExpectedReturnType = fn.ReturnType != null ? TypeSymbol.FromName(fn.ReturnType) : TypeSymbol.Void;
+
         CheckBlock(fn.Body);
+
+        _currentExpectedReturnType = oldRet;
         _currentScope = _currentScope.Parent!;
     }
 
-    private void CheckBlock(BlockStatement block)
+    private void CheckBlock(BlockStatement block, IEnumerable<VariableSymbol>? extraSymbols = null)
     {
         var blockScope = new Scope(_currentScope);
         _currentScope = blockScope;
+
+        if (extraSymbols != null)
+        {
+            foreach (var sym in extraSymbols)
+            {
+                _currentScope.TryDeclare(sym);
+            }
+        }
 
         foreach (var stmt in block.Statements)
         {
@@ -504,7 +519,18 @@ public sealed class TypeChecker
             case ReturnStatement retStmt:
                 if (retStmt.Value != null)
                 {
-                    CheckExpression(retStmt.Value);
+                    var rType = CheckExpression(retStmt.Value);
+                    if (_currentExpectedReturnType != null)
+                    {
+                        if (_currentExpectedReturnType.IsOption && (rType.Name == "None" || retStmt.Value is IdentifierExpression { Name: "None" } || retStmt.Value is CallExpression { Callee: "None" }))
+                        {
+                            _nodeTypes[retStmt.Value] = _currentExpectedReturnType;
+                        }
+                        else if (_currentExpectedReturnType.IsResult && (retStmt.Value is CallExpression { Callee: "Ok" } || retStmt.Value is CallExpression { Callee: "Err" }))
+                        {
+                            _nodeTypes[retStmt.Value] = _currentExpectedReturnType;
+                        }
+                    }
                 }
                 break;
             case ExpressionStatement exprStmt:
@@ -542,6 +568,17 @@ public sealed class TypeChecker
             initType = explicitType;
         }
 
+        if (explicitType.IsOption && (initType.Name == "None" || varDecl.Initializer is IdentifierExpression { Name: "None" } || varDecl.Initializer is CallExpression { Callee: "None" }))
+        {
+            _nodeTypes[varDecl.Initializer] = explicitType;
+            initType = explicitType;
+        }
+        else if (explicitType.IsResult && (varDecl.Initializer is CallExpression { Callee: "Ok" } || varDecl.Initializer is CallExpression { Callee: "Err" }))
+        {
+            _nodeTypes[varDecl.Initializer] = explicitType;
+            initType = explicitType;
+        }
+
         if (varDecl.TypeName != null && initType != TypeSymbol.Unknown && !AreTypesCompatible(explicitType, initType))
         {
             _diagnostics.ReportError(
@@ -567,6 +604,20 @@ public sealed class TypeChecker
             expected.TryGetDynamicArrayElement(out var expElem);
             actual.TryGetDynamicArrayElement(out var actElem);
             return AreTypesCompatible(expElem, actElem);
+        }
+        if (expected.IsOption && actual.Name == "None") return true;
+        if (expected.IsOption && actual.IsOption)
+        {
+            expected.TryGetOptionInfo(out var expInner);
+            actual.TryGetOptionInfo(out var actInner);
+            return AreTypesCompatible(expInner, actInner);
+        }
+        if (expected.IsResult && actual.IsResult)
+        {
+            expected.TryGetResultInfo(out var expOk, out var expErr);
+            actual.TryGetResultInfo(out var actOk, out var actErr);
+            return (expOk == TypeSymbol.Unknown || actOk == TypeSymbol.Unknown || AreTypesCompatible(expOk, actOk)) &&
+                   (expErr == TypeSymbol.Unknown || actErr == TypeSymbol.Unknown || AreTypesCompatible(expErr, actErr));
         }
         return false;
     }
@@ -629,6 +680,17 @@ public sealed class TypeChecker
         }
 
         var valType = CheckExpression(assign.Value);
+        if (expectedType.IsOption && (valType.Name == "None" || assign.Value is IdentifierExpression { Name: "None" } || assign.Value is CallExpression { Callee: "None" }))
+        {
+            _nodeTypes[assign.Value] = expectedType;
+            valType = expectedType;
+        }
+        else if (expectedType.IsResult && (assign.Value is CallExpression { Callee: "Ok" } || assign.Value is CallExpression { Callee: "Err" }))
+        {
+            _nodeTypes[assign.Value] = expectedType;
+            valType = expectedType;
+        }
+
         if (expectedType != TypeSymbol.Unknown && valType != TypeSymbol.Unknown && !AreTypesCompatible(expectedType, valType))
         {
             _diagnostics.ReportError($"Cannot assign value of type '{valType.Name}' to '{assign.TargetName}{(assign.MemberName != null ? "." + assign.MemberName : "")}' of type '{expectedType.Name}'.", assign.Value.Span);
@@ -724,14 +786,69 @@ public sealed class TypeChecker
     {
         var sType = CheckExpression(match.Scrutinee);
         bool isEnum = _enums.ContainsKey(sType.Name);
-        if (!sType.IsInteger && !isEnum && sType != TypeSymbol.Unknown)
+        if (!sType.IsInteger && !isEnum && !sType.IsOption && !sType.IsResult && sType != TypeSymbol.Unknown)
         {
-            _diagnostics.ReportError($"Match expression must be an integer or enum type, got '{sType.Name}'.", match.Scrutinee.Span);
+            _diagnostics.ReportError($"Match expression must be an integer, enum, Option or Result type, got '{sType.Name}'.", match.Scrutinee.Span);
         }
+
+        bool hasSomeArm = false;
+        bool hasNoneArm = false;
+        bool hasOkArm = false;
+        bool hasErrArm = false;
+        bool hasWildcard = false;
 
         foreach (var arm in match.Arms)
         {
-            if (arm.Pattern is not WildcardExpression)
+            if (arm.Pattern is WildcardExpression)
+            {
+                hasWildcard = true;
+                CheckBlock(arm.Body);
+                continue;
+            }
+
+            if (sType.IsOption)
+            {
+                sType.TryGetOptionInfo(out var optElem);
+                if (arm.Pattern is IdentifierExpression { Name: "None" } || arm.Pattern is CallExpression { Callee: "None" } ||
+                    (arm.Pattern is IdentifierExpression idN && idN.Name.EndsWith("::None")))
+                {
+                    hasNoneArm = true;
+                    CheckBlock(arm.Body);
+                }
+                else if (arm.Pattern is CallExpression callSome && (callSome.Callee == "Some" || callSome.Callee.EndsWith("::Some")) && callSome.Arguments.Count == 1 && callSome.Arguments[0] is IdentifierExpression bindId)
+                {
+                    hasSomeArm = true;
+                    var bindSym = new VariableSymbol(bindId.Name, optElem, IsMutable: false, bindId.Span);
+                    CheckBlock(arm.Body, new[] { bindSym });
+                }
+                else
+                {
+                    _diagnostics.ReportError($"Invalid pattern for Option: expected 'Some(x)' or 'None'.", arm.Pattern.Span);
+                    CheckBlock(arm.Body);
+                }
+            }
+            else if (sType.IsResult)
+            {
+                sType.TryGetResultInfo(out var okType, out var errType);
+                if (arm.Pattern is CallExpression callOk && (callOk.Callee == "Ok" || callOk.Callee.EndsWith("::Ok")) && callOk.Arguments.Count == 1 && callOk.Arguments[0] is IdentifierExpression bindOk)
+                {
+                    hasOkArm = true;
+                    var bindSym = new VariableSymbol(bindOk.Name, okType, IsMutable: false, bindOk.Span);
+                    CheckBlock(arm.Body, new[] { bindSym });
+                }
+                else if (arm.Pattern is CallExpression callErr && (callErr.Callee == "Err" || callErr.Callee.EndsWith("::Err")) && callErr.Arguments.Count == 1 && callErr.Arguments[0] is IdentifierExpression bindErr)
+                {
+                    hasErrArm = true;
+                    var bindSym = new VariableSymbol(bindErr.Name, errType, IsMutable: false, bindErr.Span);
+                    CheckBlock(arm.Body, new[] { bindSym });
+                }
+                else
+                {
+                    _diagnostics.ReportError($"Invalid pattern for Result: expected 'Ok(x)' or 'Err(e)'.", arm.Pattern.Span);
+                    CheckBlock(arm.Body);
+                }
+            }
+            else
             {
                 var patType = CheckExpression(arm.Pattern);
                 if (isEnum)
@@ -748,9 +865,23 @@ public sealed class TypeChecker
                         _diagnostics.ReportError($"Pattern type '{patType.Name}' is not a valid integer pattern.", arm.Pattern.Span);
                     }
                 }
+                CheckBlock(arm.Body);
             }
+        }
 
-            CheckBlock(arm.Body);
+        if (sType.IsOption && !hasWildcard)
+        {
+            if (!hasSomeArm || !hasNoneArm)
+            {
+                _diagnostics.ReportWarning($"Match on Option<{sType.Name}> is non-exhaustive. Missing {(!hasSomeArm ? "'Some'" : "")}{(!hasSomeArm && !hasNoneArm ? " and " : "")}{(!hasNoneArm ? "'None'" : "")}.", match.Span);
+            }
+        }
+        else if (sType.IsResult && !hasWildcard)
+        {
+            if (!hasOkArm || !hasErrArm)
+            {
+                _diagnostics.ReportWarning($"Match on Result<{sType.Name}> is non-exhaustive. Missing {(!hasOkArm ? "'Ok'" : "")}{(!hasOkArm && !hasErrArm ? " and " : "")}{(!hasErrArm ? "'Err'" : "")}.", match.Span);
+            }
         }
     }
 
@@ -832,6 +963,16 @@ public sealed class TypeChecker
 
     private TypeSymbol CheckIdentifier(IdentifierExpression ident)
     {
+        if (ident.Name == "None")
+        {
+            return new TypeSymbol("None", IsPrimitive: false);
+        }
+        if (ident.Name.StartsWith("Option<") && ident.Name.EndsWith("::None"))
+        {
+            var optTypeName = ident.Name.Substring(0, ident.Name.Length - 6);
+            return TypeSymbol.FromName(optTypeName);
+        }
+
         var sym = _currentScope.Lookup(ident.Name);
         if (sym == null)
         {
@@ -888,8 +1029,22 @@ public sealed class TypeChecker
             return TypeSymbol.Bool;
         }
 
-        if (bin.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual or
-            BinaryOperator.Less or BinaryOperator.LessOrEqual or
+        if (bin.Operator is BinaryOperator.Equal or BinaryOperator.NotEqual)
+        {
+            if (leftType.IsOption && rightType.Name == "None")
+            {
+                _nodeTypes[bin.Right] = leftType;
+                return TypeSymbol.Bool;
+            }
+            if (rightType.IsOption && leftType.Name == "None")
+            {
+                _nodeTypes[bin.Left] = rightType;
+                return TypeSymbol.Bool;
+            }
+            return TypeSymbol.Bool;
+        }
+
+        if (bin.Operator is BinaryOperator.Less or BinaryOperator.LessOrEqual or
             BinaryOperator.Greater or BinaryOperator.GreaterOrEqual)
         {
             return TypeSymbol.Bool;
@@ -917,6 +1072,55 @@ public sealed class TypeChecker
         foreach (var arg in call.Arguments)
         {
             CheckExpression(arg);
+        }
+
+        if (call.Callee.StartsWith("Option<") && call.Callee.Contains("::"))
+        {
+            var optTypeName = call.Callee.Substring(0, call.Callee.IndexOf("::", StringComparison.Ordinal));
+            return TypeSymbol.FromName(optTypeName);
+        }
+        if (call.Callee.StartsWith("Result<") && call.Callee.Contains("::"))
+        {
+            var resTypeName = call.Callee.Substring(0, call.Callee.IndexOf("::", StringComparison.Ordinal));
+            return TypeSymbol.FromName(resTypeName);
+        }
+
+        if (call.Callee == "Some")
+        {
+            if (call.Arguments.Count != 1)
+            {
+                _diagnostics.ReportError("Constructor 'Some' expects 1 argument.", call.Span);
+                return TypeSymbol.CreateOption(TypeSymbol.Unknown);
+            }
+            var argType = GetNodeType(call.Arguments[0]);
+            return TypeSymbol.CreateOption(argType);
+        }
+
+        if (call.Callee == "None")
+        {
+            return new TypeSymbol("None", IsPrimitive: false);
+        }
+
+        if (call.Callee == "Ok")
+        {
+            if (call.Arguments.Count != 1)
+            {
+                _diagnostics.ReportError("Constructor 'Ok' expects 1 argument.", call.Span);
+                return TypeSymbol.CreateResult(TypeSymbol.Unknown, TypeSymbol.String);
+            }
+            var argType = GetNodeType(call.Arguments[0]);
+            return TypeSymbol.CreateResult(argType, TypeSymbol.String);
+        }
+
+        if (call.Callee == "Err")
+        {
+            if (call.Arguments.Count != 1)
+            {
+                _diagnostics.ReportError("Constructor 'Err' expects 1 argument.", call.Span);
+                return TypeSymbol.CreateResult(TypeSymbol.Unknown, TypeSymbol.String);
+            }
+            var argType = GetNodeType(call.Arguments[0]);
+            return TypeSymbol.CreateResult(TypeSymbol.Unknown, argType);
         }
 
         if (call.Callee.StartsWith("Vec<") || call.Callee.StartsWith("List<") ||
@@ -1147,6 +1351,25 @@ public sealed class TypeChecker
                 return TypeSymbol.Entity;
             }
 
+            if (methodCall.MethodName is "find" or "find_entity")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError($"Method '{methodCall.MethodName}' expects 1 argument (entity name string).", methodCall.Span);
+                }
+                else
+                {
+                    var aType = GetNodeType(methodCall.Arguments[0]);
+                    if (aType != TypeSymbol.String && aType != TypeSymbol.Unknown)
+                    {
+                        _diagnostics.ReportError($"Argument 1 of '{methodCall.MethodName}' expects type 'string', but got '{aType.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                }
+                var optEnt = TypeSymbol.CreateOption(TypeSymbol.Entity);
+                _nodeTypes[methodCall] = optEnt;
+                return optEnt;
+            }
+
             if (methodCall.MethodName == "has_name")
             {
                 if (methodCall.Arguments.Count != 1)
@@ -1268,6 +1491,25 @@ public sealed class TypeChecker
                 return elemType;
             }
 
+            if (methodCall.MethodName == "get")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'get' expects 1 argument (index i32).", methodCall.Span);
+                }
+                else
+                {
+                    var idxType = GetNodeType(methodCall.Arguments[0]);
+                    if (!idxType.IsInteger && idxType != TypeSymbol.Unknown)
+                    {
+                        _diagnostics.ReportError($"Argument 1 of 'get' expects integer index, but got '{idxType.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                }
+                var optRet = TypeSymbol.CreateOption(elemType);
+                _nodeTypes[methodCall] = optRet;
+                return optRet;
+            }
+
             if (methodCall.MethodName is "len" or "length" or "capacity")
             {
                 if (methodCall.Arguments.Count != 0)
@@ -1334,6 +1576,25 @@ public sealed class TypeChecker
                 return valType;
             }
 
+            if (methodCall.MethodName is "find" or "get_opt")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError($"Method '{methodCall.MethodName}' expects 1 argument (key).", methodCall.Span);
+                }
+                else
+                {
+                    var kArg = GetNodeType(methodCall.Arguments[0]);
+                    if (keyType != TypeSymbol.Unknown && kArg != TypeSymbol.Unknown && !AreTypesCompatible(keyType, kArg))
+                    {
+                        _diagnostics.ReportError($"Argument 1 of '{methodCall.MethodName}' expects key type '{keyType.Name}', but got '{kArg.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                }
+                var optRet = TypeSymbol.CreateOption(valType);
+                _nodeTypes[methodCall] = optRet;
+                return optRet;
+            }
+
             if (methodCall.MethodName is "contains" or "has")
             {
                 if (methodCall.Arguments.Count != 1)
@@ -1388,6 +1649,100 @@ public sealed class TypeChecker
                 }
                 _nodeTypes[methodCall] = TypeSymbol.Void;
                 return TypeSymbol.Void;
+            }
+        }
+
+        if (targetType.IsOption)
+        {
+            targetType.TryGetOptionInfo(out var optElem);
+            if (methodCall.MethodName is "is_some" or "is_none")
+            {
+                if (methodCall.Arguments.Count != 0)
+                {
+                    _diagnostics.ReportError($"Method '{methodCall.MethodName}' expects 0 arguments.", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Bool;
+                return TypeSymbol.Bool;
+            }
+
+            if (methodCall.MethodName == "unwrap")
+            {
+                if (methodCall.Arguments.Count != 0)
+                {
+                    _diagnostics.ReportError("Method 'unwrap' expects 0 arguments.", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = optElem;
+                return optElem;
+            }
+
+            if (methodCall.MethodName == "unwrap_or")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'unwrap_or' expects 1 argument (default value).", methodCall.Span);
+                }
+                else
+                {
+                    var defType = GetNodeType(methodCall.Arguments[0]);
+                    if (optElem != TypeSymbol.Unknown && defType != TypeSymbol.Unknown && !AreTypesCompatible(optElem, defType))
+                    {
+                        _diagnostics.ReportError($"Argument 1 of 'unwrap_or' expects type '{optElem.Name}', but got '{defType.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                }
+                _nodeTypes[methodCall] = optElem;
+                return optElem;
+            }
+        }
+
+        if (targetType.IsResult)
+        {
+            targetType.TryGetResultInfo(out var okType, out var errType);
+            if (methodCall.MethodName is "is_ok" or "is_err")
+            {
+                if (methodCall.Arguments.Count != 0)
+                {
+                    _diagnostics.ReportError($"Method '{methodCall.MethodName}' expects 0 arguments.", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Bool;
+                return TypeSymbol.Bool;
+            }
+
+            if (methodCall.MethodName == "unwrap")
+            {
+                if (methodCall.Arguments.Count != 0)
+                {
+                    _diagnostics.ReportError("Method 'unwrap' expects 0 arguments.", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = okType;
+                return okType;
+            }
+
+            if (methodCall.MethodName == "unwrap_err")
+            {
+                if (methodCall.Arguments.Count != 0)
+                {
+                    _diagnostics.ReportError("Method 'unwrap_err' expects 0 arguments.", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = errType;
+                return errType;
+            }
+
+            if (methodCall.MethodName == "unwrap_or")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'unwrap_or' expects 1 argument (default value).", methodCall.Span);
+                }
+                else
+                {
+                    var defType = GetNodeType(methodCall.Arguments[0]);
+                    if (okType != TypeSymbol.Unknown && defType != TypeSymbol.Unknown && !AreTypesCompatible(okType, defType))
+                    {
+                        _diagnostics.ReportError($"Argument 1 of 'unwrap_or' expects type '{okType.Name}', but got '{defType.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                }
+                _nodeTypes[methodCall] = okType;
+                return okType;
             }
         }
 

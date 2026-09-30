@@ -23,6 +23,43 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
     public bool IsFixedArray => IsArray && Name.Contains(";");
     public bool IsDynamicArray => IsArray && !Name.Contains(";");
     public bool IsMap => Name.StartsWith("Map<") && Name.EndsWith(">");
+    public bool IsOption => Name.StartsWith("Option<") && Name.EndsWith(">");
+    public bool IsResult => Name.StartsWith("Result<") && Name.EndsWith(">");
+
+    public bool TryGetOptionInfo(out TypeSymbol valueType)
+    {
+        if (IsOption)
+        {
+            var inner = Name.Substring(7, Name.Length - 8).Trim();
+            valueType = FromName(inner);
+            return true;
+        }
+        valueType = Unknown;
+        return false;
+    }
+
+    public bool TryGetResultInfo(out TypeSymbol okType, out TypeSymbol errType)
+    {
+        if (IsResult)
+        {
+            var inner = Name.Substring(7, Name.Length - 8);
+            int depth = 0;
+            for (int i = 0; i < inner.Length; i++)
+            {
+                if (inner[i] == '<' || inner[i] == '[') depth++;
+                else if (inner[i] == '>' || inner[i] == ']') depth--;
+                else if (inner[i] == ',' && depth == 0)
+                {
+                    okType = FromName(inner.Substring(0, i).Trim());
+                    errType = FromName(inner.Substring(i + 1).Trim());
+                    return true;
+                }
+            }
+        }
+        okType = Unknown;
+        errType = Unknown;
+        return false;
+    }
 
     public bool TryGetArrayInfo(out TypeSymbol elementType, out int length)
     {
@@ -83,6 +120,10 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
 
     public static TypeSymbol CreateMap(TypeSymbol key, TypeSymbol val) => new($"Map<{key.Name}, {val.Name}>", IsPrimitive: false);
 
+    public static TypeSymbol CreateOption(TypeSymbol val) => new($"Option<{val.Name}>", IsPrimitive: false);
+
+    public static TypeSymbol CreateResult(TypeSymbol ok, TypeSymbol err) => new($"Result<{ok.Name}, {err.Name}>", IsPrimitive: false);
+
     public static TypeSymbol FromName(string? name)
     {
         if (name == null) return Unknown;
@@ -95,6 +136,27 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
         {
             var inner = name.Substring(5, name.Length - 6).Trim();
             return CreateDynamicArray(FromName(inner));
+        }
+        if (name.StartsWith("Option<") && name.EndsWith(">"))
+        {
+            var inner = name.Substring(7, name.Length - 8).Trim();
+            return CreateOption(FromName(inner));
+        }
+        if (name.StartsWith("Result<") && name.EndsWith(">"))
+        {
+            var inner = name.Substring(7, name.Length - 8);
+            int depth = 0;
+            for (int i = 0; i < inner.Length; i++)
+            {
+                if (inner[i] == '<' || inner[i] == '[') depth++;
+                else if (inner[i] == '>' || inner[i] == ']') depth--;
+                else if (inner[i] == ',' && depth == 0)
+                {
+                    var ok = FromName(inner.Substring(0, i).Trim());
+                    var err = FromName(inner.Substring(i + 1).Trim());
+                    return CreateResult(ok, err);
+                }
+            }
         }
         if ((name.StartsWith("HashMap<") && name.EndsWith(">")) || (name.StartsWith("Map<") && name.EndsWith(">")))
         {

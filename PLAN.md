@@ -397,11 +397,13 @@ fn main(): i32 {
 - [x] Полное освобождение памяти арены при деструкции мира `world.free()` / `world.destroy()`.
 - [x] Сквозной стресс-тест строковой арены: [`examples/string_arena_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/string_arena_test.ecs) (выделение 10 000 строк в кадровом цикле с периодическим сбросом арены), успешно пройден в Debug (`-O0`) и Release (`-O3`).
 
-### [ ] Этап 27: Безопасные типы `Option<T>` и `Result<T, E>` с Pattern Matching
-- [ ] Алгебраические типы данных (Tagged / Discriminated Unions) в системе типов.
-- [ ] Тип `Option<T>`: варианты `Some(val)` и `None` для безопасных операций (`world.find(...)`, `arr.get(idx)`).
-- [ ] Тип `Result<T, E>`: варианты `Ok(val)` и `Err(err)` для операций ввода-вывода, загрузки ассетов и парсинга.
-- [ ] Интеграция с конструкцией `match` для безопасного разворачивания (exhaustiveness checking).
+### [x] Этап 27: Безопасные типы `Option<T>` и `Result<T, E>` с Pattern Matching
+- [x] Алгебраические типы данных (Tagged / Discriminated Unions) в системе типов: `%struct.Option_T = { i32, T }` и `%struct.Result_T_E = { i32, T, E }`.
+- [x] Тип `Option<T>`: варианты `Some(val)` и `None`, вспомогательные методы `.is_some()`, `.is_none()`, `.unwrap()`, `.unwrap_or(default)`.
+- [x] Тип `Result<T, E>`: варианты `Ok(val)` и `Err(err)`, вспомогательные методы `.is_ok()`, `.is_err()`, `.unwrap()`, `.unwrap_err()`, `.unwrap_or(default)`.
+- [x] Интеграция безопасных методов: `world.find(name) -> Option<Entity>`, `world.find_entity(name) -> Option<Entity>`, `arr.get(idx) -> Option<T>`, `map.find(key) -> Option<V>`.
+- [x] Интеграция с конструкцией `match` для безопасного разворачивания с привязкой локальных переменных (`Some(x) => ...`, `None => ...`, `Ok(v) => ...`, `Err(e) => ...`).
+- [x] Сквозной тест безопасности и сопоставления: [`examples/option_result_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/option_result_test.ecs), успешно пройден в Debug (`-O0`) и Release (`-O3`).
 
 ### [ ] Этап 28: Стандартная библиотека ECS GUI (`Button`, `Text`, `Slider`, `Panel`) на чистом ECSLang
 - [ ] Стандартная библиотека пишется **целиком на ECSLang** (файлы `std/gui.ecs`, `std/gui/widgets.ecs`, `std/gui/systems.ecs`), а не в компиляторе на C#. Компилятор лишь предоставляет стандартный путь импорта.

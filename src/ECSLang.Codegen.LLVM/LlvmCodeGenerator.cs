@@ -1273,6 +1273,219 @@ public sealed class LlvmCodeGenerator
         bool isMain,
         bool hasWaitKey)
     {
+        var sType = _typeChecker.GetNodeType(match.Scrutinee);
+        if (sType.IsOption)
+        {
+            sType.TryGetOptionInfo(out var elemType);
+            var elemLlvmType = MapType(context, elemType.Name, ecs);
+            var optLlvmType = MapType(context, sType.Name, ecs);
+
+            var scrutVal = CompileExpression(context, module, builder, function, match.Scrutinee, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+            var scrutAlloca = CreateEntryBlockAlloca(context, function, optLlvmType, "match_opt_scrut");
+            builder.BuildStore(scrutVal, scrutAlloca);
+
+            var tagGEP = builder.BuildStructGEP2(optLlvmType, scrutAlloca, 0, "opt_tag_gep");
+            var tagVal = builder.BuildLoad2(context.Int32Type, tagGEP, "opt_tag");
+
+            var optMergeBB = function.AppendBasicBlock("opt_match_merge");
+            var optDefaultBB = function.AppendBasicBlock("opt_match_default");
+
+            MatchArm? someArm = null;
+            string? someBindVar = null;
+            MatchArm? noneArm = null;
+            MatchArm? optWildcardArm = null;
+
+            foreach (var arm in match.Arms)
+            {
+                if (arm.Pattern is WildcardExpression)
+                {
+                    optWildcardArm = arm;
+                }
+                else if (arm.Pattern is IdentifierExpression { Name: "None" } || arm.Pattern is CallExpression { Callee: "None" } ||
+                         (arm.Pattern is IdentifierExpression idN && idN.Name.EndsWith("::None")))
+                {
+                    noneArm = arm;
+                }
+                else if (arm.Pattern is CallExpression callSome && (callSome.Callee == "Some" || callSome.Callee.EndsWith("::Some")) && callSome.Arguments.Count == 1 && callSome.Arguments[0] is IdentifierExpression bindId)
+                {
+                    someArm = arm;
+                    someBindVar = bindId.Name;
+                }
+            }
+
+            var optSwitchInst = builder.BuildSwitch(tagVal, optDefaultBB, 2);
+
+            if (someArm != null)
+            {
+                var someBB = function.AppendBasicBlock("match_arm_some");
+                optSwitchInst.AddCase(LLVMValueRef.CreateConstInt(context.Int32Type, 1), someBB);
+
+                builder.PositionAtEnd(someBB);
+                if (someBindVar != null)
+                {
+                    var valGEP = builder.BuildStructGEP2(optLlvmType, scrutAlloca, 1, $"{someBindVar}_gep");
+                    var valLoaded = builder.BuildLoad2(elemLlvmType, valGEP, someBindVar);
+                    var bindAlloca = CreateEntryBlockAlloca(context, function, elemLlvmType, someBindVar);
+                    builder.BuildStore(valLoaded, bindAlloca);
+                    locals[someBindVar] = bindAlloca;
+                    varTypes[someBindVar] = elemType.Name;
+                }
+
+                CompileBlock(context, module, builder, function, someArm.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+                if (someBindVar != null)
+                {
+                    locals.Remove(someBindVar);
+                    varTypes.Remove(someBindVar);
+                }
+
+                if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
+                {
+                    builder.BuildBr(optMergeBB);
+                }
+            }
+
+            if (noneArm != null)
+            {
+                var noneBB = function.AppendBasicBlock("match_arm_none");
+                optSwitchInst.AddCase(LLVMValueRef.CreateConstInt(context.Int32Type, 0), noneBB);
+
+                builder.PositionAtEnd(noneBB);
+                CompileBlock(context, module, builder, function, noneArm.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+                if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
+                {
+                    builder.BuildBr(optMergeBB);
+                }
+            }
+
+            builder.PositionAtEnd(optDefaultBB);
+            if (optWildcardArm != null)
+            {
+                CompileBlock(context, module, builder, function, optWildcardArm.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+            }
+            if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
+            {
+                builder.BuildBr(optMergeBB);
+            }
+
+            builder.PositionAtEnd(optMergeBB);
+            return;
+        }
+
+        if (sType.IsResult)
+        {
+            sType.TryGetResultInfo(out var okType, out var errType);
+            var okLlvmType = MapType(context, okType.Name, ecs);
+            var errLlvmType = MapType(context, errType.Name, ecs);
+            var resLlvmType = MapType(context, sType.Name, ecs);
+
+            var scrutVal = CompileExpression(context, module, builder, function, match.Scrutinee, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+            var scrutAlloca = CreateEntryBlockAlloca(context, function, resLlvmType, "match_res_scrut");
+            builder.BuildStore(scrutVal, scrutAlloca);
+
+            var tagGEP = builder.BuildStructGEP2(resLlvmType, scrutAlloca, 0, "res_tag_gep");
+            var tagVal = builder.BuildLoad2(context.Int32Type, tagGEP, "res_tag");
+
+            var resMergeBB = function.AppendBasicBlock("res_match_merge");
+            var resDefaultBB = function.AppendBasicBlock("res_match_default");
+
+            MatchArm? okArm = null;
+            string? okBindVar = null;
+            MatchArm? errArm = null;
+            string? errBindVar = null;
+            MatchArm? resWildcardArm = null;
+
+            foreach (var arm in match.Arms)
+            {
+                if (arm.Pattern is WildcardExpression)
+                {
+                    resWildcardArm = arm;
+                }
+                else if (arm.Pattern is CallExpression callOk && (callOk.Callee == "Ok" || callOk.Callee.EndsWith("::Ok")) && callOk.Arguments.Count == 1 && callOk.Arguments[0] is IdentifierExpression bindOk)
+                {
+                    okArm = arm;
+                    okBindVar = bindOk.Name;
+                }
+                else if (arm.Pattern is CallExpression callErr && (callErr.Callee == "Err" || callErr.Callee.EndsWith("::Err")) && callErr.Arguments.Count == 1 && callErr.Arguments[0] is IdentifierExpression bindErr)
+                {
+                    errArm = arm;
+                    errBindVar = bindErr.Name;
+                }
+            }
+
+            var resSwitchInst = builder.BuildSwitch(tagVal, resDefaultBB, 2);
+
+            if (okArm != null)
+            {
+                var okBB = function.AppendBasicBlock("match_arm_ok");
+                resSwitchInst.AddCase(LLVMValueRef.CreateConstInt(context.Int32Type, 0), okBB); // Tag 0 = Ok
+
+                builder.PositionAtEnd(okBB);
+                if (okBindVar != null)
+                {
+                    var valGEP = builder.BuildStructGEP2(resLlvmType, scrutAlloca, 1, $"{okBindVar}_gep");
+                    var valLoaded = builder.BuildLoad2(okLlvmType, valGEP, okBindVar);
+                    var bindAlloca = CreateEntryBlockAlloca(context, function, okLlvmType, okBindVar);
+                    builder.BuildStore(valLoaded, bindAlloca);
+                    locals[okBindVar] = bindAlloca;
+                    varTypes[okBindVar] = okType.Name;
+                }
+
+                CompileBlock(context, module, builder, function, okArm.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+                if (okBindVar != null)
+                {
+                    locals.Remove(okBindVar);
+                    varTypes.Remove(okBindVar);
+                }
+
+                if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
+                {
+                    builder.BuildBr(resMergeBB);
+                }
+            }
+
+            if (errArm != null)
+            {
+                var errBB = function.AppendBasicBlock("match_arm_err");
+                resSwitchInst.AddCase(LLVMValueRef.CreateConstInt(context.Int32Type, 1), errBB); // Tag 1 = Err
+
+                builder.PositionAtEnd(errBB);
+                if (errBindVar != null)
+                {
+                    var valGEP = builder.BuildStructGEP2(resLlvmType, scrutAlloca, 2, $"{errBindVar}_gep");
+                    var valLoaded = builder.BuildLoad2(errLlvmType, valGEP, errBindVar);
+                    var bindAlloca = CreateEntryBlockAlloca(context, function, errLlvmType, errBindVar);
+                    builder.BuildStore(valLoaded, bindAlloca);
+                    locals[errBindVar] = bindAlloca;
+                    varTypes[errBindVar] = errType.Name;
+                }
+
+                CompileBlock(context, module, builder, function, errArm.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+                if (errBindVar != null)
+                {
+                    locals.Remove(errBindVar);
+                    varTypes.Remove(errBindVar);
+                }
+
+                if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
+                {
+                    builder.BuildBr(resMergeBB);
+                }
+            }
+
+            builder.PositionAtEnd(resDefaultBB);
+            if (resWildcardArm != null)
+            {
+                CompileBlock(context, module, builder, function, resWildcardArm.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+            }
+            if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
+            {
+                builder.BuildBr(resMergeBB);
+            }
+
+            builder.PositionAtEnd(resMergeBB);
+            return;
+        }
+
         var scrutineeVal = CompileExpression(context, module, builder, function, match.Scrutinee, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
         scrutineeVal = EnsureInt32(context, builder, scrutineeVal, "match_scrut");
 
@@ -1372,6 +1585,20 @@ public sealed class LlvmCodeGenerator
                     var varType = _typeChecker.GetNodeType(ident);
                     var llvmType = MapType(context, varType.Name, ecs);
                     return builder.BuildLoad2(llvmType, varPtr, ident.Name);
+                }
+                if (ident.Name == "None" || (ident.Name.StartsWith("Option<") && ident.Name.EndsWith("::None")))
+                {
+                    var optType = _typeChecker.GetNodeType(ident);
+                    var optLlvmType = MapType(context, optType.Name, ecs);
+                    var tmpAlloca = CreateEntryBlockAlloca(context, function, optLlvmType, "tmp_none");
+                    var tagSlot = builder.BuildStructGEP2(optLlvmType, tmpAlloca, 0, "opt_tag");
+                    builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), tagSlot);
+                    if (optType.TryGetOptionInfo(out var innerSym))
+                    {
+                        var valSlot = builder.BuildStructGEP2(optLlvmType, tmpAlloca, 1, "opt_val");
+                        builder.BuildStore(LLVMValueRef.CreateConstNull(MapType(context, innerSym.Name, ecs)), valSlot);
+                    }
+                    return builder.BuildLoad2(optLlvmType, tmpAlloca, "none_val");
                 }
                 return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
 
@@ -1702,6 +1929,49 @@ public sealed class LlvmCodeGenerator
                         var elemGEP = builder.BuildInBoundsGEP2(dynElemType, curData, new[] { newLen }, "pop_elem_gep");
                         return builder.BuildLoad2(dynElemType, elemGEP, "pop_val");
                     }
+
+                    if (methodCall.MethodName == "get")
+                    {
+                        var idxVal = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        idxVal = EnsureInt32(context, builder, idxVal, "arr_get_idx");
+
+                        var lenSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 1, "dyn_len_slot");
+                        var curLen = builder.BuildLoad2(context.Int32Type, lenSlot, "cur_len");
+                        var dataSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 0, "dyn_data_slot");
+                        var dataPtr = builder.BuildLoad2(elemPtrType, dataSlot, "cur_data");
+
+                        var geZero = builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, idxVal, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "ge_zero");
+                        var ltLen = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, idxVal, curLen, "lt_len");
+                        var inBounds = builder.BuildAnd(geZero, ltLen, "in_bounds");
+
+                        var optStructType = LLVMTypeRef.CreateStruct(new[] { context.Int32Type, dynElemType }, false);
+                        var retAlloca = CreateEntryBlockAlloca(context, function, optStructType, "opt_arr_get_res");
+
+                        var inBB = function.AppendBasicBlock("arr_get_in");
+                        var outBB = function.AppendBasicBlock("arr_get_out");
+                        var mergeBB = function.AppendBasicBlock("arr_get_merge");
+
+                        builder.BuildCondBr(inBounds, inBB, outBB);
+
+                        builder.PositionAtEnd(inBB);
+                        var elemGEP = builder.BuildInBoundsGEP2(dynElemType, dataPtr, new[] { idxVal }, "elem_gep");
+                        var elemVal = builder.BuildLoad2(dynElemType, elemGEP, "elem_val");
+                        var tag1 = builder.BuildStructGEP2(optStructType, retAlloca, 0, "tag1");
+                        var val1 = builder.BuildStructGEP2(optStructType, retAlloca, 1, "val1");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 1), tag1);
+                        builder.BuildStore(elemVal, val1);
+                        builder.BuildBr(mergeBB);
+
+                        builder.PositionAtEnd(outBB);
+                        var tag0 = builder.BuildStructGEP2(optStructType, retAlloca, 0, "tag0");
+                        var val0 = builder.BuildStructGEP2(optStructType, retAlloca, 1, "val0");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), tag0);
+                        builder.BuildStore(LLVMValueRef.CreateConstNull(dynElemType), val0);
+                        builder.BuildBr(mergeBB);
+
+                        builder.PositionAtEnd(mergeBB);
+                        return builder.BuildLoad2(optStructType, retAlloca, "opt_arr_val");
+                    }
                 }
 
                 if (targetType.IsMap)
@@ -1747,6 +2017,44 @@ public sealed class LlvmCodeGenerator
                         return builder.BuildCall2(gfType, getFunc, new[] { mapStructPtr, kArg }, "map_get_val");
                     }
 
+                    if (methodCall.MethodName is "find" or "get_opt")
+                    {
+                        var kArg = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var containsFunc = _mapEmitter!.GetOrCreateContains(mapKeySym.Name, mapValSym.Name, (t) => MapType(context, t, ecs));
+                        var getFunc = _mapEmitter!.GetOrCreateGet(mapKeySym.Name, mapValSym.Name, (t) => MapType(context, t, ecs));
+                        var cfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(containsFunc);
+                        var gfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(getFunc);
+
+                        var hasIt = builder.BuildCall2(cfType, containsFunc, new[] { mapStructPtr, kArg }, "map_has_key");
+                        var valLlvmType = MapType(context, mapValSym.Name, ecs);
+                        var optStructType = LLVMTypeRef.CreateStruct(new[] { context.Int32Type, valLlvmType }, false);
+                        var retAlloca = CreateEntryBlockAlloca(context, function, optStructType, "opt_map_find_res");
+
+                        var foundBB = function.AppendBasicBlock("map_find_found");
+                        var notFoundBB = function.AppendBasicBlock("map_find_not_found");
+                        var mergeBB = function.AppendBasicBlock("map_find_merge");
+
+                        builder.BuildCondBr(hasIt, foundBB, notFoundBB);
+
+                        builder.PositionAtEnd(foundBB);
+                        var valRes = builder.BuildCall2(gfType, getFunc, new[] { mapStructPtr, kArg }, "found_val");
+                        var tag1 = builder.BuildStructGEP2(optStructType, retAlloca, 0, "tag1");
+                        var val1 = builder.BuildStructGEP2(optStructType, retAlloca, 1, "val1");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 1), tag1);
+                        builder.BuildStore(valRes, val1);
+                        builder.BuildBr(mergeBB);
+
+                        builder.PositionAtEnd(notFoundBB);
+                        var tag0 = builder.BuildStructGEP2(optStructType, retAlloca, 0, "tag0");
+                        var val0 = builder.BuildStructGEP2(optStructType, retAlloca, 1, "val0");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), tag0);
+                        builder.BuildStore(LLVMValueRef.CreateConstNull(valLlvmType), val0);
+                        builder.BuildBr(mergeBB);
+
+                        builder.PositionAtEnd(mergeBB);
+                        return builder.BuildLoad2(optStructType, retAlloca, "opt_map_val");
+                    }
+
                     if (methodCall.MethodName is "contains" or "has")
                     {
                         var kArg = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
@@ -1786,6 +2094,167 @@ public sealed class LlvmCodeGenerator
                     var strlenType = LLVMTypeRef.CreateFunction(context.Int64Type, new[] { i8PtrType }, false);
                     var len64 = builder.BuildCall2(strlenType, strlenFunc, new[] { targetVal }, "slen64");
                     return builder.BuildTrunc(len64, context.Int32Type, "slen32");
+                }
+
+                if (targetType.IsOption)
+                {
+                    targetType.TryGetOptionInfo(out var optElemType);
+                    var elemValType = MapType(context, optElemType.Name, ecs);
+                    var optStructType = MapType(context, targetType.Name, ecs);
+
+                    var tagVal = builder.BuildExtractValue(targetVal, 0, "opt_tag");
+
+                    if (methodCall.MethodName == "is_some")
+                    {
+                        return builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, tagVal, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "is_some");
+                    }
+
+                    if (methodCall.MethodName == "is_none")
+                    {
+                        return builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, tagVal, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "is_none");
+                    }
+
+                    if (methodCall.MethodName == "unwrap")
+                    {
+                        var isSome = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, tagVal, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "opt_is_some");
+                        var okBB = function.AppendBasicBlock("opt_unwrap_ok");
+                        var failBB = function.AppendBasicBlock("opt_unwrap_panic");
+
+                        builder.BuildCondBr(isSome, okBB, failBB);
+
+                        builder.PositionAtEnd(failBB);
+                        var panicMsg = builder.BuildGlobalStringPtr("Panic: called Option.unwrap() on None", "panic_opt_unwrap");
+                        builder.BuildCall2(putsType, putsFunc, new[] { panicMsg }, "");
+                        var exitFunc = module.GetNamedFunction("exit");
+                        var exitType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type }, false);
+                        if (exitFunc.Handle == IntPtr.Zero)
+                        {
+                            exitFunc = module.AddFunction("exit", exitType);
+                        }
+                        builder.BuildCall2(exitType, exitFunc, new[] { LLVMValueRef.CreateConstInt(context.Int32Type, 1) }, "");
+                        builder.BuildUnreachable();
+
+                        builder.PositionAtEnd(okBB);
+                        return builder.BuildExtractValue(targetVal, 1, "opt_unwrapped");
+                    }
+
+                    if (methodCall.MethodName == "unwrap_or")
+                    {
+                        var defVal = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var isSome = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, tagVal, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "opt_is_some");
+                        var okBB = function.AppendBasicBlock("opt_unwrapor_ok");
+                        var defBB = function.AppendBasicBlock("opt_unwrapor_def");
+                        var mergeBB = function.AppendBasicBlock("opt_unwrapor_merge");
+
+                        var retAlloca = CreateEntryBlockAlloca(context, function, elemValType, "unwrap_or_ret");
+
+                        builder.BuildCondBr(isSome, okBB, defBB);
+
+                        builder.PositionAtEnd(okBB);
+                        var someVal = builder.BuildExtractValue(targetVal, 1, "opt_unwrapped_val");
+                        builder.BuildStore(someVal, retAlloca);
+                        builder.BuildBr(mergeBB);
+
+                        builder.PositionAtEnd(defBB);
+                        builder.BuildStore(defVal, retAlloca);
+                        builder.BuildBr(mergeBB);
+
+                        builder.PositionAtEnd(mergeBB);
+                        return builder.BuildLoad2(elemValType, retAlloca, "unwrap_or_val");
+                    }
+                }
+
+                if (targetType.IsResult)
+                {
+                    targetType.TryGetResultInfo(out var okType, out var errType);
+                    var okLlvmType = MapType(context, okType.Name, ecs);
+                    var errLlvmType = MapType(context, errType.Name, ecs);
+                    var resStructType = MapType(context, targetType.Name, ecs);
+
+                    var tagVal = builder.BuildExtractValue(targetVal, 0, "res_tag");
+
+                    if (methodCall.MethodName == "is_ok")
+                    {
+                        return builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, tagVal, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "is_ok");
+                    }
+
+                    if (methodCall.MethodName == "is_err")
+                    {
+                        return builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, tagVal, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "is_err");
+                    }
+
+                    if (methodCall.MethodName == "unwrap")
+                    {
+                        var isOk = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, tagVal, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "res_is_ok");
+                        var okBB = function.AppendBasicBlock("res_unwrap_ok");
+                        var failBB = function.AppendBasicBlock("res_unwrap_panic");
+
+                        builder.BuildCondBr(isOk, okBB, failBB);
+
+                        builder.PositionAtEnd(failBB);
+                        var panicMsg = builder.BuildGlobalStringPtr("Panic: called Result.unwrap() on Err", "panic_res_unwrap");
+                        builder.BuildCall2(putsType, putsFunc, new[] { panicMsg }, "");
+                        var exitFunc = module.GetNamedFunction("exit");
+                        var exitType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type }, false);
+                        if (exitFunc.Handle == IntPtr.Zero)
+                        {
+                            exitFunc = module.AddFunction("exit", exitType);
+                        }
+                        builder.BuildCall2(exitType, exitFunc, new[] { LLVMValueRef.CreateConstInt(context.Int32Type, 1) }, "");
+                        builder.BuildUnreachable();
+
+                        builder.PositionAtEnd(okBB);
+                        return builder.BuildExtractValue(targetVal, 1, "res_unwrapped_ok");
+                    }
+
+                    if (methodCall.MethodName == "unwrap_err")
+                    {
+                        var isErr = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, tagVal, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "res_is_err");
+                        var errBB = function.AppendBasicBlock("res_unwrap_err");
+                        var failBB = function.AppendBasicBlock("res_unwrap_err_panic");
+
+                        builder.BuildCondBr(isErr, errBB, failBB);
+
+                        builder.PositionAtEnd(failBB);
+                        var panicMsg = builder.BuildGlobalStringPtr("Panic: called Result.unwrap_err() on Ok", "panic_res_unwrap_err");
+                        builder.BuildCall2(putsType, putsFunc, new[] { panicMsg }, "");
+                        var exitFunc = module.GetNamedFunction("exit");
+                        var exitType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type }, false);
+                        if (exitFunc.Handle == IntPtr.Zero)
+                        {
+                            exitFunc = module.AddFunction("exit", exitType);
+                        }
+                        builder.BuildCall2(exitType, exitFunc, new[] { LLVMValueRef.CreateConstInt(context.Int32Type, 1) }, "");
+                        builder.BuildUnreachable();
+
+                        builder.PositionAtEnd(errBB);
+                        return builder.BuildExtractValue(targetVal, 2, "res_unwrapped_err");
+                    }
+
+                    if (methodCall.MethodName == "unwrap_or")
+                    {
+                        var defVal = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var isOk = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, tagVal, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "res_is_ok");
+                        var okBB = function.AppendBasicBlock("res_unwrapor_ok");
+                        var defBB = function.AppendBasicBlock("res_unwrapor_def");
+                        var mergeBB = function.AppendBasicBlock("res_unwrapor_merge");
+
+                        var retAlloca = CreateEntryBlockAlloca(context, function, okLlvmType, "res_unwrap_or_ret");
+
+                        builder.BuildCondBr(isOk, okBB, defBB);
+
+                        builder.PositionAtEnd(okBB);
+                        var okVal = builder.BuildExtractValue(targetVal, 1, "res_unwrapped_ok");
+                        builder.BuildStore(okVal, retAlloca);
+                        builder.BuildBr(mergeBB);
+
+                        builder.PositionAtEnd(defBB);
+                        builder.BuildStore(defVal, retAlloca);
+                        builder.BuildBr(mergeBB);
+
+                        builder.PositionAtEnd(mergeBB);
+                        return builder.BuildLoad2(okLlvmType, retAlloca, "res_unwrap_or_val");
+                    }
                 }
 
                 // Check if target is a struct/component with implemented method
@@ -1847,6 +2316,45 @@ public sealed class LlvmCodeGenerator
                     var getFunc = _mapEmitter!.GetOrCreateGet("string", "Entity", (t) => MapType(context, t, ecs));
                     var gfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(getFunc);
                     return builder.BuildCall2(gfType, getFunc, new[] { nameMapPtr, nameArg }, "ent_by_name");
+                }
+
+                if ((methodCall.MethodName is "find" or "find_entity") && ecs != null && ecs.NameIndexWorldOffset >= 0)
+                {
+                    var nameArg = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var nameMapPtr = builder.BuildStructGEP2(ecs.GetWorldStructType(), targetVal, (uint)ecs.NameIndexWorldOffset, "name_map_ptr");
+                    var containsFunc = _mapEmitter!.GetOrCreateContains("string", "Entity", (t) => MapType(context, t, ecs));
+                    var getFunc = _mapEmitter!.GetOrCreateGet("string", "Entity", (t) => MapType(context, t, ecs));
+                    var cfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(containsFunc);
+                    var gfType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(getFunc);
+
+                    var hasIt = builder.BuildCall2(cfType, containsFunc, new[] { nameMapPtr, nameArg }, "find_has_key");
+                    var entLlvmType = MapType(context, "Entity", ecs);
+                    var optStructType = LLVMTypeRef.CreateStruct(new[] { context.Int32Type, entLlvmType }, false);
+                    var retAlloca = CreateEntryBlockAlloca(context, function, optStructType, "opt_find_res");
+
+                    var foundBB = function.AppendBasicBlock("find_found");
+                    var missingBB = function.AppendBasicBlock("find_missing");
+                    var mergeBB = function.AppendBasicBlock("find_merge");
+
+                    builder.BuildCondBr(hasIt, foundBB, missingBB);
+
+                    builder.PositionAtEnd(foundBB);
+                    var entVal = builder.BuildCall2(gfType, getFunc, new[] { nameMapPtr, nameArg }, "find_ent_val");
+                    var tag1 = builder.BuildStructGEP2(optStructType, retAlloca, 0, "tag1");
+                    var val1 = builder.BuildStructGEP2(optStructType, retAlloca, 1, "val1");
+                    builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 1), tag1);
+                    builder.BuildStore(entVal, val1);
+                    builder.BuildBr(mergeBB);
+
+                    builder.PositionAtEnd(missingBB);
+                    var tag0 = builder.BuildStructGEP2(optStructType, retAlloca, 0, "tag0");
+                    var val0 = builder.BuildStructGEP2(optStructType, retAlloca, 1, "val0");
+                    builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), tag0);
+                    builder.BuildStore(LLVMValueRef.CreateConstNull(entLlvmType), val0);
+                    builder.BuildBr(mergeBB);
+
+                    builder.PositionAtEnd(mergeBB);
+                    return builder.BuildLoad2(optStructType, retAlloca, "opt_find_val");
                 }
 
                 if (methodCall.MethodName == "has_name" && ecs != null && ecs.NameIndexWorldOffset >= 0)
@@ -2006,6 +2514,26 @@ public sealed class LlvmCodeGenerator
                     }
                 }
 
+                if (leftType.IsOption || rightType.IsOption)
+                {
+                    LLVMValueRef optVal = leftType.IsOption ? left : right;
+                    var optType = leftType.IsOption ? leftType : rightType;
+                    var optStructType = MapType(context, optType.Name, ecs);
+                    var tmpAlloca = CreateEntryBlockAlloca(context, function, optStructType, "opt_cmp_tmp");
+                    builder.BuildStore(optVal, tmpAlloca);
+                    var tagSlot = builder.BuildStructGEP2(optStructType, tmpAlloca, 0, "tag_slot");
+                    var tagVal = builder.BuildLoad2(context.Int32Type, tagSlot, "tag_val");
+
+                    if (bin.Operator == BinaryOperator.Equal)
+                    {
+                        return builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, tagVal, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "opt_is_none");
+                    }
+                    if (bin.Operator == BinaryOperator.NotEqual)
+                    {
+                        return builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, tagVal, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "opt_is_some");
+                    }
+                }
+
                 bool isFloat = left.TypeOf == context.FloatType || right.TypeOf == context.FloatType;
 
                 return bin.Operator switch
@@ -2041,6 +2569,83 @@ public sealed class LlvmCodeGenerator
                 };
 
             case CallExpression call:
+                if (call.Callee == "Some" || (call.Callee.StartsWith("Option<") && call.Callee.EndsWith("::Some")))
+                {
+                    var optType = _typeChecker.GetNodeType(call);
+                    optType.TryGetOptionInfo(out var elemSym);
+                    var elemLlvmType = MapType(context, elemSym.Name, ecs);
+                    var optStructType = MapType(context, optType.Name, ecs);
+
+                    var argVal = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var optAlloca = CreateEntryBlockAlloca(context, function, optStructType, "some_init");
+
+                    var tagSlot = builder.BuildStructGEP2(optStructType, optAlloca, 0, "tag_slot");
+                    builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 1), tagSlot); // 1 = Some
+                    var valSlot = builder.BuildStructGEP2(optStructType, optAlloca, 1, "val_slot");
+                    builder.BuildStore(argVal, valSlot);
+
+                    return builder.BuildLoad2(optStructType, optAlloca, "some_val");
+                }
+
+                if (call.Callee == "None" || (call.Callee.StartsWith("Option<") && call.Callee.EndsWith("::None")))
+                {
+                    var optType = _typeChecker.GetNodeType(call);
+                    optType.TryGetOptionInfo(out var elemSym);
+                    var elemLlvmType = MapType(context, elemSym.Name, ecs);
+                    var optStructType = MapType(context, optType.Name, ecs);
+
+                    var optAlloca = CreateEntryBlockAlloca(context, function, optStructType, "none_init");
+
+                    var tagSlot = builder.BuildStructGEP2(optStructType, optAlloca, 0, "tag_slot");
+                    builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), tagSlot); // 0 = None
+                    var valSlot = builder.BuildStructGEP2(optStructType, optAlloca, 1, "val_slot");
+                    builder.BuildStore(LLVMValueRef.CreateConstNull(elemLlvmType), valSlot);
+
+                    return builder.BuildLoad2(optStructType, optAlloca, "none_val");
+                }
+
+                if (call.Callee == "Ok" || (call.Callee.StartsWith("Result<") && call.Callee.EndsWith("::Ok")))
+                {
+                    var resType = _typeChecker.GetNodeType(call);
+                    resType.TryGetResultInfo(out var okSym, out var errSym);
+                    var okLlvmType = MapType(context, okSym.Name, ecs);
+                    var errLlvmType = MapType(context, errSym.Name, ecs);
+                    var resStructType = MapType(context, resType.Name, ecs);
+
+                    var argVal = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var resAlloca = CreateEntryBlockAlloca(context, function, resStructType, "ok_init");
+
+                    var tagSlot = builder.BuildStructGEP2(resStructType, resAlloca, 0, "tag_slot");
+                    builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), tagSlot); // 0 = Ok
+                    var okSlot = builder.BuildStructGEP2(resStructType, resAlloca, 1, "ok_slot");
+                    builder.BuildStore(argVal, okSlot);
+                    var errSlot = builder.BuildStructGEP2(resStructType, resAlloca, 2, "err_slot");
+                    builder.BuildStore(LLVMValueRef.CreateConstNull(errLlvmType), errSlot);
+
+                    return builder.BuildLoad2(resStructType, resAlloca, "ok_val");
+                }
+
+                if (call.Callee == "Err" || (call.Callee.StartsWith("Result<") && call.Callee.EndsWith("::Err")))
+                {
+                    var resType = _typeChecker.GetNodeType(call);
+                    resType.TryGetResultInfo(out var okSym, out var errSym);
+                    var okLlvmType = MapType(context, okSym.Name, ecs);
+                    var errLlvmType = MapType(context, errSym.Name, ecs);
+                    var resStructType = MapType(context, resType.Name, ecs);
+
+                    var argVal = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var resAlloca = CreateEntryBlockAlloca(context, function, resStructType, "err_init");
+
+                    var tagSlot = builder.BuildStructGEP2(resStructType, resAlloca, 0, "tag_slot");
+                    builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 1), tagSlot); // 1 = Err
+                    var okSlot = builder.BuildStructGEP2(resStructType, resAlloca, 1, "ok_slot");
+                    builder.BuildStore(LLVMValueRef.CreateConstNull(okLlvmType), okSlot);
+                    var errSlot = builder.BuildStructGEP2(resStructType, resAlloca, 2, "err_slot");
+                    builder.BuildStore(argVal, errSlot);
+
+                    return builder.BuildLoad2(resStructType, resAlloca, "err_val");
+                }
+
                 if (call.Callee.StartsWith("Vec<") || call.Callee.StartsWith("List<"))
                 {
                     var dynTypeSym = TypeSymbol.FromName(call.Callee);
@@ -2877,6 +3482,23 @@ public sealed class LlvmCodeGenerator
             }
             var i8Ptr = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
             return LLVMTypeRef.CreateStruct(new[] { i8Ptr, context.Int32Type, context.Int32Type }, false);
+        }
+
+        if (typeName != null && typeName.StartsWith("Option<") && typeName.EndsWith(">"))
+        {
+            var optTypeSym = TypeSymbol.FromName(typeName);
+            optTypeSym.TryGetOptionInfo(out var valSym);
+            var valLlvmType = MapType(context, valSym.Name, ecs);
+            return LLVMTypeRef.CreateStruct(new[] { context.Int32Type, valLlvmType }, false);
+        }
+
+        if (typeName != null && typeName.StartsWith("Result<") && typeName.EndsWith(">"))
+        {
+            var resTypeSym = TypeSymbol.FromName(typeName);
+            resTypeSym.TryGetResultInfo(out var okSym, out var errSym);
+            var okLlvmType = MapType(context, okSym.Name, ecs);
+            var errLlvmType = MapType(context, errSym.Name, ecs);
+            return LLVMTypeRef.CreateStruct(new[] { context.Int32Type, okLlvmType, errLlvmType }, false);
         }
 
         if (typeName != null && _typeChecker.Structs.ContainsKey(typeName) && ecs != null)

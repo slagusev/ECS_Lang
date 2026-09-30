@@ -1,0 +1,188 @@
+component Position {
+    x: f32,
+    y: f32,
+}
+
+fn test_option_basic(): void {
+    println("--- Testing Option Basic ---");
+    let s: Option<i32> = Some(42);
+    let n: Option<i32> = None;
+
+    if s.is_some() {
+        println("s is_some: OK");
+    }
+    if !s.is_none() {
+        println("s not is_none: OK");
+    }
+
+    if n.is_none() {
+        println("n is_none: OK");
+    }
+    if !n.is_some() {
+        println("n not is_some: OK");
+    }
+
+    let val = s.unwrap();
+    println("s unwrap: %d", val);
+
+    let def_val = n.unwrap_or(999);
+    println("n unwrap_or: %d", def_val);
+
+    let s_or = s.unwrap_or(123);
+    println("s unwrap_or: %d", s_or);
+
+    if s != None {
+        println("s != None: OK");
+    }
+    if n == None {
+        println("n == None: OK");
+    }
+}
+
+fn test_result_basic(): void {
+    println("--- Testing Result Basic ---");
+    let r_ok: Result<i32, string> = Ok(100);
+    let r_err: Result<i32, string> = Err("operation failed");
+
+    if r_ok.is_ok() {
+        println("r_ok is_ok: OK");
+    }
+    if !r_ok.is_err() {
+        println("r_ok not is_err: OK");
+    }
+
+    if r_err.is_err() {
+        println("r_err is_err: OK");
+    }
+    if !r_err.is_ok() {
+        println("r_err not is_ok: OK");
+    }
+
+    let ok_val = r_ok.unwrap();
+    println("r_ok unwrap: %d", ok_val);
+
+    let err_msg = r_err.unwrap_err();
+    println("r_err unwrap_err: %s", err_msg);
+
+    let or_val = r_err.unwrap_or(777);
+    println("r_err unwrap_or: %d", or_val);
+}
+
+fn test_match_option(): void {
+    println("--- Testing match on Option ---");
+    let opt1: Option<i32> = Some(55);
+    let opt2: Option<i32> = None;
+
+    match opt1 {
+        Some(x) => {
+            println("opt1 matched Some: %d", x);
+        }
+        None => {
+            println("opt1 matched None (unexpected!)");
+        }
+    }
+
+    match opt2 {
+        Some(x) => {
+            println("opt2 matched Some (unexpected!)");
+        }
+        None => {
+            println("opt2 matched None: OK");
+        }
+    }
+}
+
+fn test_match_result(): void {
+    println("--- Testing match on Result ---");
+    let res1: Result<i32, string> = Ok(200);
+    let res2: Result<i32, string> = Err("bad input");
+
+    match res1 {
+        Ok(v) => {
+            println("res1 matched Ok: %d", v);
+        }
+        Err(e) => {
+            println("res1 matched Err (unexpected!)");
+        }
+    }
+
+    match res2 {
+        Ok(v) => {
+            println("res2 matched Ok (unexpected!)");
+        }
+        Err(e) => {
+            println("res2 matched Err: %s", e);
+        }
+    }
+}
+
+fn test_collections_safety(): void {
+    println("--- Testing Array and Map Option safety ---");
+    let mut arr = Vec<i32>();
+    arr.push(10);
+    arr.push(20);
+    arr.push(30);
+
+    let g1 = arr.get(1);
+    if g1.is_some() {
+        println("arr.get(1) = %d", g1.unwrap());
+    }
+
+    let g_out = arr.get(5);
+    if g_out.is_none() {
+        println("arr.get(5) is_none: OK");
+    }
+
+    let mut map = HashMap<string, i32>();
+    map.insert("apples", 15);
+    map.insert("oranges", 25);
+
+    let f_found = map.find("apples");
+    match f_found {
+        Some(cnt) => {
+            println("map find apples = %d", cnt);
+        }
+        None => {
+            println("map find apples None (unexpected!)");
+        }
+    }
+
+    let f_miss = map.find("bananas");
+    if f_miss.is_none() {
+        println("map find bananas is_none: OK");
+    }
+}
+
+fn main(): i32 {
+    println("=== Stage 27 Option/Result and Pattern Matching Test ===");
+
+    test_option_basic();
+    test_result_basic();
+    test_match_option();
+    test_match_result();
+    test_collections_safety();
+
+    println("--- Testing World find ---");
+    let mut world = ecs::create_world();
+    let hero = world.spawn();
+    world.set_Position(hero, 1.0, 2.0);
+    world.set_name(hero, "Hero");
+
+    let found_hero = world.find("Hero");
+    match found_hero {
+        Some(e) => {
+            println("world.find('Hero') found entity: OK");
+        }
+        None => {
+            println("world.find('Hero') returned None (unexpected!)");
+        }
+    }
+
+    let found_villain = world.find("Villain");
+    if found_villain.is_none() {
+        println("world.find('Villain') returned None: OK");
+    }
+
+    println("ALL TESTS PASSED SUCCESSFULLY!");
+    return 0;
+}
