@@ -8,6 +8,8 @@ public sealed record ProgramNode(IReadOnlyList<DeclarationNode> Declarations, So
 
 public abstract record DeclarationNode(SourceSpan Span) : AstNode(Span);
 
+public sealed record ImportDirective(string ModulePath, SourceSpan Span) : DeclarationNode(Span);
+
 public sealed record FieldDefinition(string Name, string TypeName, SourceSpan Span) : AstNode(Span);
 
 public sealed record ComponentDeclaration(

@@ -59,16 +59,16 @@
 
 ```mermaid
 flowchart LR
-    src[Исходный код .ecs] --> Lexer[1. Lexer]
-    Lexer --> Tokens[Поток токенов]
-    Tokens --> Parser[2. Parser]
-    Parser --> AST[Синтаксическое дерево AST]
-    AST --> Semantics[3. TypeChecker]
-    Semantics --> TypedAST[Проверенное AST + Символы]
-    TypedAST --> Codegen[4. LlvmCodegen + EcsEmitter]
-    Codegen --> LLVM_IR[LLVM Module / .obj]
-    LLVM_IR --> Linker[5. LinkerDriver (MSVC link.exe)]
-    Linker --> EXE[Нативный бинарник .exe]
+    src["Входной файл .ecs"] --> Loader["1. ProjectLoader"]
+    Loader --> Lexer["Lexer & Parser"]
+    Lexer --> DepGraph["Граф зависимостей + Cycle Check"]
+    DepGraph --> MergedAST["Топологически объединенное AST"]
+    MergedAST --> Semantics["2. TypeChecker"]
+    Semantics --> TypedAST["Проверенное AST + Символы"]
+    TypedAST --> Codegen["3. LlvmCodegen + PassManager"]
+    Codegen --> LLVM_IR["LLVM Module / .obj"]
+    LLVM_IR --> Linker["4. LinkerDriver (MSVC link.exe)"]
+    Linker --> EXE["Нативный бинарник .exe"]
 ```
 
 ### 1. Лексический анализ (`Lexer`)
@@ -390,7 +390,44 @@ ECSLang интегрирован с современным менеджером 
 
 ---
 
-## 11. Правила поддержания архитектурной чистоты
+## 11. Модульная система и многофайловые проекты (`import` / `ProjectLoader`)
+
+Для структурирования масштабных проектов компилятор ECS-Lang поддерживает разделение исходного кода на независимые модули с директивой `import`.
+
+### 1. Синтаксис импорта
+- **По относительному пути**: `import "path/to/module.ecs";`
+- **По идентификатору**: `import components;` (автоматически транслируется в поиск файла `components.ecs` в директории текущего файла).
+
+### 2. Загрузка проектов (`ProjectLoader`)
+Класс [`ProjectLoader`](file:///C:/Users/office/Documents/ECS_Lang/src/ECSLang.Frontend/ProjectLoader.cs) выполняет оркестрацию загрузки всех модулей проекта перед запуском семантического анализатора:
+
+```mermaid
+flowchart TD
+    Entry["main.ecs"] --> Pipe["pipeline.ecs"]
+    Pipe --> Sys["systems.ecs"]
+    Sys --> Comp["components.ecs"]
+    Pipe -.->|"Diamond Import"| Comp
+    
+    subgraph TopologicalPostOrder["Топологический порядок слияния AST"]
+        Comp --> Sys2["systems.ecs declarations"]
+        Sys2 --> Pipe2["pipeline.ecs declarations"]
+        Pipe2 --> Main2["main.ecs declarations"]
+    end
+```
+
+### 3. Разрешение зависимостей и гарантии
+1. **Нормализация путей**: все импорты разрешаются относительно директории импортирующего файла с приведением к абсолютному каноническому пути (`Path.GetFullPath`). Сравнение путей нечувствительно к регистру (`OrdinalIgnoreCase`).
+2. **Топологический post-order обход**: зависимости файла обходятся рекурсивно до добавления его собственных деклараций в результирующее синтаксическое дерево. В сгенерированном AST компоненты и структуры всегда объявлены до систем и конвейеров, которые их используют.
+3. **Обнаружение циклов (Cycle Detection)**:
+   - Стек обхода `_inProgressStack` отслеживает цепочку загрузки.
+   - При обнаружении повторного входа формируется точная диагностическая ошибка с указанием пути цикла:
+     `Circular dependency detected: cycle_a.ecs -> cycle_b.ecs -> cycle_a.ecs`.
+4. **Устранение дубликатов (Diamond Dependency)**:
+   - Если один и тот же модуль импортируется несколькими независимыми файлами (например, `components.ecs` нужен и в `systems.ecs`, и в `pipeline.ecs`), он парсится и включается в результирующее дерево строго один раз.
+
+---
+
+## 12. Правила поддержания архитектурной чистоты
 
 При добавлении новых функций в язык следует соблюдать правила:
 1. **Изоляция состояния**: не добавлять глобальных статических переменных в сгенерированный LLVM-код. Любое новое состояние должно принадлежать контексту `World` либо локальному стеку.

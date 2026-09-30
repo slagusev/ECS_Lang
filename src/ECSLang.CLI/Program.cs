@@ -105,25 +105,18 @@ public static class Program
         Console.WriteLine($"[ECS-Lang] Compiling {Path.GetFileName(inputPath)} [{modeTag}]...");
         Console.ResetColor();
 
-        // 1. Read source
-        string sourceText = File.ReadAllText(inputPath);
-
-        // 2. Lexer
-        var lexer = new Lexer(sourceText, inputPath, diagnostics);
-        var tokens = lexer.TokenizeAll();
-        if (diagnostics.HasErrors)
+        // 1. Load project and modules with cycle detection
+        var loader = new ProjectLoader(diagnostics);
+        var programAst = loader.Load(inputPath);
+        if (programAst == null || diagnostics.HasErrors)
         {
             diagnostics.PrintToConsole();
             return 1;
         }
 
-        // 3. Parser
-        var parser = new Parser(tokens, diagnostics);
-        var programAst = parser.ParseProgram();
-        if (diagnostics.HasErrors)
+        if (loader.LoadedFiles.Count > 1)
         {
-            diagnostics.PrintToConsole();
-            return 1;
+            Console.WriteLine($"[ECS-Lang] Resolved {loader.LoadedFiles.Count} module(s): {string.Join(", ", loader.LoadedFiles.Select(Path.GetFileName))}");
         }
 
         // 4. LLVM Codegen

@@ -1,0 +1,16 @@
+import "components.ecs";
+
+system MovementSystem {
+    query(mut pos: Position, vel: Velocity) {
+        pos.x = pos.x + vel.dx;
+        pos.y = pos.y + vel.dy;
+    }
+}
+
+system HealthRegenSystem {
+    query(mut h: Health) {
+        if h.hp < h.max_hp {
+            h.hp = h.hp + 1;
+        }
+    }
+}

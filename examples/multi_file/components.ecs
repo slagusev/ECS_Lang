@@ -1,0 +1,14 @@
+component Position {
+    x: f32,
+    y: f32
+}
+
+component Velocity {
+    dx: f32,
+    dy: f32
+}
+
+component Health {
+    hp: i32,
+    max_hp: i32
+}

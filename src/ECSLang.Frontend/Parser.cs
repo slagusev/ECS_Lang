@@ -78,6 +78,10 @@ public sealed class Parser
             {
                 declarations.Add(ParsePipelineDeclaration());
             }
+            else if (Check(TokenType.Import))
+            {
+                declarations.Add(ParseImportDirective());
+            }
             else
             {
                 _diagnostics.ReportError($"Unexpected token '{Current.Text}' at file root.", Current.Span);
@@ -86,6 +90,31 @@ public sealed class Parser
         }
 
         return new ProgramNode(declarations, startSpan);
+    }
+
+    private ImportDirective ParseImportDirective()
+    {
+        var importTok = Match(TokenType.Import);
+        string path;
+
+        if (Check(TokenType.StringLiteral))
+        {
+            var strTok = Match(TokenType.StringLiteral);
+            path = strTok.Text;
+        }
+        else if (Check(TokenType.Identifier))
+        {
+            var idTok = Match(TokenType.Identifier);
+            path = idTok.Text + ".ecs";
+        }
+        else
+        {
+            _diagnostics.ReportError("Expected string literal (module path) or module identifier after 'import'.", Current.Span);
+            path = string.Empty;
+        }
+
+        Match(TokenType.Semicolon, "Expected ';' after import directive.");
+        return new ImportDirective(path, importTok.Span);
     }
 
     private string ParseTypeAnnotation()

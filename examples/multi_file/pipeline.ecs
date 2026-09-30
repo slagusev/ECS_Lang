@@ -1,0 +1,8 @@
+import "systems.ecs";
+
+pipeline GamePipeline {
+    stage Update {
+        MovementSystem;
+        HealthRegenSystem;
+    }
+}

@@ -1,0 +1,29 @@
+import "pipeline.ecs";
+
+fn main(): i32 {
+    println("=== Multi-file ECS Project ===");
+    let mut world = ecs::create_world();
+
+    let e1 = world.spawn();
+    world.add_Position(e1, 0.0, 0.0);
+    world.add_Velocity(e1, 10.0, 20.0);
+    world.add_Health(e1, 50, 100);
+
+    let e2 = world.spawn();
+    world.add_Position(e2, 100.0, 50.0);
+    world.add_Velocity(e2, -5.0, 0.0);
+    world.add_Health(e2, 100, 100);
+
+    println("Initial entities spawned.");
+    println("Running multi-file pipeline for 5 ticks...");
+
+    let mut step = 0;
+    while step < 5 {
+        GamePipeline(world);
+        step = step + 1;
+    }
+
+    println("Pipeline executed 5 steps successfully!");
+    println("Multi-file module system working correctly!");
+    return 0;
+}

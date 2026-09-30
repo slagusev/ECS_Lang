@@ -41,6 +41,7 @@ public enum TokenType
     Enum,
     Match,
     ApplyCommands,
+    Import,
 
     // Punctuation & Delimiters
     OpenParen,    // (

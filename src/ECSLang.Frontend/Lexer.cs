@@ -39,6 +39,7 @@ public sealed class Lexer
         ["enum"] = TokenType.Enum,
         ["match"] = TokenType.Match,
         ["apply_commands"] = TokenType.ApplyCommands,
+        ["import"] = TokenType.Import,
         ["true"] = TokenType.True,
         ["false"] = TokenType.False,
     };
