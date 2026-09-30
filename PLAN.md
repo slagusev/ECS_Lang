@@ -349,12 +349,13 @@ fn main(): i32 {
   - Отсутствие runtime-оверхеда во внутреннем цикле (zero-overhead loop).
 - [x] Сквозной тест: [`examples/query_filters_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/query_filters_test.ecs), успешно пройден как в Debug (`-O0`), так и в Release (`-O3`).
 
-### [ ] Этап 21: Текстуры, Спрайты, Аудио и 2D Камера (Raylib Media)
-- [ ] Поддержка дескрипторов Raylib ресурсов: `Texture2D`, `Sound`, `Music`, `Camera2D`.
-- [ ] Функции загрузки и рендеринга текстур: `load_texture`, `draw_texture`, `draw_texture_pro`, `unload_texture`.
-- [ ] Подсистема аудио: `init_audio_device`, `close_audio_device`, `load_sound`, `play_sound`, `stop_sound`, `set_sound_volume`.
-- [ ] Подсистема 2D камеры: `begin_mode_2d`, `end_mode_2d`.
-- [ ] Демонстрационный проект с медиа-ресурсами.
+### [x] Этап 21: Текстуры, Спрайты, Аудио и 2D Камера (Raylib Media)
+- [x] Поддержка дескрипторов Raylib ресурсов: `Texture2D`, `Sound`, `Camera2D`, `Rectangle`, `Vector2`.
+- [x] Функции загрузки, геометрии и рендеринга текстур: `load_texture`, `unload_texture`, `get_texture_width`, `get_texture_height`, `draw_texture`, `draw_texture_pro` (с поддержкой вращения, масштабирования и tint).
+- [x] Подсистема аудио: `init_audio_device`, `close_audio_device`, `is_audio_device_ready`, `load_sound`, `unload_sound`, `play_sound`, `stop_sound`, `pause_sound`, `resume_sound`, `is_sound_playing`, `set_sound_volume`.
+- [x] Подсистема 2D камеры: `begin_mode_2d(ox, oy, tx, ty, rot, zoom)`, `end_mode_2d()`.
+- [x] Маршалинг структур по соглашению Microsoft x64 C ABI (sret для возврата `LoadTexture`/`LoadSound`, передача структур по ссылке/значению).
+- [x] Сквозной тест: [`examples/raylib_media_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/raylib_media_test.ecs), успешно протестирован в Debug (`-O0`) и Release (`-O3`).
 
 ### [ ] Этап 22: Методы пользовательских структур (`impl Struct`)
 - [ ] Синтаксис блоков реализации `impl StructName { fn method(self, ...): Ret { ... } }`.

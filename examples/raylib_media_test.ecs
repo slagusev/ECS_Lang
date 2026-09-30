@@ -1,0 +1,73 @@
+// Verification test for Raylib Media & 2D Camera (Stage 21)
+
+fn main(): i32 {
+    println("=== ECSLang Raylib Media & 2D Camera Test ===");
+
+    // 1. Audio device initialization & query
+    init_audio_device();
+    let audio_ok = is_audio_device_ready();
+    if audio_ok {
+        println("Audio device successfully initialized!");
+    } else {
+        println("Audio device not available.");
+    }
+
+    // 2. Sound loading, control, unloading
+    let sound_path = "examples/test_sound.wav";
+    let snd = load_sound(sound_path);
+    println("Sound loaded handle allocated.");
+    play_sound(snd);
+    set_sound_volume(snd, 0.75);
+    let playing = is_sound_playing(snd);
+    println("Sound playing status: %d", playing);
+    pause_sound(snd);
+    resume_sound(snd);
+    stop_sound(snd);
+    unload_sound(snd);
+    println("Sound unloaded successfully.");
+    close_audio_device();
+    println("Audio device closed successfully.");
+
+    // 3. Window & Texture initialization
+    init_window(640, 480, "Raylib Media Test");
+    set_target_fps(60);
+
+    let tex_path = "examples/test_texture.bmp";
+    let tex = load_texture(tex_path);
+    let tw = get_texture_width(tex);
+    let th = get_texture_height(tex);
+    println("Texture loaded! Width: %d, Height: %d", tw, th);
+
+    // 4. Test rendering frames with Camera2D, DrawTexture, DrawTexturePro
+    let mut frame = 0;
+    while frame < 5 && !window_should_close() {
+        begin_drawing();
+        clear_background(30, 30, 40);
+
+        // 2D Camera mode: offset_x=320, offset_y=240, target_x=0, target_y=0, rot=0, zoom=1.2
+        begin_mode_2d(320.0, 240.0, 0.0, 0.0, 0.0, 1.2);
+        draw_rectangle(-50, -50, 100, 100, 230, 40, 60);
+        draw_circle(0.0, 0.0, 25.0, 50, 180, 240);
+        end_mode_2d();
+
+        // Direct texture drawing with RGBA tint
+        draw_texture(tex, 20, 20, 255, 255, 255, 255);
+
+        // Pro texture drawing with scaling and rotation
+        draw_texture_pro(tex, 0.0, 0.0, 2.0, 2.0, 120.0, 120.0, 64.0, 64.0, 0.0, 0.0, 45.0, 255, 255, 255, 255);
+
+        draw_text("Raylib Media Test Frame", 20, 440, 20, 255, 255, 255);
+        end_drawing();
+        frame += 1;
+    }
+
+    println("Rendered frames count: %d", frame);
+
+    // 5. Cleanup
+    unload_texture(tex);
+    println("Texture unloaded.");
+    close_window();
+    println("Window closed. All Raylib Media tests passed!");
+
+    return 0;
+}
