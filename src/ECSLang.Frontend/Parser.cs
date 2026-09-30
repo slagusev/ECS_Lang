@@ -82,6 +82,10 @@ public sealed class Parser
             {
                 declarations.Add(ParseImportDirective());
             }
+            else if (Check(TokenType.Impl))
+            {
+                declarations.Add(ParseImplDeclaration());
+            }
             else
             {
                 _diagnostics.ReportError($"Unexpected token '{Current.Text}' at file root.", Current.Span);
@@ -429,7 +433,7 @@ public sealed class Parser
         return new PipelineDeclaration(nameTok.Text, stages, pipeTok.Span);
     }
 
-    private FunctionDeclaration ParseFunctionDeclaration()
+    private FunctionDeclaration ParseFunctionDeclaration(string? enclosingType = null)
     {
         var fnKeyword = Match(TokenType.Fn);
         var nameToken = Match(TokenType.Identifier, "Expected function name after 'fn'.");
@@ -440,10 +444,26 @@ public sealed class Parser
         {
             do
             {
+                bool isMut = false;
+                if (Check(TokenType.Mut))
+                {
+                    Advance();
+                    isMut = true;
+                }
+
                 var paramName = Match(TokenType.Identifier, "Expected parameter name.");
-                Match(TokenType.Colon, "Expected ':' after parameter name.");
-                var paramType = ParseTypeAnnotation();
-                parameters.Add(new FunctionParameter(paramName.Text, paramType, paramName.Span));
+                string paramType;
+                if (enclosingType != null && paramName.Text == "self" && !Check(TokenType.Colon))
+                {
+                    paramType = enclosingType;
+                }
+                else
+                {
+                    Match(TokenType.Colon, "Expected ':' after parameter name.");
+                    paramType = ParseTypeAnnotation();
+                }
+
+                parameters.Add(new FunctionParameter(paramName.Text, paramType, paramName.Span, isMut));
             } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
         }
         Match(TokenType.CloseParen, "Expected ')' after parameters.");
@@ -457,6 +477,30 @@ public sealed class Parser
 
         var body = ParseBlockStatement();
         return new FunctionDeclaration(nameToken.Text, parameters, returnType, body, fnKeyword.Span);
+    }
+
+    private ImplDeclaration ParseImplDeclaration()
+    {
+        var implKeyword = Match(TokenType.Impl);
+        var structNameToken = Match(TokenType.Identifier, "Expected struct name after 'impl'.");
+        Match(TokenType.OpenBrace, "Expected '{' to start 'impl' block.");
+
+        var methods = new List<FunctionDeclaration>();
+        while (!Check(TokenType.CloseBrace) && !Check(TokenType.EndOfFile))
+        {
+            if (Check(TokenType.Fn))
+            {
+                methods.Add(ParseFunctionDeclaration(structNameToken.Text));
+            }
+            else
+            {
+                _diagnostics.ReportError($"Unexpected token '{Current.Text}' in 'impl' block. Only methods ('fn') are allowed.", Current.Span);
+                Advance();
+            }
+        }
+
+        Match(TokenType.CloseBrace, "Expected '}' to close 'impl' block.");
+        return new ImplDeclaration(structNameToken.Text, methods, implKeyword.Span);
     }
 
     public BlockStatement ParseBlockStatement()

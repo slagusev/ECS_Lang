@@ -37,6 +37,7 @@ public sealed class TypeChecker
     private readonly Dictionary<string, EnumSymbol> _enums = new(StringComparer.Ordinal);
     private readonly Dictionary<string, SystemSymbol> _systems = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FunctionDeclaration> _functions = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Dictionary<string, FunctionDeclaration>> _methods = new(StringComparer.Ordinal);
     private readonly List<PipelineDeclaration> _pipelines = new();
     private Scope _currentScope = new();
 
@@ -47,6 +48,7 @@ public sealed class TypeChecker
     public IReadOnlyDictionary<string, EnumSymbol> Enums => _enums;
     public IReadOnlyDictionary<string, SystemSymbol> Systems => _systems;
     public IReadOnlyDictionary<string, FunctionDeclaration> Functions => _functions;
+    public IReadOnlyDictionary<string, Dictionary<string, FunctionDeclaration>> Methods => _methods;
     public IReadOnlyList<PipelineDeclaration> Pipelines => _pipelines;
 
     public TypeChecker(DiagnosticsBag diagnostics)
@@ -88,9 +90,13 @@ public sealed class TypeChecker
             {
                 _functions[fn.Name] = fn;
             }
+            else if (decl is ImplDeclaration impl)
+            {
+                RegisterImpl(impl);
+            }
         }
 
-        // Pass 2: Register & Check Systems, Functions and Pipelines
+        // Pass 2: Register & Check Systems, Functions, Methods and Pipelines
         foreach (var decl in program.Declarations)
         {
             if (decl is SystemDeclaration sys)
@@ -101,10 +107,50 @@ public sealed class TypeChecker
             {
                 CheckFunction(fn);
             }
+            else if (decl is ImplDeclaration impl)
+            {
+                CheckImpl(impl);
+            }
             else if (decl is PipelineDeclaration pipe)
             {
                 CheckPipeline(pipe);
             }
+        }
+    }
+
+    private void RegisterImpl(ImplDeclaration impl)
+    {
+        if (!_methods.TryGetValue(impl.StructName, out var methodMap))
+        {
+            methodMap = new Dictionary<string, FunctionDeclaration>(StringComparer.Ordinal);
+            _methods[impl.StructName] = methodMap;
+        }
+
+        foreach (var method in impl.Methods)
+        {
+            if (methodMap.ContainsKey(method.Name))
+            {
+                _diagnostics.ReportError($"Method '{method.Name}' is already declared for '{impl.StructName}'.", method.Span);
+            }
+            else
+            {
+                methodMap[method.Name] = method;
+                _functions[$"{impl.StructName}::{method.Name}"] = method;
+                _functions[$"{impl.StructName}_{method.Name}"] = method;
+            }
+        }
+    }
+
+    private void CheckImpl(ImplDeclaration impl)
+    {
+        if (!_structs.ContainsKey(impl.StructName) && !_components.ContainsKey(impl.StructName))
+        {
+            _diagnostics.ReportError($"Cannot implement methods for unknown struct or component '{impl.StructName}'.", impl.Span);
+        }
+
+        foreach (var method in impl.Methods)
+        {
+            CheckFunction(method);
         }
     }
 
@@ -412,7 +458,7 @@ public sealed class TypeChecker
         foreach (var param in fn.Parameters)
         {
             var paramType = TypeSymbol.FromName(param.TypeName);
-            var varSym = new VariableSymbol(param.Name, paramType, IsMutable: false, param.Span);
+            var varSym = new VariableSymbol(param.Name, paramType, IsMutable: param.IsMutable, param.Span);
             if (!_currentScope.TryDeclare(varSym))
             {
                 _diagnostics.ReportError($"Duplicate parameter name '{param.Name}'.", param.Span);
@@ -971,6 +1017,42 @@ public sealed class TypeChecker
         foreach (var arg in methodCall.Arguments)
         {
             CheckExpression(arg);
+        }
+
+        if (_methods.TryGetValue(targetType.Name, out var methodMap) &&
+            methodMap.TryGetValue(methodCall.MethodName, out var methodDecl))
+        {
+            int expectedArgCount = methodDecl.Parameters.Count;
+            bool hasSelf = methodDecl.Parameters.Count > 0 && methodDecl.Parameters[0].Name == "self";
+            if (hasSelf) expectedArgCount--;
+
+            if (methodCall.Arguments.Count != expectedArgCount)
+            {
+                _diagnostics.ReportError(
+                    $"Method '{methodCall.MethodName}' expects {expectedArgCount} arguments, but got {methodCall.Arguments.Count}.",
+                    methodCall.Span);
+            }
+            else
+            {
+                int pOffset = hasSelf ? 1 : 0;
+                for (int i = 0; i < methodCall.Arguments.Count; i++)
+                {
+                    var argType = GetNodeType(methodCall.Arguments[i]);
+                    var expectedParamType = TypeSymbol.FromName(methodDecl.Parameters[i + pOffset].TypeName);
+                    if (!AreTypesCompatible(expectedParamType, argType))
+                    {
+                        _diagnostics.ReportError(
+                            $"Argument {i + 1} of method '{methodCall.MethodName}' expects type '{expectedParamType.Name}', but got '{argType.Name}'.",
+                            methodCall.Arguments[i].Span);
+                    }
+                }
+            }
+
+            var retType = methodDecl.ReturnType != null
+                ? TypeSymbol.FromName(methodDecl.ReturnType)
+                : TypeSymbol.Void;
+            _nodeTypes[methodCall] = retType;
+            return retType;
         }
 
         if (targetType == TypeSymbol.World || targetType == TypeSymbol.Commands)

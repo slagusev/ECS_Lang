@@ -207,6 +207,69 @@ fn main(): i32 {
 }
 ```
 
+### Методы структур и компонентов (`impl`)
+
+Блок `impl Name { ... }` позволяет связывать методы и статические функции непосредственно с пользовательскими структурами (`struct`) и компонентами (`component`):
+
+```rust
+struct Vector2 {
+    x: f32,
+    y: f32,
+}
+
+impl Vector2 {
+    // Статический / ассоциированный метод (без self)
+    fn zero(): Vector2 {
+        return Vector2(0.0, 0.0);
+    }
+
+    fn create(x: f32, y: f32): Vector2 {
+        return Vector2(x, y);
+    }
+
+    // Метод чтения (self передается по неявному указателю, zero-copy)
+    fn length_sq(self): f32 {
+        return self.x * self.x + self.y * self.y;
+    }
+
+    fn dot(self, other: Vector2): f32 {
+        return self.x * other.x + self.y * other.y;
+    }
+
+    // Мутирующий метод (mut self изменяет поля целевой структуры in-place)
+    fn scale(mut self, factor: f32): void {
+        self.x *= factor;
+        self.y *= factor;
+    }
+
+    fn add_in_place(mut self, other: Vector2): void {
+        self.x += other.x;
+        self.y += other.y;
+    }
+}
+```
+
+#### Вызов методов:
+- **Ассоциированные функции**: `let mut v = Vector2::create(3.0, 4.0);`
+- **Методы экземпляра**: `let len = v.length_sq();`
+- **Мутирующие вызовы**: `v.scale(2.0);` (изменяет `v` на месте без перевыделения памяти)
+- **Методы на компонентах в системах**:
+  ```rust
+  component Position { x: f32, y: f32 }
+  impl Position {
+      fn translate(mut self, dx: f32, dy: f32): void {
+          self.x += dx;
+          self.y += dy;
+      }
+  }
+
+  system MoveSystem {
+      query(mut pos: Position) {
+          pos.translate(1.0, 0.5); // Прямая мутация в чанке архетипа!
+      }
+  }
+  ```
+
 ---
 
 ## 8. Массивы фиксированного размера `[T; N]`

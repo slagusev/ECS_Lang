@@ -97,7 +97,13 @@ public sealed record FunctionDeclaration(
     SourceSpan Span
 ) : DeclarationNode(Span);
 
-public sealed record FunctionParameter(string Name, string TypeName, SourceSpan Span) : AstNode(Span);
+public sealed record FunctionParameter(string Name, string TypeName, SourceSpan Span, bool IsMutable = false) : AstNode(Span);
+
+public sealed record ImplDeclaration(
+    string StructName,
+    IReadOnlyList<FunctionDeclaration> Methods,
+    SourceSpan Span
+) : DeclarationNode(Span);
 
 public abstract record StageAction(SourceSpan Span) : AstNode(Span);
 

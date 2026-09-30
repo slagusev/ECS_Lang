@@ -45,6 +45,7 @@ public enum TokenType
     Import,
     With,
     Without,
+    Impl,
 
     // Punctuation & Delimiters
     OpenParen,    // (

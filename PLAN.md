@@ -357,11 +357,13 @@ fn main(): i32 {
 - [x] Маршалинг структур по соглашению Microsoft x64 C ABI (sret для возврата `LoadTexture`/`LoadSound`, передача структур по ссылке/значению).
 - [x] Сквозной тест: [`examples/raylib_media_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/raylib_media_test.ecs), успешно протестирован в Debug (`-O0`) и Release (`-O3`).
 
-### [ ] Этап 22: Методы пользовательских структур (`impl Struct`)
-- [ ] Синтаксис блоков реализации `impl StructName { fn method(self, ...): Ret { ... } }`.
-- [ ] Передача экземпляра структуры через параметр `self`.
-- [ ] Семантическая проверка и кодогенерация вызовов методов через точечную нотацию `vec.length()`.
-- [ ] Сквозной тест пользовательских методов.
+### [x] Этап 22: Методы пользовательских структур (`impl Struct`)
+- [x] Синтаксис блоков реализации `impl StructName { fn method(self, ...): Ret { ... } }`.
+- [x] Передача экземпляра структуры через параметр `self` и мутирующий `mut self` (указатель `this` / zero-copy in-place).
+- [x] Статические/ассоциированные методы `StructName::method(...)`.
+- [x] Семантическая проверка и кодогенерация вызовов методов через точечную нотацию `vec.length_sq()`, `vec.scale(2.0)`.
+- [x] Поддержка методов на компонентах ECS с прямой мутацией в чанках архетипов: `query(mut pos: Position) { pos.translate(...); }`.
+- [x] Сквозной тест: [`examples/impl_methods_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/impl_methods_test.ecs), успешно пройден в Debug (`-O0`) и Release (`-O3`).
 
 ### [ ] Этап 23: Динамические массивы (`Vec<T>` / `List<T>`)
 - [ ] Встроенная обобщенная коллекция переменной длины на базе динамического буфера памяти.

@@ -237,7 +237,7 @@ public sealed class LlvmCodeGenerator
         // Emit Multi-Archetype Runtime (spawn, add, remove, has, setters, sort)
         ecsEmitter.EmitMultiArchetypeRuntime(dataLayout, reallocType, reallocFunc, memcpyType, memcpyFunc, memsetType, memsetFunc, mallocType, mallocFunc, freeType, freeFunc);
 
-        // Forward-declare regular functions so any function or system can call any function
+        // Forward-declare regular functions and impl methods so any function or system can call them
         foreach (var decl in program.Declarations)
         {
             if (decl is FunctionDeclaration fnDecl)
@@ -246,6 +246,30 @@ public sealed class LlvmCodeGenerator
                 var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName, ecsEmitter)).ToArray();
                 var funcType = LLVMTypeRef.CreateFunction(returnType, paramTypes, false);
                 module.AddFunction(fnDecl.Name, funcType);
+            }
+            else if (decl is ImplDeclaration impl)
+            {
+                foreach (var method in impl.Methods)
+                {
+                    var mangledName = $"{impl.StructName}_{method.Name}";
+                    var returnType = MapType(context, method.ReturnType, ecsEmitter);
+                    var paramTypes = new List<LLVMTypeRef>();
+                    for (int i = 0; i < method.Parameters.Count; i++)
+                    {
+                        var p = method.Parameters[i];
+                        if (i == 0 && p.Name == "self")
+                        {
+                            var structType = ecsEmitter.GetComponentStructType(impl.StructName);
+                            paramTypes.Add(LLVMTypeRef.CreatePointer(structType, 0));
+                        }
+                        else
+                        {
+                            paramTypes.Add(MapType(context, p.TypeName, ecsEmitter));
+                        }
+                    }
+                    var funcType = LLVMTypeRef.CreateFunction(returnType, paramTypes.ToArray(), false);
+                    module.AddFunction(mangledName, funcType);
+                }
             }
         }
 
@@ -273,6 +297,13 @@ public sealed class LlvmCodeGenerator
             if (decl is FunctionDeclaration fnDecl)
             {
                 CompileFunction(context, module, builder, fnDecl, ecsEmitter, putsType, putsFunc, printfType, printfFunc);
+            }
+            else if (decl is ImplDeclaration impl)
+            {
+                foreach (var method in impl.Methods)
+                {
+                    CompileMethod(context, module, builder, impl.StructName, method, ecsEmitter, putsType, putsFunc, printfType, printfFunc);
+                }
             }
         }
 
@@ -879,6 +910,65 @@ public sealed class LlvmCodeGenerator
         _currentSubprogram = null;
     }
 
+    private unsafe void CompileMethod(
+        LLVMContextRef context,
+        LLVMModuleRef module,
+        LLVMBuilderRef builder,
+        string structName,
+        FunctionDeclaration methodDecl,
+        EcsRuntimeEmitter ecs,
+        LLVMTypeRef putsType,
+        LLVMValueRef putsFunc,
+        LLVMTypeRef printfType,
+        LLVMValueRef printfFunc)
+    {
+        builder.CurrentDebugLocation = default;
+        var mangledName = $"{structName}_{methodDecl.Name}";
+        var function = module.GetNamedFunction(mangledName);
+        var returnType = MapType(context, methodDecl.ReturnType, ecs);
+
+        var entryBlock = function.AppendBasicBlock("entry");
+        builder.PositionAtEnd(entryBlock);
+
+        var locals = new Dictionary<string, LLVMValueRef>(StringComparer.Ordinal);
+        var varTypes = new Dictionary<string, string>(StringComparer.Ordinal);
+
+        // Allocate function parameters
+        for (int i = 0; i < methodDecl.Parameters.Count; i++)
+        {
+            var p = methodDecl.Parameters[i];
+            var pVal = function.GetParam((uint)i);
+            if (i == 0 && p.Name == "self")
+            {
+                // 'self' is passed as a direct pointer (Struct*)
+                locals[p.Name] = pVal;
+                varTypes[p.Name] = structName;
+            }
+            else
+            {
+                var pType = MapType(context, p.TypeName, ecs);
+                var alloca = builder.BuildAlloca(pType, p.Name);
+                builder.BuildStore(pVal, alloca);
+                locals[p.Name] = alloca;
+                varTypes[p.Name] = p.TypeName;
+            }
+        }
+
+        CompileBlock(context, module, builder, function, methodDecl.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, false, false);
+
+        // Ensure terminating return if not explicitly present
+        var lastBlock = builder.InsertBlock;
+        if (lastBlock.Terminator.Handle == IntPtr.Zero)
+        {
+            if (returnType == context.VoidType)
+                builder.BuildRetVoid();
+            else
+                builder.BuildRet(LLVMValueRef.CreateConstInt(context.Int32Type, 0, false));
+        }
+
+        builder.CurrentDebugLocation = default;
+    }
+
     private static bool ContainsWaitKey(BlockStatement block)
     {
         foreach (var s in block.Statements)
@@ -1346,6 +1436,47 @@ public sealed class LlvmCodeGenerator
                     var strlenType = LLVMTypeRef.CreateFunction(context.Int64Type, new[] { i8PtrType }, false);
                     var len64 = builder.BuildCall2(strlenType, strlenFunc, new[] { targetVal }, "slen64");
                     return builder.BuildTrunc(len64, context.Int32Type, "slen32");
+                }
+
+                // Check if target is a struct/component with implemented method
+                var structMethodName = $"{targetType.Name}_{methodCall.MethodName}";
+                var structMethodFunc = module.GetNamedFunction(structMethodName);
+                if (structMethodFunc.Handle != IntPtr.Zero)
+                {
+                    var smArgs = new List<LLVMValueRef>();
+
+                    // Pass pointer to self
+                    LLVMValueRef selfPtr;
+                    if (methodCall.Target is IdentifierExpression smTargetId && locals.TryGetValue(smTargetId.Name, out var idPtr))
+                    {
+                        selfPtr = idPtr;
+                    }
+                    else if (methodCall.Target is MemberAccessExpression memAccess &&
+                             memAccess.Target is IdentifierExpression memTargetId &&
+                             locals.TryGetValue(memTargetId.Name, out var basePtr) &&
+                             varTypes.TryGetValue(memTargetId.Name, out var baseTypeName))
+                    {
+                        var baseStructType = ecs.GetComponentStructType(baseTypeName);
+                        int offset = ecs.GetFieldOffset(baseTypeName, memAccess.MemberName);
+                        selfPtr = builder.BuildStructGEP2(baseStructType, basePtr, (uint)offset, $"{memTargetId.Name}_{memAccess.MemberName}_ptr");
+                    }
+                    else
+                    {
+                        var stType = ecs.GetComponentStructType(targetType.Name);
+                        var tempAlloca = CreateEntryBlockAlloca(context, function, stType, "self_temp");
+                        builder.BuildStore(targetVal, tempAlloca);
+                        selfPtr = tempAlloca;
+                    }
+                    smArgs.Add(selfPtr);
+
+                    foreach (var arg in methodCall.Arguments)
+                    {
+                        smArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    }
+
+                    var smFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(structMethodFunc);
+                    string smCallName = smFuncType.ReturnType == context.VoidType ? "" : $"{methodCall.MethodName}_call";
+                    return builder.BuildCall2(smFuncType, structMethodFunc, smArgs.ToArray(), smCallName);
                 }
 
                 string mTargetName = $"world_{methodCall.MethodName}";
@@ -2232,7 +2363,11 @@ public sealed class LlvmCodeGenerator
                 {
                     // Generic function call or ECS call (world_spawn, world_set_*, pipeline_*)
                     string funcName = call.Callee;
-                    if (_typeChecker.Pipelines.Any(p => p.Name == call.Callee))
+                    if (call.Callee.Contains("::"))
+                    {
+                        funcName = call.Callee.Replace("::", "_");
+                    }
+                    else if (_typeChecker.Pipelines.Any(p => p.Name == call.Callee))
                     {
                         funcName = $"pipeline_{call.Callee}";
                     }

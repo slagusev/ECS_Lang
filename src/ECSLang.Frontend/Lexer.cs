@@ -42,6 +42,7 @@ public sealed class Lexer
         ["import"] = TokenType.Import,
         ["with"] = TokenType.With,
         ["without"] = TokenType.Without,
+        ["impl"] = TokenType.Impl,
         ["true"] = TokenType.True,
         ["false"] = TokenType.False,
     };
