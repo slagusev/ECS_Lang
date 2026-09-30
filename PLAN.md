@@ -389,11 +389,13 @@ fn main(): i32 {
 - [x] Автоматический рехэшинг при коэффициенте заполнения $> 70\%$ с выделением степени двойки.
 - [x] Сквозной тест ассоциативных коллекций и именованной индексации: [`examples/hashmap_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/hashmap_test.ecs), успешно пройден как в Debug (`-O0`), так и в Release (`-O3`).
 
-### [ ] Этап 26: Аренное управление памятью строк (`World` String Arena)
-- [ ] Встроенный аренный аллокатор строк в структуре контекста `World` (монолитные чанки памяти).
-- [ ] Быстрое выделение временных строк при конкатенации, форматировании и интерполяции без фрагментации системной кучи.
-- [ ] Мгновенный сброс строковой арены кадра / мира при вызове очистки или деструкции мира.
-- [ ] Zero fragmentation: разделение долгоживущих строк и строковых данных ECS.
+### [x] Этап 26: Аренное управление памятью строк (`World` String Arena)
+- [x] Встроенный аренный аллокатор строк в структуре контекста `World` (монолитные чанки памяти по 64 КБ со связанным списком `%struct.StringArenaChunk`).
+- [x] Быстрое выделение временных строк при конкатенации (`+`), форматировании (`to_string`) и интерполяции строк (`$"..."`) с bump-pointer без фрагментации системной кучи CRT.
+- [x] Мгновенный $O(k)$ сброс строковой арены кадра / мира через `world.reset_string_arena()` без системных вызовов `free`.
+- [x] Методы мира: `world.reset_string_arena() -> void` и `world.alloc_string(capacity: i32) -> string`.
+- [x] Полное освобождение памяти арены при деструкции мира `world.free()` / `world.destroy()`.
+- [x] Сквозной стресс-тест строковой арены: [`examples/string_arena_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/string_arena_test.ecs) (выделение 10 000 строк в кадровом цикле с периодическим сбросом арены), успешно пройден в Debug (`-O0`) и Release (`-O3`).
 
 ### [ ] Этап 27: Безопасные типы `Option<T>` и `Result<T, E>` с Pattern Matching
 - [ ] Алгебраические типы данных (Tagged / Discriminated Unions) в системе типов.
@@ -401,12 +403,14 @@ fn main(): i32 {
 - [ ] Тип `Result<T, E>`: варианты `Ok(val)` и `Err(err)` для операций ввода-вывода, загрузки ассетов и парсинга.
 - [ ] Интеграция с конструкцией `match` для безопасного разворачивания (exhaustiveness checking).
 
-### [ ] Этап 28: Стандартная библиотека ECS GUI (`Button`, `Text`, `Slider`, `Panel`)
+### [ ] Этап 28: Стандартная библиотека ECS GUI (`Button`, `Text`, `Slider`, `Panel`) на чистом ECSLang
+- [ ] Стандартная библиотека пишется **целиком на ECSLang** (файлы `std/gui.ecs`, `std/gui/widgets.ecs`, `std/gui/systems.ecs`), а не в компиляторе на C#. Компилятор лишь предоставляет стандартный путь импорта.
 - [ ] Пользовательский интерфейс как чистая ECS-парадигма: элементы UI являются обычными сущностями с компонентами.
-- [ ] Набор стандартных компонентов: `UIRect`, `UIButton`, `UIText`, `UISlider`, `UIPanel`, `UIState`.
-- [ ] Стандартные системы: `UIInputSystem` (опрос мыши, hover, click), `UILayoutSystem` (позиционирование), `UIRenderSystem`.
-- [ ] Генерация событий взаимодействия: `event OnClick { target: Entity, mouse_btn: i32 }`, `event OnValueChanged`.
-- [ ] Демонстрационное интерактивное GUI-приложение.
+- [ ] Набор стандартных компонентов на ECSLang: `UIRect`, `UIButton`, `UIText`, `UISlider`, `UIPanel`, `UIState`.
+- [ ] Системы GUI на ECSLang: `UIInputSystem` (опрос мыши Raylib, hover, click), `UILayoutSystem` (позиционирование с иерархией `ChildOf`), `UIRenderSystem`.
+- [ ] Взаимодействие через ECS-события: `event OnClick { target: Entity, mouse_btn: i32 }`, `event OnValueChanged`.
+- [ ] Хелперы спавна виджетов в ECSLang: функции `gui_button(world, ...)` и методы `impl UIButton`.
+- [ ] Демонстрационное интерактивное GUI-приложение с кнопками, слайдерами и панелями.
 
 ### [ ] Этап 29: Замыкания и лямбды (`|e| ...`)
 - [ ] Синтаксис анонимных функций: `|param: Type| -> Ret { body }` и компактный `|e| expr`.

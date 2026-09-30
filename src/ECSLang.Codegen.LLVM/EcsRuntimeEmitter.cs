@@ -27,8 +27,12 @@ public sealed class EcsRuntimeEmitter
     private LLVMTypeRef _colArrayType;
     private LLVMTypeRef _worldStructType;
     private int _nameIndexWorldOffset = -1;
+    private int _stringArenaHeadWorldOffset = -1;
+    private int _stringArenaChunksWorldOffset = -1;
 
     public int NameIndexWorldOffset => _nameIndexWorldOffset;
+    public int StringArenaHeadWorldOffset => _stringArenaHeadWorldOffset;
+    public int StringArenaChunksWorldOffset => _stringArenaChunksWorldOffset;
 
     public EcsRuntimeEmitter(
         LLVMContextRef context,
@@ -65,6 +69,7 @@ public sealed class EcsRuntimeEmitter
     public LLVMTypeRef GetArchetypeStructType() => _archStructType;
     public LLVMTypeRef GetColumnsArrayType() => _colArrayType;
     public LLVMTypeRef GetWorldStructType() => _worldStructType;
+    public LLVMTypeRef WorldStructType => _worldStructType;
 
     public int GetFieldOffset(string compOrResName, string fieldName)
     {
@@ -226,6 +231,14 @@ public sealed class EcsRuntimeEmitter
         worldFields.Add(i8PtrType);          // name_index_entries (ptr)
         worldFields.Add(_context.Int32Type); // name_index_count (i32)
         worldFields.Add(_context.Int32Type); // name_index_cap (i32)
+
+        // String Arena in World:
+        // string_arena_head: ptr to current active chunk (for bump-pointer allocation)
+        // string_arena_chunks: ptr to head of all allocated chunks (for reset and free)
+        _stringArenaHeadWorldOffset = worldFields.Count;
+        worldFields.Add(i8PtrType);
+        _stringArenaChunksWorldOffset = worldFields.Count;
+        worldFields.Add(i8PtrType);
 
         _worldStructType = _context.CreateNamedStruct("struct.EcsWorld");
         _worldStructType.StructSetBody(worldFields.ToArray(), false);

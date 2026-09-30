@@ -1193,6 +1193,22 @@ public sealed class TypeChecker
                 return TypeSymbol.Bool;
             }
 
+            if (methodCall.MethodName == "reset_string_arena")
+            {
+                _nodeTypes[methodCall] = TypeSymbol.Void;
+                return TypeSymbol.Void;
+            }
+
+            if (methodCall.MethodName == "alloc_string")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'alloc_string' expects 1 argument (capacity i32).", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = TypeSymbol.String;
+                return TypeSymbol.String;
+            }
+
             if (methodCall.MethodName.StartsWith("set_") ||
                 methodCall.MethodName.StartsWith("add_") ||
                 methodCall.MethodName.StartsWith("remove_") ||

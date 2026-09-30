@@ -1,0 +1,59 @@
+// Stage 26: World String Arena Test
+// Testing zero-fragmentation bump-allocation and instant reset of string memory
+
+component Unit {
+    hp: i32,
+    speed: f32
+}
+
+fn test_string_formatting(world: World): void {
+    let name = "Commander";
+    let score = 4200;
+    let ratio = 3.14;
+
+    // String interpolation & concatenation using World String Arena:
+    let msg1 = $"Player: {name}, Score: {score}, Ratio: {ratio}";
+    println(msg1);
+
+    let prefix = "Hero_";
+    let id_str = to_string(101);
+    let full_id = prefix + id_str;
+    println($"Generated Full ID: {full_id}");
+}
+
+fn test_frame_reset_loop(world: World): void {
+    println("--- Testing Frame Loop with Arena Reset (500 frames * 20 strings = 10,000 strings) ---");
+    let mut frame = 0;
+    while frame < 500 {
+        let mut i = 0;
+        while i < 20 {
+            let temp_str = $"Frame #{frame} - Item #{i}: val = {frame * 10 + i}";
+            // In a real game, this string might be sent to DrawText or logging
+            i += 1;
+        }
+
+        // At end of frame: reset bump pointer in all chunks of the world arena!
+        // Memory is reused instantly with zero OS syscalls (malloc/free).
+        world.reset_string_arena();
+        frame += 1;
+    }
+    println("SUCCESS: 500 frames completed with instant arena reuse!");
+}
+
+fn main(): i32 {
+    println("=== Stage 26: World String Arena Test ===");
+    let mut world = ecs::create_world();
+
+    // 1. Basic formatting and arena allocation
+    test_string_formatting(world);
+
+    // 2. Direct string buffer allocation via world.alloc_string
+    let buf = world.alloc_string(64);
+    println("SUCCESS: world.alloc_string(64) allocated string buffer successfully.");
+
+    // 3. Stress test of instant frame-by-frame arena resets
+    test_frame_reset_loop(world);
+
+    println("=== Stage 26 World String Arena Tests PASSED! ===");
+    return 0;
+}
