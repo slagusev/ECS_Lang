@@ -1,0 +1,79 @@
+import "types.ecs";
+
+system RenderStarfield {
+    query(s: Star, pos: Position) {
+        draw_circle(pos.x, pos.y, 2.0, s.brightness, s.brightness, s.brightness);
+    }
+}
+
+system RenderParticles {
+    query(part: Particle, pos: Position) {
+        draw_circle(pos.x, pos.y, 3.5, part.r, part.g, part.b);
+    }
+}
+
+system RenderBullets {
+    query(p: Player, bm: BulletManager) {
+        for i in 0..16 {
+            if bm.bactive[i] == 1 {
+                draw_rectangle(bm.bx[i] - 2.0, bm.by[i] - 8.0, 4.0, 16.0, 80, 240, 255);
+            }
+        }
+    }
+}
+
+system RenderEnemies {
+    query(en: Enemy, pos: Position) {
+        // Hull color based on AI state
+        match en.state {
+            EnemyState.Patrolling => {
+                draw_rectangle(pos.x - 16.0, pos.y - 10.0, 32.0, 20.0, 50, 210, 120);
+            }
+            EnemyState.Diving => {
+                draw_rectangle(pos.x - 16.0, pos.y - 10.0, 32.0, 20.0, 240, 70, 60);
+            }
+            EnemyState.Evading => {
+                draw_rectangle(pos.x - 16.0, pos.y - 10.0, 32.0, 20.0, 210, 60, 220);
+            }
+            _ => {
+                draw_rectangle(pos.x - 16.0, pos.y - 10.0, 32.0, 20.0, 180, 180, 180);
+            }
+        }
+
+        // Alien wings and central core
+        draw_rectangle(pos.x - 22.0, pos.y - 4.0, 44.0, 8.0, 35, 45, 65);
+        draw_circle(pos.x, pos.y, 4.0, 255, 255, 255);
+    }
+}
+
+system RenderPlayer {
+    query(p: Player, pos: Position) {
+        // Main ship body
+        draw_rectangle(pos.x - 16.0, pos.y - 10.0, 32.0, 20.0, 60, 150, 240);
+        // Cockpit nose
+        draw_rectangle(pos.x - 6.0, pos.y - 18.0, 12.0, 12.0, 160, 220, 255);
+        // Left & right wings
+        draw_rectangle(pos.x - 24.0, pos.y + 2.0, 48.0, 8.0, 35, 90, 170);
+        // Thruster exhaust
+        draw_rectangle(pos.x - 5.0, pos.y + 10.0, 10.0, 8.0, 255, 150, 30);
+    }
+}
+
+system RenderHud {
+    query(p: Player, state: GameState) {
+        // Top banner
+        draw_rectangle(0, 0, 800, 42, 16, 20, 30);
+        draw_line(0, 42, 800, 42, 50, 70, 100);
+
+        draw_text("VOID DEFENDER - ECS-Lang Arcade Demo", 18, 12, 18, 255, 255, 255);
+        draw_text("Controls: [<-] [->] [^] [v] or [W][A][S][D] | Shoot: [Space] | [ESC] Exit", 260, 48, 14, 150, 170, 200);
+
+        if state.is_victory {
+            draw_rectangle(120, 230, 560, 130, 20, 30, 45);
+            draw_line(120, 230, 680, 230, 80, 255, 120);
+            draw_line(120, 360, 680, 360, 80, 255, 120);
+            draw_text("VICTORY! ALL INVADERS NEUTRALIZED!", 160, 260, 24, 80, 255, 120);
+            draw_text("All ECS Systems & Pipelines Executed Flawlessly!", 170, 300, 16, 200, 230, 255);
+        }
+    }
+}

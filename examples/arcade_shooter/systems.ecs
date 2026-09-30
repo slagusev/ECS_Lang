@@ -1,0 +1,190 @@
+import "types.ecs";
+
+system StarfieldSystem {
+    query(mut star: Star, mut pos: Position) {
+        pos.y += star.speed;
+        if pos.y > 600.0 {
+            pos.y = 0.0;
+        }
+    }
+}
+
+system PlayerInputSystem {
+    query(mut p: Player, mut pos: Position, cmd: Commands, mut state: GameState, mut bm: BulletManager) {
+        if state.is_victory || state.is_game_over {
+            return;
+        }
+
+        // Horizontal movement: Left [<-] / [A], Right [->] / [D]
+        if is_key_down(263) || is_key_down(65) {
+            pos.x -= p.speed;
+            if pos.x < 30.0 {
+                pos.x = 30.0;
+            }
+        }
+        if is_key_down(262) || is_key_down(68) {
+            pos.x += p.speed;
+            if pos.x > 770.0 {
+                pos.x = 770.0;
+            }
+        }
+
+        // Vertical movement: Up [^] / [W], Down [v] / [S]
+        if is_key_down(265) || is_key_down(87) {
+            pos.y -= p.speed * 0.75;
+            if pos.y < 350.0 {
+                pos.y = 350.0;
+            }
+        }
+        if is_key_down(264) || is_key_down(83) {
+            pos.y += p.speed * 0.75;
+            if pos.y > 560.0 {
+                pos.y = 560.0;
+            }
+        }
+
+        // Cooldown timer
+        if p.cooldown > 0.0 {
+            p.cooldown -= 1.0;
+        }
+
+        // Shooting: [Space]
+        if is_key_down(32) && p.cooldown <= 0.0 {
+            p.cooldown = p.max_cooldown;
+
+            let mut slot = -1;
+            for i in 0..16 {
+                if slot == -1 && bm.bactive[i] == 0 {
+                    slot = i;
+                }
+            }
+
+            if slot >= 0 {
+                bm.bx[slot] = pos.x;
+                bm.by[slot] = pos.y - 20.0;
+                bm.bactive[slot] = 1;
+            }
+        }
+    }
+}
+
+system BulletMovementSystem {
+    query(mut p: Player, mut bm: BulletManager) {
+        for i in 0..16 {
+            if bm.bactive[i] == 1 {
+                bm.by[i] -= 12.0;
+                if bm.by[i] < 30.0 {
+                    bm.bactive[i] = 0;
+                }
+            }
+        }
+    }
+}
+
+system EnemyAiSystem {
+    query(e: Entity, mut en: Enemy, mut pos: Position, cmd: Commands, mut state: GameState, mut bm: BulletManager) {
+        // AI State Machine via match
+        match en.state {
+            EnemyState.Patrolling => {
+                pos.x += en.speed * en.dir;
+                if pos.x < 60.0 {
+                    en.dir = 1.0;
+                }
+                if pos.x > 740.0 {
+                    en.dir = -1.0;
+                }
+                en.timer += 1.0;
+                if en.timer > 110.0 {
+                    en.state = EnemyState.Diving;
+                    en.timer = 0.0;
+                }
+            }
+            EnemyState.Diving => {
+                pos.y += en.speed * 1.5;
+                pos.x += en.dir * en.speed * 0.7;
+                if pos.y > 530.0 {
+                    pos.y = 70.0;
+                    en.state = EnemyState.Evading;
+                    en.timer = 0.0;
+                }
+            }
+            EnemyState.Evading => {
+                pos.x += en.speed * 2.2 * en.dir;
+                if pos.x < 80.0 {
+                    en.dir = 1.0;
+                }
+                if pos.x > 720.0 {
+                    en.dir = -1.0;
+                }
+                en.timer += 1.0;
+                if en.timer > 80.0 {
+                    en.state = EnemyState.Patrolling;
+                    en.timer = 0.0;
+                }
+            }
+            _ => {
+                pos.x += 1.0;
+            }
+        }
+
+        // Bullet collision check
+        for i in 0..16 {
+            if bm.bactive[i] == 1 {
+                let dx = pos.x - bm.bx[i];
+                let dy = pos.y - bm.by[i];
+                if dx * dx + dy * dy < 650.0 {
+                    bm.bactive[i] = 0;
+                    en.hp -= 50;
+                    world.emit_HitEvent(pos.x, pos.y, 100);
+                }
+            }
+        }
+
+        // Check if destroyed
+        if en.hp <= 0 {
+            cmd.despawn(e);
+            state.enemies_left -= 1;
+            if state.enemies_left <= 0 {
+                state.is_victory = true;
+            }
+        }
+    }
+}
+
+system ParticleSystem {
+    query(p: Entity, mut part: Particle, mut pos: Position, vel: Velocity, cmd: Commands) {
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+        part.lifetime -= 1.0;
+        if part.lifetime <= 0.0 {
+            cmd.despawn(p);
+        }
+    }
+}
+
+system HitObserver {
+    read(hit: HitEvent, mut state: GameState, cmd: Commands) {
+        state.score += hit.points;
+
+        // Spawn 4 explosive particle shards flying outward
+        let p1 = cmd.spawn();
+        cmd.add_Particle(p1, 20.0, 255, 220, 50);
+        cmd.add_Position(p1, hit.x, hit.y);
+        cmd.add_Velocity(p1, -3.2, -3.0);
+
+        let p2 = cmd.spawn();
+        cmd.add_Particle(p2, 24.0, 255, 120, 40);
+        cmd.add_Position(p2, hit.x, hit.y);
+        cmd.add_Velocity(p2, 3.5, -2.5);
+
+        let p3 = cmd.spawn();
+        cmd.add_Particle(p3, 18.0, 255, 245, 90);
+        cmd.add_Position(p3, hit.x, hit.y);
+        cmd.add_Velocity(p3, -2.5, 3.2);
+
+        let p4 = cmd.spawn();
+        cmd.add_Particle(p4, 22.0, 230, 60, 60);
+        cmd.add_Position(p4, hit.x, hit.y);
+        cmd.add_Velocity(p4, 2.8, 3.0);
+    }
+}

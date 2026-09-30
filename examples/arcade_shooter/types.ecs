@@ -1,0 +1,62 @@
+enum EnemyState {
+    Patrolling,
+    Diving,
+    Evading
+}
+
+component Star {
+    speed: f32,
+    brightness: i32
+}
+
+component Player {
+    speed: f32,
+    cooldown: f32,
+    max_cooldown: f32
+}
+
+component Enemy {
+    state: EnemyState,
+    speed: f32,
+    dir: f32,
+    timer: f32,
+    hp: i32
+}
+
+component Particle {
+    lifetime: f32,
+    r: i32,
+    g: i32,
+    b: i32
+}
+
+component Position {
+    x: f32,
+    y: f32
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32
+}
+
+resource GameState {
+    score: i32,
+    enemies_left: i32,
+    wave: i32,
+    is_victory: bool,
+    is_game_over: bool
+}
+
+resource BulletManager {
+    count: i32,
+    bx: [f32; 16],
+    by: [f32; 16],
+    bactive: [i32; 16]
+}
+
+event HitEvent {
+    x: f32,
+    y: f32,
+    points: i32
+}

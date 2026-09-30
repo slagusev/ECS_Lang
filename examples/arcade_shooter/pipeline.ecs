@@ -1,0 +1,29 @@
+import "systems.ecs";
+import "render.ecs";
+
+pipeline ArcadePipeline {
+    stage Background {
+        parallel {
+            StarfieldSystem;
+        }
+    }
+    stage Simulation {
+        PlayerInputSystem;
+        BulletMovementSystem;
+        EnemyAiSystem;
+        ParticleSystem;
+    }
+    stage Events {
+        swap_events;
+        HitObserver;
+        apply_commands;
+    }
+    stage Render {
+        RenderStarfield;
+        RenderParticles;
+        RenderBullets;
+        RenderEnemies;
+        RenderPlayer;
+        RenderHud;
+    }
+}
