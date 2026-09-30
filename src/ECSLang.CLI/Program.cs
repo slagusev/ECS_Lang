@@ -49,23 +49,60 @@ public static class Program
         string outputDir = Path.GetDirectoryName(inputPath) ?? Directory.GetCurrentDirectory();
         string outputExe = Path.Combine(outputDir, $"{baseName}.exe");
         string? emitIrPath = null;
+        var options = new CompilerOptions();
+        bool explicitWait = false;
 
         for (int i = 2; i < args.Length; i++)
         {
-            if (args[i] == "-o" && i + 1 < args.Length)
+            string arg = args[i];
+            if (arg == "-o" && i + 1 < args.Length)
             {
                 outputExe = Path.GetFullPath(args[++i]);
             }
-            else if (args[i] is "--emit-ir" or "--emit-llvm")
+            else if (arg is "--emit-ir" or "--emit-llvm")
             {
                 emitIrPath = Path.Combine(outputDir, $"{baseName}.ll");
             }
+            else if (arg is "--release" or "-r")
+            {
+                options.IsRelease = true;
+                options.OptimizationLevel = OptimizationLevel.O3;
+                options.NoWaitOnExit = true;
+            }
+            else if (arg is "-O0") options.OptimizationLevel = OptimizationLevel.O0;
+            else if (arg is "-O1") options.OptimizationLevel = OptimizationLevel.O1;
+            else if (arg is "-O2") options.OptimizationLevel = OptimizationLevel.O2;
+            else if (arg is "-O3") options.OptimizationLevel = OptimizationLevel.O3;
+            else if (arg is "-Os") options.OptimizationLevel = OptimizationLevel.Os;
+            else if (arg is "-Oz") options.OptimizationLevel = OptimizationLevel.Oz;
+            else if (arg is "-g" or "--debug")
+            {
+                options.GenerateDebugInfo = true;
+            }
+            else if (arg is "--no-wait")
+            {
+                options.NoWaitOnExit = true;
+            }
+            else if (arg is "--wait-key" or "--pause")
+            {
+                options.NoWaitOnExit = false;
+                explicitWait = true;
+            }
+        }
+
+        // When running via 'ecs run', do not block waiting for Enter unless explicitly requested
+        if (command == "run" && !explicitWait)
+        {
+            options.NoWaitOnExit = true;
         }
 
         var diagnostics = new DiagnosticsBag();
 
+        string modeTag = options.IsRelease ? "Release, -O3" : $"{options.OptimizationLevel}";
+        if (options.GenerateDebugInfo) modeTag += ", DebugInfo";
+
         Console.ForegroundColor = ConsoleColor.Cyan;
-        Console.WriteLine($"[ECS-Lang] Compiling {Path.GetFileName(inputPath)}...");
+        Console.WriteLine($"[ECS-Lang] Compiling {Path.GetFileName(inputPath)} [{modeTag}]...");
         Console.ResetColor();
 
         // 1. Read source
@@ -92,7 +129,7 @@ public static class Program
         // 4. LLVM Codegen
         string tempObj = Path.Combine(Path.GetTempPath(), $"{baseName}_{Guid.NewGuid():N}.obj");
         var codegen = new LlvmCodeGenerator(diagnostics);
-        bool codegenSuccess = codegen.Compile(programAst, tempObj, emitIrPath);
+        bool codegenSuccess = codegen.Compile(programAst, tempObj, emitIrPath, options);
         if (!codegenSuccess || diagnostics.HasErrors)
         {
             diagnostics.PrintToConsole();
@@ -106,7 +143,7 @@ public static class Program
 
         // 5. Linker
         var linker = new MsvcLinker(diagnostics);
-        bool linkSuccess = linker.Link(tempObj, outputExe);
+        bool linkSuccess = linker.Link(tempObj, outputExe, options);
 
         // Cleanup temp obj file
         try { if (File.Exists(tempObj)) File.Delete(tempObj); } catch { }
@@ -153,7 +190,17 @@ public static class Program
     {
         Console.WriteLine("ECS-Lang Native Compiler (LLVM)");
         Console.WriteLine("Usage:");
-        Console.WriteLine("  ecs build <file.ecs> [-o <out.exe>] [--emit-ir]");
-        Console.WriteLine("  ecs run   <file.ecs> [--emit-ir]");
+        Console.WriteLine("  ecs build <file.ecs> [options]");
+        Console.WriteLine("  ecs run   <file.ecs> [options]");
+        Console.WriteLine();
+        Console.WriteLine("Options:");
+        Console.WriteLine("  -o <path>       Specify output executable path");
+        Console.WriteLine("  --release, -r   Build in Release mode (-O3, linker optimizations, no wait-key)");
+        Console.WriteLine("  -O0 .. -O3      LLVM optimization level (default: -O0)");
+        Console.WriteLine("  -Os, -Oz        Optimize for code size");
+        Console.WriteLine("  -g, --debug     Generate debug information (CodeView PDB / DWARF)");
+        Console.WriteLine("  --no-wait       Do not wait for Enter key on exit");
+        Console.WriteLine("  --wait-key      Wait for Enter key before exiting console");
+        Console.WriteLine("  --emit-ir       Emit LLVM IR (.ll) file");
     }
 }

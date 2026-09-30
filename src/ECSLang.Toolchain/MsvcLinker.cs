@@ -12,7 +12,7 @@ public sealed class MsvcLinker
         _diagnostics = diagnostics;
     }
 
-    public bool Link(string objFilePath, string outputExePath)
+    public bool Link(string objFilePath, string outputExePath, CompilerOptions? options = null)
     {
         var (linkExe, libPaths) = ResolveMsvcPaths();
         if (string.IsNullOrEmpty(linkExe) || !File.Exists(linkExe))
@@ -29,6 +29,19 @@ public sealed class MsvcLinker
             $"\"{objFilePath}\"",
             $"/OUT:\"{outputExePath}\""
         };
+
+        if (options?.GenerateDebugInfo == true)
+        {
+            args.Add("/DEBUG");
+            string pdbPath = Path.ChangeExtension(outputExePath, ".pdb");
+            args.Add($"/PDB:\"{pdbPath}\"");
+        }
+
+        if (options?.IsRelease == true)
+        {
+            args.Add("/OPT:REF");
+            args.Add("/OPT:ICF");
+        }
 
         foreach (var libPath in libPaths)
         {

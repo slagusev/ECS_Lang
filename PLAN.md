@@ -266,15 +266,17 @@ fn main(): i32 {
   - [`examples/command_buffer_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/command_buffer_test.ecs) — динамический спавн пуль и удаление уничтоженных сущностей прямо из систем движения без гонок и сбоев итерации.
   - [`examples/parallel_commands_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/parallel_commands_test.ecs) — параллельная запись команд из нескольких параллельных систем в пуле потоков без коллизий.
 
-### [ ] Этап 16: Оптимизации LLVM и релизные сборки (`--release`, `-O3`, отладка `-g`)
-- [ ] Интеграция LLVM Pass Manager (PassBuilder / New Pass Manager) в `LlvmCodeGenerator`:
+### [x] Этап 16: Оптимизации LLVM и релизные сборки (`--release`, `-O3`, отладка `-g`)
+- [x] Интеграция LLVM Pass Manager (PassBuilder / New Pass Manager) в `LlvmCodeGenerator`:
   - Уровни оптимизации `-O0`, `-O1`, `-O2`, `-O3`, `-Os`, `-Oz`.
   - Включение проходов векторизации (Loop Vectorize, SLP Vectorize), инлайнинга функций, Loop Unroll, InstCombine, Dead Code Elimination.
-  - Флаг CLI `--release` (компиляция с `-O3` и отключением лишних runtime-проверок).
-- [ ] Генерация отладочной информации (DIBuilder):
-  - Флаг `--debug` / `-g`: генерация метаданных CodeView (PDB под Windows) и DWARF.
+  - Флаг CLI `--release` (компиляция с `-O3`, линковка с `/OPT:REF /OPT:ICF` и отключение паузы Enter).
+  - Флаг CLI `--no-wait` (отключение паузы «Press Enter» для CLI и скриптов).
+- [x] Генерация отладочной информации (DIBuilder):
+  - Флаги `--debug` / `-g`: генерация метаданных CodeView (PDB под Windows) и DWARF.
   - Привязка исходных строк и колонок (`SourceSpan`) к инструкциям LLVM для пошаговой отладки в Visual Studio / VS Code / LLDB.
-- [ ] Бенчмарк: сравнение времени кадра симуляции 100k частиц в Debug и Release (`-O3`).
+- [x] Бенчмарк: сравнение времени симуляции 100k частиц в Debug и Release (`-O3`):
+  - Сквозной тест: [`examples/optimization_benchmark.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/optimization_benchmark.ecs) — 140 ms (Debug -O0) против 47 ms (Release -O3) на 20 кадрах (**ускорение 3.0x**).
 
 ### [ ] Этап 17: Модульность и многофайловые проекты (`import` / модули)
 - [ ] Синтаксис `import "path/to/file.ecs";` или `import module_name;`.

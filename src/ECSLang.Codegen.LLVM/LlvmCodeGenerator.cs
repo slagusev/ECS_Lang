@@ -11,6 +11,11 @@ public sealed class LlvmCodeGenerator
 {
     private readonly DiagnosticsBag _diagnostics;
     private readonly TypeChecker _typeChecker;
+    private CompilerOptions _options = new();
+    private LLVMDIBuilderRef? _diBuilder;
+    private LLVMMetadataRef _diCompileUnit;
+    private LLVMMetadataRef _diFile;
+    private LLVMMetadataRef? _currentSubprogram;
 
     static LlvmCodeGenerator()
     {
@@ -30,8 +35,13 @@ public sealed class LlvmCodeGenerator
     public unsafe bool Compile(
         ProgramNode program,
         string outputObjPath,
-        string? outputLlvmIrPath = null)
+        string? outputLlvmIrPath = null,
+        CompilerOptions? options = null)
     {
+        _options = options ?? new CompilerOptions();
+        _diBuilder = null;
+        _currentSubprogram = null;
+
         using var context = LLVMContextRef.Create();
         using var module = context.CreateModuleWithName("ecs_module");
         using var builder = context.CreateBuilder();
@@ -43,11 +53,22 @@ public sealed class LlvmCodeGenerator
             return false;
         }
 
+        var optLevel = _options.OptimizationLevel switch
+        {
+            OptimizationLevel.O0 => LLVMCodeGenOptLevel.LLVMCodeGenLevelNone,
+            OptimizationLevel.O1 => LLVMCodeGenOptLevel.LLVMCodeGenLevelLess,
+            OptimizationLevel.O2 => LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault,
+            OptimizationLevel.O3 => LLVMCodeGenOptLevel.LLVMCodeGenLevelAggressive,
+            OptimizationLevel.Os => LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault,
+            OptimizationLevel.Oz => LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault,
+            _ => LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault
+        };
+
         var targetMachine = target.CreateTargetMachine(
             targetTriple,
             "generic",
             "",
-            LLVMCodeGenOptLevel.LLVMCodeGenLevelDefault,
+            optLevel,
             LLVMRelocMode.LLVMRelocDefault,
             LLVMCodeModel.LLVMCodeModelDefault);
 
@@ -56,6 +77,37 @@ public sealed class LlvmCodeGenerator
         sbyte* dataLayoutStr = LlvmApi.CopyStringRepOfTargetData(dataLayout);
         module.DataLayout = Marshal.PtrToStringAnsi((IntPtr)dataLayoutStr) ?? "";
         LlvmApi.DisposeMessage(dataLayoutStr);
+
+        // Debug Info Setup (CodeView / PDB on Windows)
+        if (_options.GenerateDebugInfo)
+        {
+            module.AddModuleFlag("CodeView", LLVMModuleFlagBehavior.LLVMModuleFlagBehaviorWarning, 1);
+            module.AddModuleFlag("Debug Info Version", LLVMModuleFlagBehavior.LLVMModuleFlagBehaviorWarning, 3);
+
+            var diBuilder = module.CreateDIBuilder();
+            _diBuilder = diBuilder;
+
+            string sourceFile = !string.IsNullOrEmpty(program.Span.FilePath) ? program.Span.FilePath : "source.ecs";
+            string fullPath = Path.GetFullPath(sourceFile);
+            string fileName = Path.GetFileName(fullPath);
+            string dirName = Path.GetDirectoryName(fullPath) ?? "";
+
+            _diFile = diBuilder.CreateFile(fileName, dirName);
+            _diCompileUnit = diBuilder.CreateCompileUnit(
+                LLVMDWARFSourceLanguage.LLVMDWARFSourceLanguageC99,
+                _diFile,
+                "ECS-Lang",
+                _options.OptimizationLevel != OptimizationLevel.O0 ? 1 : 0,
+                "",
+                0,
+                "",
+                LLVMDWARFEmissionKind.LLVMDWARFEmissionFull,
+                0,
+                0,
+                0,
+                "",
+                "");
+        }
 
         // Declare C runtime I/O functions
         var i8PtrType = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
@@ -146,6 +198,18 @@ public sealed class LlvmCodeGenerator
         // Emit Multi-Archetype Runtime (spawn, add, remove, has, setters, sort)
         ecsEmitter.EmitMultiArchetypeRuntime(dataLayout, reallocType, reallocFunc, memcpyType, memcpyFunc, memsetType, memsetFunc, mallocType, mallocFunc, freeType, freeFunc);
 
+        // Forward-declare regular functions so any function or system can call any function
+        foreach (var decl in program.Declarations)
+        {
+            if (decl is FunctionDeclaration fnDecl)
+            {
+                var returnType = MapType(context, fnDecl.ReturnType, ecsEmitter);
+                var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName, ecsEmitter)).ToArray();
+                var funcType = LLVMTypeRef.CreateFunction(returnType, paramTypes, false);
+                module.AddFunction(fnDecl.Name, funcType);
+            }
+        }
+
         // Compile ECS Systems
         foreach (var decl in program.Declarations)
         {
@@ -164,18 +228,6 @@ public sealed class LlvmCodeGenerator
             }
         }
 
-        // Forward-declare regular functions so any function or system can call any function
-        foreach (var decl in program.Declarations)
-        {
-            if (decl is FunctionDeclaration fnDecl)
-            {
-                var returnType = MapType(context, fnDecl.ReturnType, ecsEmitter);
-                var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName, ecsEmitter)).ToArray();
-                var funcType = LLVMTypeRef.CreateFunction(returnType, paramTypes, false);
-                module.AddFunction(fnDecl.Name, funcType);
-            }
-        }
-
         // Compile regular functions
         foreach (var decl in program.Declarations)
         {
@@ -185,11 +237,44 @@ public sealed class LlvmCodeGenerator
             }
         }
 
+        // Finalize Debug Information if active
+        if (_diBuilder.HasValue)
+        {
+            _diBuilder.Value.DIBuilderFinalize();
+        }
+
         // Verify module
         if (!module.TryVerify(LLVMVerifierFailureAction.LLVMPrintMessageAction, out var verifyMessage))
         {
             _diagnostics.ReportError($"LLVM Module verification failed: {verifyMessage}", SourceSpan.None);
             return false;
+        }
+
+        // Run LLVM Optimization Passes (New Pass Manager)
+        if (_options.OptimizationLevel != OptimizationLevel.O0)
+        {
+            var passOptions = LlvmApi.CreatePassBuilderOptions();
+            LlvmApi.PassBuilderOptionsSetLoopVectorization(passOptions, 1);
+            LlvmApi.PassBuilderOptionsSetSLPVectorization(passOptions, 1);
+            LlvmApi.PassBuilderOptionsSetLoopUnrolling(passOptions, 1);
+            LlvmApi.PassBuilderOptionsSetMergeFunctions(passOptions, 1);
+
+            string pipeline = _options.GetPassPipelineString();
+            IntPtr pipelinePtr = Marshal.StringToHGlobalAnsi(pipeline);
+            try
+            {
+                var err = LlvmApi.RunPasses(module, (sbyte*)pipelinePtr, targetMachine, passOptions);
+                if ((IntPtr)err != IntPtr.Zero)
+                {
+                    var msg = Marshal.PtrToStringAnsi((IntPtr)LlvmApi.GetErrorMessage(err));
+                    _diagnostics.ReportWarning($"LLVM pass optimization warning: {msg}", SourceSpan.None);
+                }
+            }
+            finally
+            {
+                Marshal.FreeHGlobal(pipelinePtr);
+                LlvmApi.DisposePassBuilderOptions(passOptions);
+            }
         }
 
         // Emit LLVM IR if requested
@@ -208,7 +293,7 @@ public sealed class LlvmCodeGenerator
         return true;
     }
 
-    private void CompileSystem(
+    private unsafe void CompileSystem(
         LLVMContextRef context,
         LLVMModuleRef module,
         LLVMBuilderRef builder,
@@ -219,11 +304,35 @@ public sealed class LlvmCodeGenerator
         LLVMTypeRef printfType,
         LLVMValueRef printfFunc)
     {
+        builder.CurrentDebugLocation = default;
         var worldPtrType = LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0);
         var sysFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
         var sysFunc = module.AddFunction($"system_{sys.Name}", sysFuncType);
         var worldParam = sysFunc.GetParam(0);
         worldParam.Name = "world";
+
+        if (_diBuilder.HasValue)
+        {
+            var subroutineType = _diBuilder.Value.CreateSubroutineType(_diFile, Array.Empty<LLVMMetadataRef>(), LLVMDIFlags.LLVMDIFlagZero);
+            uint line = (uint)Math.Max(1, sys.Span.Line);
+            var subprogram = _diBuilder.Value.CreateFunction(
+                _diFile,
+                $"system_{sys.Name}",
+                $"system_{sys.Name}",
+                _diFile,
+                line,
+                subroutineType,
+                0,
+                1,
+                line,
+                LLVMDIFlags.LLVMDIFlagZero,
+                _options.OptimizationLevel != OptimizationLevel.O0 ? 1 : 0);
+            LlvmApi.SetSubprogram(sysFunc, subprogram);
+            _currentSubprogram = subprogram;
+            var fnLoc = LlvmApi.DIBuilderCreateDebugLocation(context, line, 1, subprogram, null);
+            builder.CurrentDebugLocation = LlvmApi.MetadataAsValue(context, fnLoc);
+        }
+
         var entryBB = sysFunc.AppendBasicBlock("entry");
         builder.PositionAtEnd(entryBB);
 
@@ -464,20 +573,47 @@ public sealed class LlvmCodeGenerator
         var worldArgTyped = jobBuilder.BuildBitCast(contextArg, worldPtrType, "world_typed");
         jobBuilder.BuildCall2(sysFuncType, sysFunc, new[] { worldArgTyped });
         jobBuilder.BuildRetVoid();
+
+        builder.CurrentDebugLocation = default;
+        _currentSubprogram = null;
     }
 
-    private void CompilePipeline(
+    private unsafe void CompilePipeline(
         LLVMContextRef context,
         LLVMModuleRef module,
         LLVMBuilderRef builder,
         PipelineDeclaration pipe,
         EcsRuntimeEmitter ecs)
     {
+        builder.CurrentDebugLocation = default;
         var worldPtrType = LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0);
         var pipeFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
         var pipeFunc = module.AddFunction($"pipeline_{pipe.Name}", pipeFuncType);
         var worldParam = pipeFunc.GetParam(0);
         worldParam.Name = "world";
+
+        if (_diBuilder.HasValue)
+        {
+            var subroutineType = _diBuilder.Value.CreateSubroutineType(_diFile, Array.Empty<LLVMMetadataRef>(), LLVMDIFlags.LLVMDIFlagZero);
+            uint line = (uint)Math.Max(1, pipe.Span.Line);
+            var subprogram = _diBuilder.Value.CreateFunction(
+                _diFile,
+                pipe.Name,
+                pipe.Name,
+                _diFile,
+                line,
+                subroutineType,
+                0,
+                1,
+                line,
+                LLVMDIFlags.LLVMDIFlagZero,
+                _options.OptimizationLevel != OptimizationLevel.O0 ? 1 : 0);
+            LlvmApi.SetSubprogram(pipeFunc, subprogram);
+            _currentSubprogram = subprogram;
+            var fnLoc = LlvmApi.DIBuilderCreateDebugLocation(context, line, 1, subprogram, null);
+            builder.CurrentDebugLocation = LlvmApi.MetadataAsValue(context, fnLoc);
+        }
+
         var entryBB = pipeFunc.AppendBasicBlock("entry");
         builder.PositionAtEnd(entryBB);
 
@@ -496,6 +632,7 @@ public sealed class LlvmCodeGenerator
         {
             foreach (var action in stage.Actions)
             {
+                SetDebugLocation(context, builder, action.Span);
                 if (action is SystemCallAction call)
                 {
                     var sysFunc = module.GetNamedFunction($"system_{call.SystemName}");
@@ -592,9 +729,12 @@ public sealed class LlvmCodeGenerator
         }
 
         builder.BuildRetVoid();
+
+        builder.CurrentDebugLocation = default;
+        _currentSubprogram = null;
     }
 
-    private void CompileFunction(
+    private unsafe void CompileFunction(
         LLVMContextRef context,
         LLVMModuleRef module,
         LLVMBuilderRef builder,
@@ -605,9 +745,32 @@ public sealed class LlvmCodeGenerator
         LLVMTypeRef printfType,
         LLVMValueRef printfFunc)
     {
+        builder.CurrentDebugLocation = default;
         var returnType = MapType(context, fnDecl.ReturnType, ecs);
         var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName, ecs)).ToArray();
         var function = module.GetNamedFunction(fnDecl.Name);
+
+        if (_diBuilder.HasValue)
+        {
+            var subroutineType = _diBuilder.Value.CreateSubroutineType(_diFile, Array.Empty<LLVMMetadataRef>(), LLVMDIFlags.LLVMDIFlagZero);
+            uint line = (uint)Math.Max(1, fnDecl.Span.Line);
+            var subprogram = _diBuilder.Value.CreateFunction(
+                _diFile,
+                fnDecl.Name,
+                fnDecl.Name,
+                _diFile,
+                line,
+                subroutineType,
+                0,
+                1,
+                line,
+                LLVMDIFlags.LLVMDIFlagZero,
+                _options.OptimizationLevel != OptimizationLevel.O0 ? 1 : 0);
+            LlvmApi.SetSubprogram(function, subprogram);
+            _currentSubprogram = subprogram;
+            var fnLoc = LlvmApi.DIBuilderCreateDebugLocation(context, line, 1, subprogram, null);
+            builder.CurrentDebugLocation = LlvmApi.MetadataAsValue(context, fnLoc);
+        }
 
         var entryBlock = function.AppendBasicBlock("entry");
         builder.PositionAtEnd(entryBlock);
@@ -635,7 +798,7 @@ public sealed class LlvmCodeGenerator
         var lastBlock = builder.InsertBlock;
         if (lastBlock.Terminator.Handle == IntPtr.Zero)
         {
-            if (isMain && !hasWaitKey)
+            if (isMain && !hasWaitKey && !_options.NoWaitOnExit && !_options.IsRelease)
             {
                 var msg = builder.BuildGlobalStringPtr("Press Enter to exit...", "prompt_exit");
                 builder.BuildCall2(putsType, putsFunc, new[] { msg }, "puts_exit");
@@ -648,6 +811,9 @@ public sealed class LlvmCodeGenerator
             else
                 builder.BuildRet(LLVMValueRef.CreateConstInt(context.Int32Type, 0, false));
         }
+
+        builder.CurrentDebugLocation = default;
+        _currentSubprogram = null;
     }
 
     private static bool ContainsWaitKey(BlockStatement block)
@@ -667,7 +833,7 @@ public sealed class LlvmCodeGenerator
         return false;
     }
 
-    private void CompileBlock(
+    private unsafe void CompileBlock(
         LLVMContextRef context,
         LLVMModuleRef module,
         LLVMBuilderRef builder,
@@ -687,6 +853,8 @@ public sealed class LlvmCodeGenerator
         {
             if (builder.InsertBlock.Terminator.Handle != IntPtr.Zero)
                 break;
+
+            SetDebugLocation(context, builder, stmt.Span);
 
             switch (stmt)
             {
@@ -872,7 +1040,7 @@ public sealed class LlvmCodeGenerator
                     break;
 
                 case ReturnStatement retStmt:
-                    if (isMain && !hasWaitKey)
+                    if (isMain && !hasWaitKey && !_options.NoWaitOnExit && !_options.IsRelease)
                     {
                         var msg = builder.BuildGlobalStringPtr("Press Enter to exit...", "prompt_exit");
                         builder.BuildCall2(putsType, putsFunc, new[] { msg }, "puts_exit");
@@ -1655,5 +1823,19 @@ public sealed class LlvmCodeGenerator
         if (val.TypeOf == context.DoubleType)
             return builder.BuildFPTrunc(val, context.FloatType, name);
         return val;
+    }
+
+    private unsafe void SetDebugLocation(LLVMContextRef context, LLVMBuilderRef builder, SourceSpan span)
+    {
+        if (_diBuilder.HasValue && _currentSubprogram.HasValue && span.Line > 0)
+        {
+            var loc = LlvmApi.DIBuilderCreateDebugLocation(
+                context,
+                (uint)Math.Max(1, span.Line),
+                (uint)Math.Max(1, span.Column),
+                _currentSubprogram.Value,
+                null);
+            builder.CurrentDebugLocation = LlvmApi.MetadataAsValue(context, loc);
+        }
     }
 }

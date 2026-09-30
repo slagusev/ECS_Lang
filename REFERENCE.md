@@ -719,18 +719,50 @@ pipeline GamePipeline {
 
 ---
 
-## 14. Справочник по CLI компилятора
+## 14. Справочник по CLI компилятора и отладке
 
-Сборка и запуск программ производятся с помощью интерфейса командной строки:
+Сборка, оптимизация и запуск программ производятся с помощью интерфейса командной строки ECS-Lang:
 
 ```bash
-# Компиляция программы в нативный исполняемый файл
-dotnet run --project src/ECSLang.CLI -- build path/to/file.ecs -o output.exe
-
-# Компиляция и немедленный запуск
-dotnet run --project src/ECSLang.CLI -- build path/to/file.ecs -o output.exe -r
-
-# Выгрузка сгенерированного LLVM IR кода (.ll) для анализа
-dotnet run --project src/ECSLang.CLI -- build path/to/file.ecs --emit-llvm
+# Базовый синтаксис
+ecs build <file.ecs> [options]
+ecs run   <file.ecs> [options]
 ```
+
+### Параметры командной строки
+| Флаг | Описание |
+|---|---|
+| `-o <path>` | Задать путь к выходному исполняемому файлу (`.exe`). |
+| `--release`, `-r` | Сборка в релизном режиме (максимальная оптимизация `-O3`, векторизация SIMD, оптимизации линковщика `/OPT:REF /OPT:ICF`, отсутствие ожидания клавиши Enter). |
+| `-O0` | Отключение оптимизаций (по умолчанию в Debug-режиме). |
+| `-O1`, `-O2`, `-O3` | Уровни оптимизации LLVM New Pass Manager. `-O3` включает Loop Vectorization, SLP Vectorization и разворачивание циклов. |
+| `-Os`, `-Oz` | Оптимизация размера машинного кода. |
+| `-g`, `--debug` | Генерация отладочной информации (CodeView / `.pdb` под Windows и DWARF), привязка строк исходного кода к инструкциям. |
+| `--no-wait` | Отключение паузы «Press Enter to exit...» при завершении программы (активно по умолчанию для команды `run` и релизных сборок). |
+| `--wait-key` | Принудительное ожидание нажатия клавиши Enter перед выходом (удобно при запуске кликом мыши в Windows Explorer). |
+| `--emit-ir`, `--emit-llvm` | Выгрузка сгенерированного (и оптимизированного) LLVM IR представления (`.ll`). |
+
+### Примеры использования
+
+```bash
+# 1. Сборка оптимизированного релиза
+dotnet run --project src/ECSLang.CLI -- build game.ecs --release -o game.exe
+
+# 2. Немедленная компиляция и запуск симуляции
+dotnet run --project src/ECSLang.CLI -- run examples/command_buffer_test.ecs --release
+
+# 3. Сборка с отладочной информацией для Visual Studio
+dotnet run --project src/ECSLang.CLI -- build game.ecs -g -o game.exe
+# Создает game.exe и game.pdb, готовые к пошаговой отладке с брейкпоинтами в VS/VS Code
+
+# 4. Анализ векторизованного LLVM IR
+dotnet run --project src/ECSLang.CLI -- build game.ecs --release --emit-ir
+```
+
+### Пошаговая отладка в Visual Studio / VS Code
+Благодаря генерации метаданных CodeView и отладочных файлов `.pdb`, откомпилированные бинарники ECSLang можно открывать в Visual Studio:
+1. Скомпилируйте проект с флагом `-g`: `ecs build main.ecs -g`.
+2. Откройте Visual Studio, выберите **File -> Open -> Project/Solution** и укажите `main.exe`.
+3. Откройте исходный файл `main.ecs` и установите точку останова (F9) на нужной строке системы или функции.
+4. Нажмите F5 для запуска отладки — отладчик остановится на точной строке в `.ecs` файле.
 
