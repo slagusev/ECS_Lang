@@ -1,0 +1,110 @@
+// ========================================================================
+// ECSLang Example 07: Closures, Lambdas, and Generics
+// Demonstrates functional programming with closures, mutable captures,
+// higher-order functions, generic types, generic functions, and traits.
+// ========================================================================
+
+trait Printable {
+    fn print(self);
+}
+
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+impl Printable for Point {
+    fn print(self) {
+        println($"Point({self.x}, {self.y})");
+    }
+}
+
+struct Pair<T, U> {
+    first: T,
+    second: U,
+}
+
+impl<T, U> Pair<T, U> {
+    fn get_first(self): T {
+        return self.first;
+    }
+
+    fn get_second(self): U {
+        return self.second;
+    }
+}
+
+fn apply_int(val: i32, transform: fn(i32): i32): i32 {
+    return transform(val);
+}
+
+fn identity<T>(x: T): T {
+    return x;
+}
+
+fn show<T: Printable>(item: T) {
+    item.print();
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("    ECSLang Example 07: Closures and Generics    ");
+    println("=================================================\n");
+
+    // =========================================================================
+    // 1. Closures & Lambdas
+    // =========================================================================
+    println("1. Closures & Higher-Order Functions:");
+    let square = |x: i32| x * x;
+    println($"   square(9) = {square(9)}");
+
+    let factor = 10;
+    let scale = |x: i32| x * factor;
+    println($"   scale(7) with captured factor=10: {scale(7)}");
+
+    let transformed = apply_int(25, |n: i32| n * 4);
+    println($"   apply_int(25, |n| n * 4) = {transformed}");
+
+    // Dynamic array iteration with lambda
+    let mut numbers = Vec<i32>();
+    numbers.push(1);
+    numbers.push(2);
+    numbers.push(3);
+    numbers.push(4);
+    numbers.push(5);
+
+    let mut sum = 0;
+    numbers.for_each(|n: i32| {
+        sum += n;
+    });
+    println($"   Sum of numbers [1..5] via for_each: {sum}");
+
+    let squares = numbers.map(|n: i32| n * n);
+    println("   Mapped to squares via .map(|n| n * n):");
+    for s in squares {
+        println($"     -> {s}");
+    }
+
+    // =========================================================================
+    // 2. Generics & Traits
+    // =========================================================================
+    println("\n2. Generic Functions & Generic Structs:");
+    let id_i32 = identity<i32>(42);
+    let id_str = identity<string>("ECSLang Generics");
+    println($"   identity<i32>: {id_i32}");
+    println($"   identity<string>: {id_str}");
+
+    let pair = Pair<i32, string>(100, "Century");
+    let f = pair.get_first();
+    let s = pair.get_second();
+    println($"   Pair<i32, string>.get_first(): {f}");
+    println($"   Pair<i32, string>.get_second(): {s}");
+
+    println("\n3. Trait Polymorphism (Printable):");
+    let pt = Point(12, 34);
+    show<Point>(pt);
+
+    println("\nPress any key to exit...");
+    wait_key();
+    return 0;
+}

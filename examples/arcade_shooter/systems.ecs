@@ -72,7 +72,8 @@ system BulletMovementSystem {
     query(mut p: Player, mut bm: BulletManager) {
         for i in 0..16 {
             if bm.bactive[i] == 1 {
-                bm.by[i] -= 12.0;
+                let cur_y = bm.by[i];
+                bm.by[i] = cur_y - 12.0;
                 if bm.by[i] < 30.0 {
                     bm.bactive[i] = 0;
                 }

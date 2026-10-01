@@ -1,0 +1,27 @@
+// =========================================================================
+// Example 01: Hello World in ECSLang
+// Demonstrates:
+// - Main entry point (fn main(): i32)
+// - Console output with println
+// - String interpolation ($"...")
+// - Console window hold via wait_key()
+// =========================================================================
+
+fn main(): i32 {
+    println("========================================");
+    println("      Welcome to ECSLang Language       ");
+    println("========================================");
+
+    let language = "ECSLang";
+    let backend = "LLVM 20";
+    let arch = "Data-Oriented ECS";
+
+    println($"Language : {language}");
+    println($"Backend  : {backend}");
+    println($"Paradigm : {arch}");
+    println("Hello, World! Compilation and execution succeeded!");
+
+    println("\n[Console] Press any key to exit...");
+    wait_key();
+    return 0;
+}

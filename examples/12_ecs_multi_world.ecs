@@ -1,0 +1,90 @@
+// ========================================================================
+// ECSLang Example 12: Multi-World Universal Contexts
+// Demonstrates running multiple isolated ECS worlds concurrently within
+// the same process (e.g. Game Simulation World vs. UI/Editor World).
+// Each world has its own entity ID allocator, archetype storage, and resources.
+// ========================================================================
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+component Widget {
+    title: string,
+    width: i32,
+    height: i32,
+}
+
+// System running exclusively on Simulation World
+system PhysicsSystem {
+    query(e: Entity, mut pos: Position, vel: Velocity) {
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+        println($"   [Sim World] Entity #{e} moved to ({pos.x}, {pos.y})");
+    }
+}
+
+// System running exclusively on UI/Editor World
+system WidgetRenderSystem {
+    query(e: Entity, pos: Position, w: Widget) {
+        println($"   [UI World] Widget #{e} '{w.title}' at ({pos.x}, {pos.y}) size: {w.width}x{w.height}");
+    }
+}
+
+pipeline SimPipeline {
+    stage Update {
+        PhysicsSystem;
+    }
+}
+
+pipeline UiPipeline {
+    stage Render {
+        WidgetRenderSystem;
+    }
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("     ECSLang Example 12: Multi-World Contexts    ");
+    println("=================================================\n");
+
+    // 1. Create Simulation World
+    println("1. Initializing Simulation World...");
+    let mut sim_world = ecs::create_world();
+    let player = sim_world.spawn();
+    sim_world.set_Position(player, 10.0, 20.0);
+    sim_world.set_Velocity(player, 5.0, -2.0);
+
+    let enemy = sim_world.spawn();
+    sim_world.set_Position(enemy, 150.0, 300.0);
+    sim_world.set_Velocity(enemy, -10.0, 0.0);
+
+    // 2. Create Isolated UI / Editor World
+    println("2. Initializing UI / Editor World...");
+    let mut ui_world = ecs::create_world();
+    let start_btn = ui_world.spawn();
+    ui_world.set_Position(start_btn, 100.0, 50.0);
+    ui_world.set_Widget(start_btn, "Start Game", 120, 40);
+
+    let exit_btn = ui_world.spawn();
+    ui_world.set_Position(exit_btn, 100.0, 110.0);
+    ui_world.set_Widget(exit_btn, "Quit", 120, 40);
+
+    // 3. Executing distinct pipelines on respective worlds
+    println("\n3. Executing SimPipeline on sim_world:");
+    SimPipeline(sim_world);
+
+    println("\n4. Executing UiPipeline on ui_world:");
+    UiPipeline(ui_world);
+
+    println("\nBoth worlds executed cleanly and completely in isolation!");
+    println("Press any key to exit...");
+    wait_key();
+    return 0;
+}

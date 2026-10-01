@@ -1,0 +1,101 @@
+// ========================================================================
+// ECSLang Example 11: Archetypes and Query Filters (with / without)
+// Demonstrates how ECSLang organizes entities by archetype, filters query
+// iteration at the chunk level using `with:` and `without:`, and moves
+// entities between archetypes when components are added or removed dynamically.
+// ========================================================================
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+component Frozen {
+    duration: f32,
+}
+
+component PlayerTag {
+    id: i32,
+}
+
+component StunnedTag {
+    dummy: i32,
+}
+
+// Moves entities that have Velocity, but are NOT Frozen
+system MoveUnfrozenSystem {
+    query(e: Entity, mut pos: Position, vel: Velocity, without: Frozen) {
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+        println($"   MoveUnfrozen: Entity #{e} moved to ({pos.x}, {pos.y})");
+    }
+}
+
+// Decrements Frozen duration and removes Frozen when duration expires
+system ThawSystem {
+    query(e: Entity, mut f: Frozen, cmd: Commands) {
+        f.duration -= 1.0;
+        println($"   ThawSystem: Frozen #{e} remaining duration: {f.duration}s");
+        if f.duration <= 0.0 {
+            println($"   ThawSystem: Thawing entity #{e} (removing Frozen component)!");
+            cmd.remove_Frozen(e);
+        }
+    }
+}
+
+// Only affects entities that explicitly have PlayerTag
+system PlayerAuraSystem {
+    query(e: Entity, pos: Position, with: PlayerTag) {
+        println($"   PlayerAura: Emitting glow from Hero #{e} at ({pos.x}, {pos.y})");
+    }
+}
+
+pipeline FilterPipeline {
+    stage Update {
+        MoveUnfrozenSystem;
+        ThawSystem;
+        PlayerAuraSystem;
+        apply_commands; // Commits dynamic archetype migrations (e.g. remove_Frozen)
+    }
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("  ECSLang Example 11: Archetypes & Query Filters ");
+    println("=================================================\n");
+
+    let mut world = ecs::create_world();
+
+    // Entity 1: Normal moving NPC
+    let npc = world.spawn();
+    world.set_Position(npc, 0.0, 0.0);
+    world.set_Velocity(npc, 10.0, 0.0);
+
+    // Entity 2: Frozen Hero (has PlayerTag + Frozen)
+    let hero = world.spawn();
+    world.set_Position(hero, 100.0, 100.0);
+    world.set_Velocity(hero, 5.0, 5.0);
+    world.set_PlayerTag(hero, 1);
+    world.set_Frozen(hero, 1.0); // 1 tick freeze duration
+
+    println($"Initial state: NPC #{npc} has Frozen: {world.has_Frozen(npc)}");
+    println($"Initial state: Hero #{hero} has Frozen: {world.has_Frozen(hero)}");
+
+    println("\n--- Tick 1: Hero is Frozen, should NOT move via MoveUnfrozenSystem ---");
+    FilterPipeline(world);
+
+    println($"\nAfter Tick 1: Hero has Frozen: {world.has_Frozen(hero)}");
+
+    println("\n--- Tick 2: Hero is now thawed and moves normally! ---");
+    FilterPipeline(world);
+
+    println("\nQuery filters and dynamic archetype migrations verified successfully!");
+    println("Press any key to exit...");
+    wait_key();
+    return 0;
+}

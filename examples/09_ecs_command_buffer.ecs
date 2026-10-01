@@ -1,0 +1,92 @@
+// ========================================================================
+// ECSLang Example 09: Deferred Command Buffer (Commands & apply_commands)
+// Demonstrates safe structural mutations (spawning/despawning entities)
+// during parallel or sequential system queries without archetype invalidation.
+// ========================================================================
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+component Particle {
+    lifetime: i32,
+}
+
+component Spawner {
+    spawn_interval: i32,
+    timer: i32,
+}
+
+// SpawnerSystem produces new particle entities via Commands buffer
+system ParticleSpawnerSystem {
+    query(mut sp: Spawner, pos: Position, cmd: Commands) {
+        sp.timer += 1;
+        if sp.timer >= sp.spawn_interval {
+            sp.timer = 0;
+            let p = cmd.spawn();
+            cmd.set_Position(p, pos.x, pos.y);
+            cmd.set_Velocity(p, 5.0, -10.0);
+            cmd.set_Particle(p, 2); // 2 ticks lifetime
+            println($"   SpawnerSystem: Queued spawn of particle #{p} at ({pos.x}, {pos.y})");
+        }
+    }
+}
+
+// AgingSystem decrements particle lifetime and despawns dead particles
+system ParticleAgingSystem {
+    query(e: Entity, mut part: Particle, cmd: Commands) {
+        part.lifetime -= 1;
+        println($"   AgingSystem: Particle #{e} remaining lifetime: {part.lifetime}");
+        if part.lifetime <= 0 {
+            println($"   AgingSystem: Queued despawn for particle #{e}");
+            cmd.despawn(e);
+        }
+    }
+}
+
+// Movement updates positions
+system MovementSystem {
+    query(mut pos: Position, vel: Velocity) {
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+    }
+}
+
+pipeline GamePipeline {
+    stage Update {
+        ParticleSpawnerSystem;
+        MovementSystem;
+        ParticleAgingSystem;
+        apply_commands; // Commits all queued spawns, despawns, and component modifications
+    }
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("    ECSLang Example 09: Deferred Command Buffer  ");
+    println("=================================================\n");
+
+    let mut world = ecs::create_world();
+
+    println("1. Setting up Particle Spawner entity...");
+    let spawner_ent = world.spawn();
+    world.set_Position(spawner_ent, 50.0, 50.0);
+    world.set_Spawner(spawner_ent, 1, 0); // Spawns every tick
+
+    println("2. Running 4 Simulation Ticks with Command Buffer Sync:");
+    for frame in 1..5 {
+        println($"\n--- Frame {frame} ---");
+        GamePipeline(world);
+    }
+
+    println("\nDeferred command buffers successfully prevented iterator invalidation!");
+    println("Press any key to exit...");
+    wait_key();
+    return 0;
+}

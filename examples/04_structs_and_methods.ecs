@@ -1,0 +1,121 @@
+// ========================================================================
+// ECSLang Example 04: Structs and Impl Methods
+// Demonstrates user-defined data structures, associated static functions,
+// immutable self methods, mutable (mut self) methods, and fixed arrays.
+// ========================================================================
+
+struct Vector2 {
+    x: f32,
+    y: f32,
+}
+
+impl Vector2 {
+    fn zero(): Vector2 {
+        return Vector2(0.0, 0.0);
+    }
+
+    fn new(x: f32, y: f32): Vector2 {
+        return Vector2(x, y);
+    }
+
+    fn length_sq(self): f32 {
+        return self.x * self.x + self.y * self.y;
+    }
+
+    fn dot(self, other: Vector2): f32 {
+        return self.x * other.x + self.y * other.y;
+    }
+
+    fn scale(mut self, factor: f32): void {
+        self.x *= factor;
+        self.y *= factor;
+    }
+
+    fn add(mut self, other: Vector2): void {
+        self.x += other.x;
+        self.y += other.y;
+    }
+}
+
+struct Character {
+    name_id: i32,
+    position: Vector2,
+    health: i32,
+    max_health: i32,
+    inventory: [i32; 3],
+}
+
+impl Character {
+    fn new(id: i32, x: f32, y: f32, max_hp: i32): Character {
+        return Character(id, Vector2::new(x, y), max_hp, max_hp, [101, 102, 103]);
+    }
+
+    fn is_alive(self): bool {
+        return self.health > 0;
+    }
+
+    fn take_damage(mut self, amount: i32): void {
+        self.health -= amount;
+        if self.health < 0 {
+            self.health = 0;
+        }
+    }
+
+    fn heal(mut self, amount: i32): void {
+        self.health += amount;
+        if self.health > self.max_health {
+            self.health = self.max_health;
+        }
+    }
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("   ECSLang Example 04: Structs & Methods (OOP)   ");
+    println("=================================================\n");
+
+    // 1. Associated functions and constructors
+    println("1. Vector2 Constructor & Static Methods:");
+    let mut pos = Vector2::new(10.0, 20.0);
+    println($"   pos = ({pos.x}, {pos.y})");
+    println($"   pos.length_sq() = {pos.length_sq()}");
+
+    // 2. Methods with arguments
+    let target = Vector2::new(5.0, -10.0);
+    let dot_prod = pos.dot(target);
+    println($"   dot product with (5, -10) = {dot_prod}");
+
+    // 3. Mutating methods
+    pos.scale(2.0);
+    println($"   After scale(2.0): ({pos.x}, {pos.y})");
+    pos.add(target);
+    println($"   After add(target): ({pos.x}, {pos.y})\n");
+
+    // 4. Composite Structs & Fixed Arrays
+    println("2. Composite Structs & Nested Fields:");
+    let mut hero = Character::new(1, pos.x, pos.y, 100);
+    println($"   Hero #1 spawned at ({hero.position.x}, {hero.position.y}) with HP: {hero.health}/{hero.max_health}");
+    println($"   Is alive: {hero.is_alive()}");
+
+    println("   Initial inventory:");
+    for i in 0..3 {
+        println($"     slot {i}: item_id = {hero.inventory[i]}");
+    }
+
+    println("\n3. State Mutation via Character Methods:");
+    println("   Hero takes 45 damage...");
+    hero.take_damage(45);
+    println($"   Current HP: {hero.health}/{hero.max_health}");
+
+    println("   Hero drinks healing potion (+20 HP)...");
+    hero.heal(20);
+    println($"   Current HP: {hero.health}/{hero.max_health}");
+
+    println("   Hero takes lethal 150 damage...");
+    hero.take_damage(150);
+    println($"   Current HP: {hero.health}/{hero.max_health}, Is Alive: {hero.is_alive()}");
+
+    println("\nPress any key to exit...");
+    wait_key();
+    return 0;
+}

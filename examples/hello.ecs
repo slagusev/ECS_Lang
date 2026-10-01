@@ -1,6 +1,0 @@
-fn main(): i32 {
-    println("Hello from ECS-Lang via LLVM 20 and MSVC!");
-    println("Press Enter to exit...");
-    wait_key();
-    return 0;
-}

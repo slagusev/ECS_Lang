@@ -1,0 +1,131 @@
+// ========================================================================
+// ECSLang Example 05: Enums, Option/Result, and Pattern Matching
+// Demonstrates enum definitions, pattern matching on enums/integers,
+// algebraic safety with Option<T> and Result<T, E>, and error handling.
+// ========================================================================
+
+enum GameState {
+    Menu,
+    Playing,
+    Paused,
+    GameOver = 99,
+}
+
+fn describe_state(state: GameState): string {
+    match state {
+        GameState.Menu => {
+            return "Main Menu";
+        }
+        GameState.Playing => {
+            return "In-Game Action";
+        }
+        GameState.Paused => {
+            return "Game Paused";
+        }
+        GameState.GameOver => {
+            return "Game Over Screen";
+        }
+        _ => {
+            return "Unknown State";
+        }
+    }
+}
+
+fn safe_divide(numerator: f32, denominator: f32): Result<f32, string> {
+    if denominator == 0.0 {
+        return Err("Division by zero error");
+    }
+    return Ok(numerator / denominator);
+}
+
+fn find_item_rarity(tier: i32): Option<string> {
+    match tier {
+        1 => {
+            return Some("Common");
+        }
+        2 => {
+            return Some("Rare");
+        }
+        3 => {
+            return Some("Epic");
+        }
+        4 => {
+            return Some("Legendary");
+        }
+        _ => {
+            return None;
+        }
+    }
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("  ECSLang Example 05: Enums & Pattern Matching   ");
+    println("=================================================\n");
+
+    // 1. Enums and Pattern Matching
+    println("1. Enum States & Matching:");
+    let s1 = GameState.Menu;
+    let s2 = GameState.Playing;
+    let s3 = GameState.GameOver;
+
+    println($"   s1 is {describe_state(s1)}");
+    println($"   s2 is {describe_state(s2)}");
+    println($"   s3 is {describe_state(s3)} (explicit code 99)\n");
+
+    // 2. Option<T> Safety & Matching
+    println("2. Option<T> Representation:");
+    let tier2 = find_item_rarity(2);
+    let tier9 = find_item_rarity(9);
+
+    match tier2 {
+        Some(name) => {
+            println($"   Tier 2 found: {name}");
+        }
+        None => {
+            println("   Tier 2 not found");
+        }
+    }
+
+    match tier9 {
+        Some(name) => {
+            println($"   Tier 9 found: {name}");
+        }
+        None => {
+            println("   Tier 9 not found (as expected)");
+        }
+    }
+
+    let default_rarity = tier9.unwrap_or("Standard Item");
+    println($"   tier9 fallback: {default_rarity}\n");
+
+    // 3. Result<T, E> Error Handling
+    println("3. Result<T, E> Calculation:");
+    let res_ok = safe_divide(100.0, 4.0);
+    let res_err = safe_divide(50.0, 0.0);
+
+    match res_ok {
+        Ok(val) => {
+            println($"   100.0 / 4.0 = {val}");
+        }
+        Err(err) => {
+            println($"   Failed: {err}");
+        }
+    }
+
+    match res_err {
+        Ok(val) => {
+            println($"   Result: {val}");
+        }
+        Err(err) => {
+            println($"   50.0 / 0.0 handled safely: {err}");
+        }
+    }
+
+    let safe_fallback = res_err.unwrap_or(0.0);
+    println($"   res_err.unwrap_or: {safe_fallback}");
+
+    println("\nPress any key to exit...");
+    wait_key();
+    return 0;
+}

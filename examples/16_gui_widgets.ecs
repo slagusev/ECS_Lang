@@ -1,0 +1,93 @@
+// ========================================================================
+// ECSLang Example 16: Pure ECS Standard GUI Library (Interactive Window)
+// Demonstrates declarative UI constructed via pure ECS components and systems
+// from `std/gui.ecs`: draggable panels, buttons, sliders, checkboxes,
+// toggle switches, radio groups, progress bars, and tooltips in a 60 FPS window.
+// ========================================================================
+
+import "std/gui.ecs";
+
+fn main(): i32 {
+    println("=================================================");
+    println("    ECSLang Example 16: Standard GUI Widgets     ");
+    println("=================================================\n");
+
+    // Initialize interactive GUI Window
+    init_window(800, 650, "ECSLang Standard GUI Library Demo");
+    set_target_fps(60);
+
+    let mut world = ecs::create_world();
+
+    // 1. Create a draggable main window panel
+    println("Spawning GUI Window Panel...");
+    let panel = gui_panel(world, 50.0, 40.0, 460.0, 560.0, "Configuration & Diagnostics");
+
+    // 2. Add Title Label
+    let title_lbl = gui_label(world, 70.0, 80.0, "Simulation Parameters & Controls:", 16, 0x5C8AE6FF);
+
+    // 3. Add Buttons
+    println("Spawning Action Buttons...");
+    let btn_save = gui_button(world, 70.0, 115.0, 160.0, 36.0, "Save Settings");
+    let btn_reset = gui_button(world, 250.0, 115.0, 160.0, 36.0, "Reset Defaults");
+
+    // 4. Add Separator
+    let sep1 = gui_separator(world, 70.0, 165.0, 380.0, false);
+
+    // 5. Add Checkboxes
+    println("Spawning Toggle Checkboxes...");
+    let cb_vsync = gui_checkbox(world, 70.0, 185.0, "Enable VSync 60 FPS", true);
+    let cb_fullscreen = gui_checkbox(world, 70.0, 215.0, "Fullscreen Display Mode", false);
+
+    // 6. Add Toggle Switch
+    println("Spawning Modern Toggle Switch...");
+    let sw_bloom = gui_toggle_switch(world, 70.0, 250.0, true);
+    let lbl_bloom = gui_label(world, 125.0, 252.0, "Post-Processing Bloom HDR", 14, 0xCCCCCCFF);
+
+    // 7. Add Radio Buttons (Group 1: Difficulty)
+    println("Spawning Radio Button Group...");
+    let rb_easy = gui_radio_button(world, 70.0, 285.0, "Easy", 1, false);
+    let rb_norm = gui_radio_button(world, 170.0, 285.0, "Normal", 1, true);
+    let rb_hard = gui_radio_button(world, 280.0, 285.0, "Hardcore", 1, false);
+
+    // 8. Add Separator
+    let sep2 = gui_separator(world, 70.0, 320.0, 380.0, false);
+
+    // 9. Add Sliders (Master Volume & Sensitivity)
+    println("Spawning Continuous Value Sliders...");
+    let lbl_vol = gui_label(world, 70.0, 335.0, "Master Audio Volume: 75%", 14, 0xFFFFFFFF);
+    let s_vol = gui_slider(world, 70.0, 360.0, 380.0, 24.0, 0.0, 100.0, 75.0);
+
+    let lbl_sens = gui_label(world, 70.0, 395.0, "Mouse Sensitivity: 1.5x", 14, 0xFFFFFFFF);
+    let s_sens = gui_slider(world, 70.0, 420.0, 380.0, 24.0, 0.5, 5.0, 1.5);
+
+    // 10. Add Progress Bar (Asset Preloading Status)
+    println("Spawning Dynamic Progress Bar...");
+    let lbl_prog = gui_label(world, 70.0, 460.0, "Resource Preloader Cache:", 13, 0xAAAAAAFF);
+    let p_bar = gui_progress_bar(world, 70.0, 485.0, 380.0, 18.0, 0.72);
+
+    // 11. Add Tooltip
+    println("Spawning Interactive Tooltips...");
+    gui_tooltip(world, btn_save, "Commit all current settings to disk config");
+    gui_tooltip(world, btn_reset, "Restore factory default values");
+
+    println("GUI Hierarchy ready! Running interactive window loop at 60 FPS...");
+
+    // 60 FPS Interactive GUI Loop
+    while !window_should_close() {
+        begin_drawing();
+        clear_background(24, 28, 38);
+
+        // Header info outside panel
+        draw_text("ECSLang Standard GUI Library (std/gui.ecs)", 20, 12, 16, 180, 200, 230);
+        draw_text("Drag panel title bar to move | Click widgets to interact | ESC to exit", 20, 615, 14, 130, 145, 165);
+
+        // Execute Pure ECS GUI Pipeline (processes events, updates widget states, renders draw batches)
+        GUIPipeline(world);
+
+        end_drawing();
+    }
+
+    close_window();
+    println("GUI Window closed successfully. Done!");
+    return 0;
+}

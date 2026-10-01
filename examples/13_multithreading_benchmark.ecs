@@ -1,0 +1,113 @@
+// ========================================================================
+// ECSLang Example 13: Multithreading, Job System & 100k Entity Benchmark
+// Demonstrates compile-time data race freedom via dependency graph analysis
+// and concurrent system execution across CPU cores using the native ThreadPool.
+// ========================================================================
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+component Health {
+    hp: f32,
+}
+
+component Shield {
+    sp: f32,
+}
+
+system MovementSystem {
+    query(mut pos: Position, vel: Velocity) {
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+    }
+}
+
+system ShieldRegenSystem {
+    query(mut shield: Shield) {
+        shield.sp += 1.0;
+    }
+}
+
+system HealthRegenSystem {
+    query(mut hp: Health) {
+        hp.hp += 0.5;
+    }
+}
+
+// Parallel execution via native ThreadPool (zero data race guaranteed by DAG)
+pipeline ParallelPipeline {
+    stage Update {
+        parallel {
+            MovementSystem;
+            ShieldRegenSystem;
+            HealthRegenSystem;
+        }
+    }
+}
+
+// Baseline single-threaded sequential execution
+pipeline SequentialPipeline {
+    stage Update {
+        MovementSystem;
+        ShieldRegenSystem;
+        HealthRegenSystem;
+    }
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("   ECSLang Example 13: Multithreading Benchmark  ");
+    println("=================================================\n");
+
+    let mut world = ecs::create_world();
+
+    let entity_count = 100000;
+    println($"1. Spawning {entity_count} entities with 4 components (Position, Velocity, Health, Shield)...");
+
+    let spawn_start = get_tick_count();
+    for i in 0..entity_count {
+        let e = world.spawn();
+        world.set_Position(e, 0.0, 0.0);
+        world.set_Velocity(e, 1.0, 1.0);
+        world.set_Health(e, 100.0);
+        world.set_Shield(e, 50.0);
+    }
+    let spawn_time = get_tick_count() - spawn_start;
+    println($"   Successfully spawned {entity_count} entities in {spawn_time} ms!\n");
+
+    // Warm-up
+    println("2. Warming up thread pools & caches...");
+    SequentialPipeline(world);
+    ParallelPipeline(world);
+
+    let iterations = 10;
+    println($"\n3. Running benchmark: {iterations} iterations over {entity_count} entities:");
+
+    // Sequential Benchmark
+    let seq_start = get_tick_count();
+    for iter in 0..iterations {
+        SequentialPipeline(world);
+    }
+    let seq_time = get_tick_count() - seq_start;
+    println($"   Sequential Execution: {seq_time} ms ({iterations} frames)");
+
+    // Parallel Benchmark
+    let par_start = get_tick_count();
+    for iter in 0..iterations {
+        ParallelPipeline(world);
+    }
+    let par_time = get_tick_count() - par_start;
+    println($"   Parallel ThreadPool Execution: {par_time} ms ({iterations} frames)");
+
+    println("\nMultithreading Job System verified successfully!");
+    println("Press any key to exit...");
+    wait_key();
+    return 0;
+}

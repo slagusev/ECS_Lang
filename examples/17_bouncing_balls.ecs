@@ -1,0 +1,196 @@
+// ========================================================================
+// ECSLang Example 17: Interactive 2D Physics Game (Bouncing Balls)
+// An interactive physics sandbox game featuring gravity, restitution bounce,
+// paddle collisions, mouse-click ball spawning, score tracking, and 60 FPS loop.
+// ========================================================================
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+component Ball {
+    radius: f32,
+    r: i32,
+    g: i32,
+    b: i32,
+}
+
+resource GameState {
+    score: i32,
+    total_spawned: i32,
+    paddle_x: f32,
+    paddle_y: f32,
+    paddle_w: f32,
+    paddle_h: f32,
+}
+
+system PhysicsSystem {
+    query(mut pos: Position, mut vel: Velocity, ball: Ball, mut game: GameState) {
+        // Apply gravity
+        vel.vy += 0.35;
+
+        // Position integration
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+
+        // Wall collisions (Left & Right)
+        if pos.x <= ball.radius {
+            pos.x = ball.radius;
+            vel.vx = -vel.vx * 0.92;
+        }
+        if pos.x >= 800.0 - ball.radius {
+            pos.x = 800.0 - ball.radius;
+            vel.vx = -vel.vx * 0.92;
+        }
+
+        // Ceiling collision
+        if pos.y <= 90.0 + ball.radius {
+            pos.y = 90.0 + ball.radius;
+            vel.vy = -vel.vy * 0.85;
+        }
+
+        // Paddle collision
+        let pad_left = game.paddle_x;
+        let pad_right = game.paddle_x + game.paddle_w;
+        let pad_top = game.paddle_y;
+        let pad_bot = game.paddle_y + game.paddle_h;
+
+        if pos.y + ball.radius >= pad_top && pos.y - ball.radius <= pad_bot {
+            if pos.x >= pad_left && pos.x <= pad_right && vel.vy > 0.0 {
+                pos.y = pad_top - ball.radius;
+                vel.vy = -vel.vy * 1.05; // Extra bounciness!
+                if vel.vy < -16.0 {
+                    vel.vy = -16.0;
+                }
+                // Deflection based on where it hit the paddle
+                let hit_offset = (pos.x - (pad_left + game.paddle_w * 0.5)) / (game.paddle_w * 0.5);
+                vel.vx += hit_offset * 4.0;
+                game.score += 10;
+            }
+        }
+
+        // Floor collision
+        if pos.y >= 580.0 - ball.radius {
+            pos.y = 580.0 - ball.radius;
+            vel.vy = -vel.vy * 0.78; // Energy loss on floor hit
+            vel.vx *= 0.98;         // Floor friction
+        }
+    }
+}
+
+system RenderSystem {
+    query(pos: Position, ball: Ball) {
+        draw_circle(pos.x, pos.y, ball.radius, ball.r, ball.g, ball.b);
+        draw_circle(pos.x - ball.radius * 0.3, pos.y - ball.radius * 0.3, ball.radius * 0.25, 255, 255, 255);
+    }
+}
+
+pipeline PhysicsPipeline {
+    stage Update {
+        PhysicsSystem;
+    }
+    stage Render {
+        RenderSystem;
+    }
+}
+
+fn spawn_ball(world: World, x: f32, y: f32, vx: f32, vy: f32, r: i32, g: i32, b: i32): void {
+    let ball = world.spawn();
+    world.set_Position(ball, x, y);
+    world.set_Velocity(ball, vx, vy);
+    world.set_Ball(ball, 16.0, r, g, b);
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("   ECSLang Example 17: Bouncing Balls Physics    ");
+    println("=================================================\n");
+
+    init_window(800, 600, "ECSLang Bouncing Balls Physics Game");
+    set_target_fps(60);
+
+    let mut world = ecs::create_world();
+
+    // Initial game state: score 0, spawned 0, paddle at bottom center
+    world.set_GameState(0, 0, 330.0, 540.0, 140.0, 18.0);
+
+    // Spawn 5 starting balls
+    spawn_ball(world, 150.0, 150.0, 4.0, 2.0, 255, 80, 80);
+    spawn_ball(world, 300.0, 180.0, -3.5, 1.5, 80, 220, 120);
+    spawn_ball(world, 450.0, 120.0, 5.0, -2.0, 80, 180, 255);
+    spawn_ball(world, 600.0, 200.0, -4.0, -3.0, 255, 215, 0);
+    spawn_ball(world, 700.0, 160.0, 3.0, 4.0, 230, 100, 250);
+
+    let mut total_spawned = 5;
+
+    println("Game started! Use [A][D] or Arrows to move paddle. Click Left Mouse Button to spawn new balls!");
+
+    while !window_should_close() {
+        // 1. Paddle movement
+        let mut px = 330.0;
+        let mut cur_score = 0;
+        // Read paddle and update position
+        if is_key_down(263) || is_key_down(65) { // Left or 'A'
+            px -= 9.0;
+        }
+        if is_key_down(262) || is_key_down(68) { // Right or 'D'
+            px += 9.0;
+        }
+
+        // Clamp paddle
+        if px < 10.0 { px = 10.0; }
+        if px > 650.0 { px = 650.0; }
+
+        // Update resource paddle position
+        world.set_GameState(cur_score, total_spawned, px, 540.0, 140.0, 18.0);
+
+        // 2. Launch new ball from paddle on Mouse Click or Spacebar
+        if is_mouse_button_pressed(0) || is_key_pressed(32) { // LMB or Space
+            let b = world.spawn();
+            world.set_Position(b, px + 70.0, 510.0);
+            let mut vx = 4.2;
+            if total_spawned % 2 == 0 {
+                vx = -4.2;
+            }
+            let vy = -9.5;
+            let cr = rand_range(80, 255);
+            let cg = rand_range(80, 255);
+            let cb = rand_range(80, 255);
+            world.set_Velocity(b, vx, vy);
+            world.set_Ball(b, 16.0, cr, cg, cb);
+            total_spawned += 1;
+        }
+
+        // 3. Render frame
+        begin_drawing();
+        clear_background(20, 24, 34);
+
+        // Header bar
+        draw_rectangle(0, 0, 800, 80, 14, 18, 26);
+        draw_line(0, 80, 800, 80, 45, 54, 75);
+
+        draw_text("ECSLang Bouncing Balls Physics Sandbox", 20, 15, 20, 255, 255, 255);
+        draw_text("Controls: [A][D] / Arrows move paddle | Click LMB to spawn balls | F1: Profiler", 20, 45, 14, 160, 175, 200);
+
+        // Render Paddle
+        draw_rectangle(px, 540.0, 140.0, 18.0, 80, 200, 255);
+
+        // Run ECS Pipeline
+        PhysicsPipeline(world);
+
+        // Render In-Engine Profiler if toggled with F1
+        world.render_profiler();
+
+        end_drawing();
+    }
+
+    close_window();
+    println("Physics game closed cleanly. Done!");
+    return 0;
+}

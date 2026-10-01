@@ -1,0 +1,106 @@
+// ========================================================================
+// ECSLang Example 06: Dynamic Collections (Vec<T> and HashMap<K, V>)
+// Demonstrates dynamic growable arrays (Vec<T>) with automatic reallocation,
+// and associative hash tables (HashMap<K, V>) with key indexing & safe lookup.
+// ========================================================================
+
+fn main(): i32 {
+    println("=================================================");
+    println("  ECSLang Example 06: Dynamic Collections (Vec & Map) ");
+    println("=================================================\n");
+
+    // =========================================================================
+    // 1. Dynamic Arrays: Vec<T>
+    // =========================================================================
+    println("1. Dynamic Array (Vec<i32>):");
+    let mut numbers = Vec<i32>();
+    println($"   Initial len: {numbers.len()}, capacity: {numbers.capacity()}");
+
+    // Pushing elements
+    println("   Pushing values: 10, 25, 42, 99, 105...");
+    numbers.push(10);
+    numbers.push(25);
+    numbers.push(42);
+    numbers.push(99);
+    numbers.push(105);
+
+    println($"   After pushes: len = {numbers.len()}, capacity = {numbers.capacity()}");
+    println($"   numbers[0] = {numbers[0]}");
+    println($"   numbers[2] = {numbers[2]}");
+
+    // Modifying through index
+    numbers[1] = 77;
+    println($"   After numbers[1] = 77: numbers[1] is {numbers[1]}");
+
+    // Popping
+    let popped = numbers.pop();
+    println($"   Popped last element: {popped}, new len = {numbers.len()}");
+
+    // Iterating with for-in
+    println("   Iterating over Vec with for-in loop:");
+    for val in numbers {
+        println($"     -> item: {val}");
+    }
+
+    // Safe get returning Option<T>
+    let safe_val = numbers.get(1);
+    match safe_val {
+        Some(v) => {
+            println($"   Safe get at index 1: {v}");
+        }
+        None => {
+            println("   Safe get: index out of bounds");
+        }
+    }
+
+    let out_of_bounds = numbers.get(100);
+    if out_of_bounds.is_none() {
+        println("   Safe get at index 100 correctly returned None\n");
+    }
+
+    // =========================================================================
+    // 2. Hash Maps: HashMap<K, V>
+    // =========================================================================
+    println("2. Associative Map (HashMap<string, i32>):");
+    let mut inventory = HashMap<string, i32>();
+
+    // Inserting key-value pairs
+    inventory.insert("Health Potion", 5);
+    inventory.insert("Mana Potion", 3);
+    inventory.insert("Iron Arrow", 64);
+    inventory.insert("Gold Coin", 1250);
+
+    println($"   Total items in inventory: {inventory.len()}");
+
+    // Querying with .contains()
+    if inventory.contains("Gold Coin") {
+        let gold = inventory["Gold Coin"];
+        println($"   Gold Coin count: {gold}");
+    }
+
+    // Modifying existing entry
+    inventory["Health Potion"] = 10;
+    let potion_cnt = inventory["Health Potion"];
+    println($"   Updated Health Potions: {potion_cnt}");
+
+    // Safe lookup with .find() returning Option<V>
+    let diamond_opt = inventory.find("Diamond");
+    match diamond_opt {
+        Some(count) => {
+            println($"   Found Diamonds: {count}");
+        }
+        None => {
+            println("   Diamond not found in inventory (handled via Option::None)");
+        }
+    }
+
+    // Removing an entry
+    inventory.remove("Mana Potion");
+    println($"   After removing 'Mana Potion', len = {inventory.len()}");
+    let has_mana = inventory.contains("Mana Potion");
+    println($"   Contains 'Mana Potion': {has_mana}");
+
+    println("\nPress any key to exit...");
+    wait_key();
+    return 0;
+}

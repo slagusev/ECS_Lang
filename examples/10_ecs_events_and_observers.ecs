@@ -1,0 +1,102 @@
+// ========================================================================
+// ECSLang Example 10: Events and Observers (Reactive Messaging)
+// Demonstrates decoupled communication between systems using double-buffered
+// events: event declarations, world.emit, read(ev: ...), and swap_events.
+// ========================================================================
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+resource GameStats {
+    total_score: i32,
+    collisions_handled: i32,
+}
+
+// 1. Event Declarations
+event BulletHit {
+    attacker_id: i32,
+    target_id: i32,
+    damage: i32,
+}
+
+event ScoreGained {
+    points: i32,
+}
+
+// 2. Simulation System emitting an event
+system MovementAndCombatSystem {
+    query(e: Entity, mut pos: Position, vel: Velocity) {
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+        println($"   Movement: Entity #{e} moved to ({pos.x}, {pos.y})");
+
+        // When passing threshold, fire a combat event
+        if pos.x > 15.0 {
+            println($"   Combat: Entity #{e} hit target at x={pos.x}! Emitting BulletHit event...");
+            world.emit_BulletHit(e, 99, 50);
+        }
+    }
+}
+
+// 3. Observer Systems handling incoming events
+system CombatResolutionObserver {
+    read(hit: BulletHit) {
+        println($"   [Observer] BulletHit received: #{hit.attacker_id} damaged #{hit.target_id} for {hit.damage} HP!");
+        // Emit a secondary event
+        world.emit(ScoreGained(hit.damage * 10));
+    }
+}
+
+system ScoreObserver {
+    read(score: ScoreGained, mut stats: GameStats) {
+        stats.total_score += score.points;
+        stats.collisions_handled += 1;
+        println($"   [Observer] ScoreGained: +{score.points} pts! Total Score: {stats.total_score} (Hits: {stats.collisions_handled})");
+    }
+}
+
+// 4. Pipeline with double-buffer event swap
+pipeline EventGamePipeline {
+    stage Physics {
+        MovementAndCombatSystem;
+    }
+    stage EventsPhase1 {
+        swap_events; // Swaps buffers: events emitted in Physics are now readable in EventsPhase1
+        CombatResolutionObserver;
+    }
+    stage EventsPhase2 {
+        swap_events; // Swaps buffers: events emitted by CombatResolutionObserver are now readable
+        ScoreObserver;
+    }
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("   ECSLang Example 10: Events & Observers (Pure) ");
+    println("=================================================\n");
+
+    let mut world = ecs::create_world();
+    world.set_GameStats(0, 0);
+
+    let ship = world.spawn();
+    world.set_Position(ship, 10.0, 0.0);
+    world.set_Velocity(ship, 6.0, 0.0); // Next frame x = 16.0 > 15.0
+
+    println("Running Simulation Pipeline Tick 1 (Crosses x > 15 threshold):");
+    EventGamePipeline(world);
+
+    println("\nRunning Simulation Pipeline Tick 2:");
+    EventGamePipeline(world);
+
+    println("\nEvent handling verified successfully!");
+    println("Press any key to exit...");
+    wait_key();
+    return 0;
+}

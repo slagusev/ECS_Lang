@@ -1,0 +1,434 @@
+// ========================================================================
+// ECSLang Example 18: Full Arcade Game (Void Defender)
+// A complete 2D space shooter combining all language features & ECS paradigms:
+// - Multi-stage pipeline with parallel starfield simulation
+// - Reactive HitEvent observers for particle explosions & score tracking
+// - Deferred Commands for entity spawning and despawning
+// - Fixed array bullet manager and enum AI state machines
+// - Hardware-accelerated 60 FPS Raylib rendering and F1 profiler overlay
+// ========================================================================
+
+enum EnemyState {
+    Patrolling,
+    Diving,
+    Evading,
+}
+
+component Star {
+    speed: f32,
+    brightness: i32,
+}
+
+component Player {
+    speed: f32,
+    cooldown: f32,
+    max_cooldown: f32,
+}
+
+component Enemy {
+    state: EnemyState,
+    speed: f32,
+    dir: f32,
+    timer: f32,
+    hp: i32,
+}
+
+component Particle {
+    lifetime: f32,
+    r: i32,
+    g: i32,
+    b: i32,
+}
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+resource GameState {
+    score: i32,
+    enemies_left: i32,
+    wave: i32,
+    is_victory: bool,
+    is_game_over: bool,
+}
+
+resource BulletManager {
+    count: i32,
+    bx: [f32; 16],
+    by: [f32; 16],
+    bactive: [i32; 16],
+}
+
+event HitEvent {
+    x: f32,
+    y: f32,
+    points: i32,
+}
+
+// 1. Starfield background parallax
+system StarfieldSystem {
+    query(mut star: Star, mut pos: Position) {
+        pos.y += star.speed;
+        if pos.y > 600.0 {
+            pos.y = 0.0;
+        }
+    }
+}
+
+// 2. Player controls & weapon firing
+system PlayerInputSystem {
+    query(mut p: Player, mut pos: Position, cmd: Commands, mut state: GameState, mut bm: BulletManager) {
+        if state.is_victory || state.is_game_over {
+            return;
+        }
+
+        // Horizontal movement: Left [<-] / [A], Right [->] / [D]
+        if is_key_down(263) || is_key_down(65) {
+            pos.x -= p.speed;
+            if pos.x < 30.0 {
+                pos.x = 30.0;
+            }
+        }
+        if is_key_down(262) || is_key_down(68) {
+            pos.x += p.speed;
+            if pos.x > 770.0 {
+                pos.x = 770.0;
+            }
+        }
+
+        // Vertical movement: Up [^] / [W], Down [v] / [S]
+        if is_key_down(265) || is_key_down(87) {
+            pos.y -= p.speed * 0.75;
+            if pos.y < 350.0 {
+                pos.y = 350.0;
+            }
+        }
+        if is_key_down(264) || is_key_down(83) {
+            pos.y += p.speed * 0.75;
+            if pos.y > 560.0 {
+                pos.y = 560.0;
+            }
+        }
+
+        // Cooldown timer
+        if p.cooldown > 0.0 {
+            p.cooldown -= 1.0;
+        }
+
+        // Shooting: [Space]
+        if is_key_down(32) && p.cooldown <= 0.0 {
+            p.cooldown = p.max_cooldown;
+
+            let mut slot = -1;
+            for i in 0..16 {
+                if slot == -1 && bm.bactive[i] == 0 {
+                    slot = i;
+                }
+            }
+
+            if slot >= 0 {
+                bm.bx[slot] = pos.x;
+                bm.by[slot] = pos.y - 20.0;
+                bm.bactive[slot] = 1;
+            }
+        }
+    }
+}
+
+// 3. Bullet motion & boundary cleanup
+system BulletMovementSystem {
+    query(mut p: Player, mut bm: BulletManager) {
+        for i in 0..16 {
+            if bm.bactive[i] == 1 {
+                let cur_y = bm.by[i];
+                bm.by[i] = cur_y - 12.0;
+                if bm.by[i] < 30.0 {
+                    bm.bactive[i] = 0;
+                }
+            }
+        }
+    }
+}
+
+// 4. Enemy AI state machine & bullet collision
+system EnemyAiSystem {
+    query(e: Entity, mut en: Enemy, mut pos: Position, cmd: Commands, mut state: GameState, mut bm: BulletManager) {
+        // AI State Machine via pattern matching
+        match en.state {
+            EnemyState.Patrolling => {
+                pos.x += en.speed * en.dir;
+                if pos.x < 60.0 {
+                    en.dir = 1.0;
+                }
+                if pos.x > 740.0 {
+                    en.dir = -1.0;
+                }
+                en.timer += 1.0;
+                if en.timer > 110.0 {
+                    en.state = EnemyState.Diving;
+                    en.timer = 0.0;
+                }
+            }
+            EnemyState.Diving => {
+                pos.y += en.speed * 1.5;
+                pos.x += en.dir * en.speed * 0.7;
+                if pos.y > 530.0 {
+                    pos.y = 70.0;
+                    en.state = EnemyState.Evading;
+                    en.timer = 0.0;
+                }
+            }
+            EnemyState.Evading => {
+                pos.x += en.speed * 2.2 * en.dir;
+                if pos.x < 80.0 {
+                    en.dir = 1.0;
+                }
+                if pos.x > 720.0 {
+                    en.dir = -1.0;
+                }
+                en.timer += 1.0;
+                if en.timer > 80.0 {
+                    en.state = EnemyState.Patrolling;
+                    en.timer = 0.0;
+                }
+            }
+            _ => {
+                pos.x += 1.0;
+            }
+        }
+
+        // Bullet collision check
+        for i in 0..16 {
+            if bm.bactive[i] == 1 {
+                let dx = pos.x - bm.bx[i];
+                let dy = pos.y - bm.by[i];
+                if dx * dx + dy * dy < 650.0 {
+                    bm.bactive[i] = 0;
+                    en.hp -= 50;
+                    world.emit_HitEvent(pos.x, pos.y, 100);
+                }
+            }
+        }
+
+        // Despawn when destroyed
+        if en.hp <= 0 {
+            cmd.despawn(e);
+            state.enemies_left -= 1;
+            if state.enemies_left <= 0 {
+                state.is_victory = true;
+            }
+        }
+    }
+}
+
+// 5. Particle decay
+system ParticleSystem {
+    query(p: Entity, mut part: Particle, mut pos: Position, vel: Velocity, cmd: Commands) {
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+        part.lifetime -= 1.0;
+        if part.lifetime <= 0.0 {
+            cmd.despawn(p);
+        }
+    }
+}
+
+// 6. Reactive Hit Observer
+system HitObserver {
+    read(hit: HitEvent, mut state: GameState, cmd: Commands) {
+        state.score += hit.points;
+
+        // Spawn 4 explosive particle shards flying outward
+        let p1 = cmd.spawn();
+        cmd.add_Particle(p1, 20.0, 255, 220, 50);
+        cmd.add_Position(p1, hit.x, hit.y);
+        cmd.add_Velocity(p1, -3.2, -3.0);
+
+        let p2 = cmd.spawn();
+        cmd.add_Particle(p2, 24.0, 255, 120, 40);
+        cmd.add_Position(p2, hit.x, hit.y);
+        cmd.add_Velocity(p2, 3.5, -2.5);
+
+        let p3 = cmd.spawn();
+        cmd.add_Particle(p3, 18.0, 255, 245, 90);
+        cmd.add_Position(p3, hit.x, hit.y);
+        cmd.add_Velocity(p3, -2.5, 3.2);
+
+        let p4 = cmd.spawn();
+        cmd.add_Particle(p4, 22.0, 230, 60, 60);
+        cmd.add_Position(p4, hit.x, hit.y);
+        cmd.add_Velocity(p4, 2.8, 3.0);
+    }
+}
+
+// 7. Rendering Systems
+system RenderStarfield {
+    query(s: Star, pos: Position) {
+        draw_circle(pos.x, pos.y, 2.0, s.brightness, s.brightness, s.brightness);
+    }
+}
+
+system RenderParticles {
+    query(part: Particle, pos: Position) {
+        draw_circle(pos.x, pos.y, 3.5, part.r, part.g, part.b);
+    }
+}
+
+system RenderBullets {
+    query(p: Player, bm: BulletManager) {
+        for i in 0..16 {
+            if bm.bactive[i] == 1 {
+                draw_rectangle(bm.bx[i] - 2.0, bm.by[i] - 8.0, 4.0, 16.0, 80, 240, 255);
+            }
+        }
+    }
+}
+
+system RenderEnemies {
+    query(en: Enemy, pos: Position) {
+        match en.state {
+            EnemyState.Patrolling => {
+                draw_rectangle(pos.x - 16.0, pos.y - 10.0, 32.0, 20.0, 50, 210, 120);
+            }
+            EnemyState.Diving => {
+                draw_rectangle(pos.x - 16.0, pos.y - 10.0, 32.0, 20.0, 240, 70, 60);
+            }
+            EnemyState.Evading => {
+                draw_rectangle(pos.x - 16.0, pos.y - 10.0, 32.0, 20.0, 210, 60, 220);
+            }
+            _ => {
+                draw_rectangle(pos.x - 16.0, pos.y - 10.0, 32.0, 20.0, 180, 180, 180);
+            }
+        }
+        draw_rectangle(pos.x - 22.0, pos.y - 4.0, 44.0, 8.0, 35, 45, 65);
+        draw_circle(pos.x, pos.y, 4.0, 255, 255, 255);
+    }
+}
+
+system RenderPlayer {
+    query(p: Player, pos: Position) {
+        draw_rectangle(pos.x - 16.0, pos.y - 10.0, 32.0, 20.0, 60, 150, 240);
+        draw_rectangle(pos.x - 6.0, pos.y - 18.0, 12.0, 12.0, 160, 220, 255);
+        draw_rectangle(pos.x - 24.0, pos.y + 2.0, 48.0, 8.0, 35, 90, 170);
+        draw_rectangle(pos.x - 5.0, pos.y + 10.0, 10.0, 8.0, 255, 150, 30);
+    }
+}
+
+system RenderHud {
+    query(p: Player, state: GameState) {
+        draw_rectangle(0, 0, 800, 42, 16, 20, 30);
+        draw_line(0, 42, 800, 42, 50, 70, 100);
+
+        draw_text("VOID DEFENDER - ECS-Lang Space Shooter", 18, 12, 18, 255, 255, 255);
+        draw_text("Controls: [W][A][S][D] / Arrows | Shoot: [Space] | F1: Profiler | ESC: Exit", 220, 48, 13, 150, 170, 200);
+
+        if state.is_victory {
+            draw_rectangle(120, 230, 560, 130, 20, 30, 45);
+            draw_line(120, 230, 680, 230, 80, 255, 120);
+            draw_line(120, 360, 680, 360, 80, 255, 120);
+            draw_text("VICTORY! ALL INVADERS NEUTRALIZED!", 160, 260, 24, 80, 255, 120);
+            draw_text("All ECS Systems & Pipelines Executed Flawlessly!", 170, 300, 16, 200, 230, 255);
+        }
+    }
+}
+
+pipeline ArcadePipeline {
+    stage Background {
+        parallel {
+            StarfieldSystem;
+        }
+    }
+    stage Simulation {
+        PlayerInputSystem;
+        BulletMovementSystem;
+        EnemyAiSystem;
+        ParticleSystem;
+    }
+    stage Events {
+        swap_events;
+        HitObserver;
+        apply_commands;
+    }
+    stage Render {
+        RenderStarfield;
+        RenderParticles;
+        RenderBullets;
+        RenderEnemies;
+        RenderPlayer;
+        RenderHud;
+    }
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("   ECSLang Example 18: Arcade Game Void Defender ");
+    println("=================================================\n");
+
+    init_window(800, 600, "Void Defender - ECS-Lang Arcade Shooter");
+    set_target_fps(60);
+
+    let mut world = ecs::create_world();
+
+    world.set_GameState(0, 8, 1, false, false);
+    world.set_BulletManager(
+        0,
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    );
+
+    // Spawn starfield background
+    let s0 = world.spawn(); world.set_Position(s0, 50.0, 30.0); world.set_Star(s0, 1.2, 140);
+    let s1 = world.spawn(); world.set_Position(s1, 150.0, 180.0); world.set_Star(s1, 2.5, 220);
+    let s2 = world.spawn(); world.set_Position(s2, 280.0, 90.0); world.set_Star(s2, 1.0, 120);
+    let s3 = world.spawn(); world.set_Position(s3, 390.0, 420.0); world.set_Star(s3, 3.0, 255);
+    let s4 = world.spawn(); world.set_Position(s4, 520.0, 260.0); world.set_Star(s4, 1.8, 170);
+    let s5 = world.spawn(); world.set_Position(s5, 650.0, 120.0); world.set_Star(s5, 2.2, 200);
+    let s6 = world.spawn(); world.set_Position(s6, 730.0, 380.0); world.set_Star(s6, 1.1, 130);
+    let s7 = world.spawn(); world.set_Position(s7, 90.0, 480.0); world.set_Star(s7, 2.8, 240);
+    let s8 = world.spawn(); world.set_Position(s8, 230.0, 330.0); world.set_Star(s8, 1.5, 160);
+    let s9 = world.spawn(); world.set_Position(s9, 460.0, 520.0); world.set_Star(s9, 2.0, 190);
+    let s10 = world.spawn(); world.set_Position(s10, 590.0, 70.0); world.set_Star(s10, 3.2, 255);
+    let s11 = world.spawn(); world.set_Position(s11, 710.0, 220.0); world.set_Star(s11, 1.3, 150);
+
+    // Spawn player spaceship
+    let player = world.spawn();
+    world.set_Position(player, 400.0, 520.0);
+    world.set_Player(player, 6.0, 0.0, 10.0);
+
+    // Spawn 8 enemies in two squadrons
+    let e1 = world.spawn(); world.set_Position(e1, 120.0, 100.0); world.set_Enemy(e1, EnemyState.Patrolling, 2.0, 1.0, 0.0, 100);
+    let e2 = world.spawn(); world.set_Position(e2, 260.0, 100.0); world.set_Enemy(e2, EnemyState.Patrolling, 2.2, 1.0, 20.0, 100);
+    let e3 = world.spawn(); world.set_Position(e3, 400.0, 100.0); world.set_Enemy(e3, EnemyState.Patrolling, 2.0, 1.0, 40.0, 100);
+    let e4 = world.spawn(); world.set_Position(e4, 540.0, 100.0); world.set_Enemy(e4, EnemyState.Patrolling, 2.4, 1.0, 60.0, 100);
+    let e5 = world.spawn(); world.set_Position(e5, 680.0, 100.0); world.set_Enemy(e5, EnemyState.Patrolling, 2.1, 1.0, 80.0, 100);
+
+    let e6 = world.spawn(); world.set_Position(e6, 200.0, 160.0); world.set_Enemy(e6, EnemyState.Patrolling, 2.5, -1.0, 10.0, 100);
+    let e7 = world.spawn(); world.set_Position(e7, 360.0, 160.0); world.set_Enemy(e7, EnemyState.Patrolling, 2.3, -1.0, 30.0, 100);
+    let e8 = world.spawn(); world.set_Position(e8, 520.0, 160.0); world.set_Enemy(e8, EnemyState.Patrolling, 2.6, -1.0, 50.0, 100);
+
+    println("Game initialized with 8 enemy invaders and 12 parallax stars.");
+    println("Entering 60 FPS interactive loop. Shoot invaders to win!");
+
+    while !window_should_close() {
+        begin_drawing();
+        clear_background(14, 17, 24);
+
+        ArcadePipeline(world);
+
+        // F1 Profiler overlay
+        world.render_profiler();
+
+        end_drawing();
+    }
+
+    close_window();
+    println("Arcade game closed cleanly. Done!");
+    return 0;
+}

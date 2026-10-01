@@ -1,0 +1,85 @@
+// ========================================================================
+// ECSLang Example 08: ECS Basics (Entities, Components, Systems, Pipeline)
+// Demonstrates the core Data-Oriented Architecture: memory layout in archetypes,
+// components, global resources, system queries, and pipelined execution.
+// ========================================================================
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+component Health {
+    hp: i32,
+    max_hp: i32,
+}
+
+resource TimeStep {
+    dt: f32,
+}
+
+system MovementSystem {
+    query(mut pos: Position, vel: Velocity, time: TimeStep) {
+        pos.x += vel.vx * time.dt;
+        pos.y += vel.vy * time.dt;
+    }
+}
+
+system StatusSystem {
+    query(e: Entity, pos: Position, hp: Health) {
+        println($"   Entity #{e}: Pos=({pos.x}, {pos.y}) | HP: {hp.hp}/{hp.max_hp}");
+    }
+}
+
+pipeline SimulationPipeline {
+    stage Update {
+        MovementSystem;
+        StatusSystem;
+    }
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("      ECSLang Example 08: ECS Architecture       ");
+    println("=================================================\n");
+
+    println("1. Initializing ECS World and Resources...");
+    let mut world = ecs::create_world();
+    world.set_TimeStep(0.5);
+
+    println("2. Spawning Entities into Archetypes...");
+    // Entity A: Moving warrior
+    let hero = world.spawn();
+    world.set_Position(hero, 0.0, 0.0);
+    world.set_Velocity(hero, 10.0, 5.0);
+    world.set_Health(hero, 100, 100);
+
+    // Entity B: Fast scout
+    let scout = world.spawn();
+    world.set_Position(scout, 50.0, 100.0);
+    world.set_Velocity(scout, -20.0, 15.0);
+    world.set_Health(scout, 60, 60);
+
+    // Entity C: Stationary tower (no Velocity component, so MovementSystem skips it!)
+    let tower = world.spawn();
+    world.set_Position(tower, 200.0, 200.0);
+    world.set_Health(tower, 500, 500);
+
+    println($"   Spawned Hero (#{hero}), Scout (#{scout}), Tower (#{tower})\n");
+
+    println("3. Running Simulation Pipeline for 3 Ticks:");
+    for tick in 1..4 {
+        println($"--- Simulation Frame {tick} (dt = 0.5s) ---");
+        SimulationPipeline(world);
+    }
+
+    println("\nSimulation complete!");
+    println("Press any key to exit...");
+    wait_key();
+    return 0;
+}

@@ -1,8 +1,9 @@
-// =========================================================================
-// ECSLang Stage 32: Pure Data-Oriented Network Test (TCP & UDP)
-// Pure ECS Architecture with Reactive Events, Type-Safe Results,
-// Option<T> entity lookup, Non-blocking Polling with Throttle, and ECS Destructors
-// =========================================================================
+// ========================================================================
+// ECSLang Example 14: Pure Data-Oriented Network Subsystem (TCP & UDP)
+// Demonstrates pure ECS network architecture: non-blocking sockets modeled as
+// components, reactive events for packet I/O, Option<Entity> socket lookup,
+// Result<Entity, string> factory functions, and automated ECS socket destructors.
+// ========================================================================
 
 import "std/net.ecs";
 
@@ -34,7 +35,7 @@ system ClientSenderSystem {
                 }
             }
 
-            // Option<T> Verification: Lookup non-existent fd (must return None)
+            // Option<T> Verification: Lookup non-existent fd (returns None)
             match net_find_entity_by_fd(world, 99999) {
                 Some(e) => {
                     println("[Option<T> Lookup] FAILED: Unexpected entity returned for fd=99999");
@@ -120,7 +121,9 @@ pipeline NetEchoServerPipeline {
 }
 
 fn main(): i32 {
-    println("=== ECSLang Stage 32 Network Subsystem Test ===");
+    println("=================================================");
+    println("    ECSLang Example 14: Pure DOD Network (ECS)   ");
+    println("=================================================\n");
 
     // 1. Initialize Network Subsystem (WSAStartup on Windows)
     let init_res = net_start();
@@ -217,6 +220,8 @@ fn main(): i32 {
 
     net_stop();
 
-    println("=== Stage 32 Network Subsystem Verification SUCCESS ===");
+    println("\nPure ECS Network Subsystem verified successfully!");
+    println("Press any key to exit...");
+    wait_key();
     return 0;
 }

@@ -1,0 +1,66 @@
+// =========================================================================
+// Example 02: Variables, Types, and Math Library in ECSLang
+// Demonstrates:
+// - Primitive types: i32, f32, bool, string
+// - Immutable bindings (let) and mutable variables (let mut)
+// - Arithmetic, modulo, and comparisons
+// - Built-in standard math: sqrt, sin, cos, abs, min, max, clamp, rand_range
+// - Console window hold via wait_key()
+// =========================================================================
+
+fn main(): i32 {
+    println("=== Example 02: Variables & Math ===");
+
+    // 1. Immutable and Mutable Variables
+    let app_name: string = "ECSLang Math Demo";
+    let version: i32 = 1;
+    let mut score: i32 = 100;
+    println($"App: {app_name}, Version: {version}, Initial Score: {score}");
+
+    score += 50;
+    println($"Score after bonus: {score}");
+
+    // 2. Floating-point and integer arithmetic
+    let width: f32 = 1920.0;
+    let height: f32 = 1080.0;
+    let aspect_ratio: f32 = width / height;
+    println($"Resolution: {width} x {height}, Aspect ratio: {aspect_ratio}");
+
+    let int_a: i32 = 47;
+    let int_b: i32 = 10;
+    let remainder: i32 = int_a % int_b;
+    println($"Modulo: {int_a} % {int_b} = {remainder}");
+
+    // 3. Comparisons and Booleans
+    let is_high_score: bool = score > 120;
+    let is_perfect: bool = score == 200;
+    println($"Is high score (>120): {is_high_score}");
+    println($"Is perfect (==200)  : {is_perfect}");
+
+    // 4. Standard Math Functions
+    let value: f32 = 25.0;
+    let root: f32 = sqrt(value);
+    println($"sqrt({value}) = {root}");
+
+    let angle: f32 = 0.785398; // pi/4
+    let s: f32 = sin(angle);
+    let c: f32 = cos(angle);
+    println($"sin(pi/4) = {s}, cos(pi/4) = {c}");
+
+    let negative_num: f32 = -42.5;
+    let positive_num: f32 = abs(negative_num);
+    println($"abs({negative_num}) = {positive_num}");
+
+    let val_min: f32 = min(15.0, 30.0);
+    let val_max: f32 = max(15.0, 30.0);
+    let val_clamped: f32 = clamp(45.0, 0.0, 30.0);
+    println($"min(15, 30) = {val_min}, max(15, 30) = {val_max}, clamp(45, 0, 30) = {val_clamped}");
+
+    // 5. Random Numbers
+    let random_dice: i32 = rand_range(1, 6);
+    println($"Random dice roll (1..6): {random_dice}");
+
+    println("\n[Console] Press any key to exit...");
+    wait_key();
+    return 0;
+}

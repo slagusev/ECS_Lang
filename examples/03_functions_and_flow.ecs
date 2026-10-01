@@ -1,0 +1,77 @@
+// =========================================================================
+// Example 03: Functions, Control Flow, and Loops in ECSLang
+// Demonstrates:
+// - Functions with typed parameters and return types
+// - Conditional branches (if, else if, else)
+// - While loops and for-range loops (for i in 0..N)
+// - Recursive function calls (factorial, fibonacci)
+// - Console window hold via wait_key()
+// =========================================================================
+
+fn max_of_three(a: i32, b: i32, c: i32): i32 {
+    let mut m = a;
+    if b > m {
+        m = b;
+    }
+    if c > m {
+        m = c;
+    }
+    return m;
+}
+
+fn factorial(n: i32): i32 {
+    if n <= 1 {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+fn fibonacci(n: i32): i32 {
+    if n <= 0 {
+        return 0;
+    }
+    if n == 1 {
+        return 1;
+    }
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+fn sum_range(start_val: i32, end_val: i32): i32 {
+    let mut total = 0;
+    let mut current = start_val;
+    while current <= end_val {
+        total += current;
+        current += 1;
+    }
+    return total;
+}
+
+fn main(): i32 {
+    println("=== Example 03: Functions & Control Flow ===");
+
+    // 1. Function call with multiple parameters
+    let biggest = max_of_three(42, 99, 17);
+    println($"max_of_three(42, 99, 17) = {biggest}");
+
+    // 2. Recursion
+    let fact_5 = factorial(5);
+    println($"factorial(5) = {fact_5}");
+
+    let fib_8 = fibonacci(8);
+    println($"fibonacci(8) = {fib_8}");
+
+    // 3. While Loop Accumulator
+    let sum_1_to_10 = sum_range(1, 10);
+    println($"sum of numbers from 1 to 10 = {sum_1_to_10}");
+
+    // 4. For-in range loop
+    println("Printing squares 0..5 via for-range loop:");
+    for i in 0..6 {
+        let sq = i * i;
+        println($"  {i}^2 = {sq}");
+    }
+
+    println("\n[Console] Press any key to exit...");
+    wait_key();
+    return 0;
+}

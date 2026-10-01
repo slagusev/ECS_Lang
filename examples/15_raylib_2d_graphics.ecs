@@ -1,0 +1,160 @@
+// ========================================================================
+// ECSLang Example 15: Interactive Raylib 2D Graphics & Input
+// Demonstrates hardware-accelerated 2D graphics, keyboard & mouse polling,
+// shape primitives (rectangles, circles, lines), and real-time profiler overlay.
+// ========================================================================
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+component VisualShape {
+    radius: f32,
+    r: i32,
+    g: i32,
+    b: i32,
+}
+
+system RenderShapesSystem {
+    query(pos: Position, shape: VisualShape) {
+        draw_circle(pos.x, pos.y, shape.radius, shape.r, shape.g, shape.b);
+    }
+}
+
+system MoveShapesSystem {
+    query(mut pos: Position, mut vel: Velocity, shape: VisualShape) {
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+
+        // Screen boundary bounce (800x600 window)
+        if pos.x <= shape.radius {
+            pos.x = shape.radius;
+            vel.vx = -vel.vx;
+        }
+        if pos.x >= 800.0 - shape.radius {
+            pos.x = 800.0 - shape.radius;
+            vel.vx = -vel.vx;
+        }
+        if pos.y <= 90.0 + shape.radius {
+            pos.y = 90.0 + shape.radius;
+            vel.vy = -vel.vy;
+        }
+        if pos.y >= 580.0 - shape.radius {
+            pos.y = 580.0 - shape.radius;
+            vel.vy = -vel.vy;
+        }
+    }
+}
+
+pipeline GraphicsPipeline {
+    stage Update {
+        MoveShapesSystem;
+    }
+    stage Render {
+        RenderShapesSystem;
+    }
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("   ECSLang Example 15: Raylib 2D Graphics Demo   ");
+    println("=================================================\n");
+
+    init_window(800, 600, "ECSLang - Hardware Accelerated 2D Graphics");
+    set_target_fps(60);
+
+    let mut world = ecs::create_world();
+
+    // Spawn animated floating orbs
+    let orb1 = world.spawn();
+    world.set_Position(orb1, 200.0, 200.0);
+    world.set_Velocity(orb1, 3.5, 2.5);
+    world.set_VisualShape(orb1, 24.0, 70, 180, 255);
+
+    let orb2 = world.spawn();
+    world.set_Position(orb2, 450.0, 320.0);
+    world.set_Velocity(orb2, -4.0, 3.0);
+    world.set_VisualShape(orb2, 30.0, 255, 100, 120);
+
+    let orb3 = world.spawn();
+    world.set_Position(orb3, 600.0, 250.0);
+    world.set_Velocity(orb3, 2.0, -4.2);
+    world.set_VisualShape(orb3, 18.0, 90, 230, 140);
+
+    // Player controlled avatar
+    let mut player_x = 400.0;
+    let mut player_y = 500.0;
+    let player_size = 32.0;
+
+    println("Window opened! Controls: [W][A][S][D] or Arrows to move player avatar, Mouse to interact, [F1] for Profiler.");
+
+    while !window_should_close() {
+        // 1. Process Keyboard Input
+        if is_key_down(263) || is_key_down(65) { // Left or 'A'
+            player_x -= 6.0;
+        }
+        if is_key_down(262) || is_key_down(68) { // Right or 'D'
+            player_x += 6.0;
+        }
+        if is_key_down(265) || is_key_down(87) { // Up or 'W'
+            player_y -= 6.0;
+        }
+        if is_key_down(264) || is_key_down(83) { // Down or 'S'
+            player_y += 6.0;
+        }
+
+        // Clamp player inside window
+        if player_x < 20.0 { player_x = 20.0; }
+        if player_x > 780.0 { player_x = 780.0; }
+        if player_y < 100.0 { player_y = 100.0; }
+        if player_y > 570.0 { player_y = 570.0; }
+
+        let mx = get_mouse_x();
+        let my = get_mouse_y();
+        let mouse_clicked = is_mouse_button_down(0);
+
+        // 2. Render Frame
+        begin_drawing();
+        clear_background(20, 24, 34);
+
+        // Header bar
+        draw_rectangle(0, 0, 800, 80, 14, 17, 24);
+        draw_line(0, 80, 800, 80, 48, 56, 76);
+        draw_text("ECSLang Native 2D Graphics & Input", 20, 16, 22, 255, 255, 255);
+        draw_text("Controls: [W][A][S][D] / Arrows | Click Mouse | F1: ECS Profiler", 20, 48, 14, 160, 175, 195);
+        draw_text("60 FPS", 720, 20, 20, 80, 240, 130);
+
+        // Execute ECS Pipeline (Update + Render)
+        GraphicsPipeline(world);
+
+        // Render Player Avatar
+        draw_rectangle(player_x - 16.0, player_y - 16.0, player_size, player_size, 250, 190, 40);
+        draw_text("Player", player_x - 18.0, player_y + 20.0, 12, 255, 255, 255);
+
+        // Render Mouse Crosshair
+        let m_radius = 8.0;
+        if mouse_clicked {
+            draw_circle(mx, my, 14.0, 255, 80, 80);
+            draw_text("CLICK!", mx + 15.0, my - 10.0, 14, 255, 100, 100);
+        } else {
+            draw_circle(mx, my, m_radius, 120, 200, 255);
+            draw_line(mx - 12.0, my, mx + 12.0, my, 200, 220, 255);
+            draw_line(mx, my - 12.0, mx, my + 12.0, 200, 220, 255);
+        }
+
+        // In-game profiler overlay (toggleable via F1 key)
+        world.render_profiler();
+
+        end_drawing();
+    }
+
+    close_window();
+    println("Window closed. Exiting cleanly.");
+    return 0;
+}
