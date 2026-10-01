@@ -1,0 +1,86 @@
+// =========================================================================
+// ECSLang Standard GUI Library - Widget Factory Helpers
+// Convenient functions to construct and spawn ECS GUI entities
+// =========================================================================
+
+fn gui_panel(world: World, x: f32, y: f32, w: f32, h: f32, title: string): Entity {
+    let e = world.spawn();
+    world.set_UIRect(e, x, y, w, h);
+    world.set_UIPanel(e, title, true, false, 0.0, 0.0);
+    world.set_UIBackground(e, 0x1E2230FF, 0x4E556EFF, 1.0, 0.0);
+    world.set_UIState(e, false, false, false, false);
+    return e;
+}
+
+fn gui_button(world: World, x: f32, y: f32, w: f32, h: f32, text: string): Entity {
+    let e = world.spawn();
+    world.set_UIRect(e, x, y, w, h);
+    world.set_UIButton(e, 0x3A5288FF, 0x4D6BB3FF, 0x2A3C63FF);
+    world.set_UIState(e, false, false, false, false);
+    world.set_UIText(e, text, 16, 0xFFFFFFFF, 1);
+    return e;
+}
+
+fn gui_label(world: World, x: f32, y: f32, text: string, font_size: i32, color: i32): Entity {
+    let e = world.spawn();
+    world.set_UIRect(e, x, y, 200.0, 24.0);
+    world.set_UIText(e, text, font_size, color, 0);
+    return e;
+}
+
+fn gui_checkbox(world: World, x: f32, y: f32, label: string, checked: bool): Entity {
+    let e = world.spawn();
+    let box_size = 18.0;
+    world.set_UIRect(e, x, y, 160.0, box_size);
+    world.set_UICheckbox(e, checked, box_size, 0x4CAF50FF);
+    world.set_UIState(e, false, false, false, false);
+    world.set_UIText(e, label, 15, 0xE0E0E0FF, 0);
+    return e;
+}
+
+fn gui_slider(world: World, x: f32, y: f32, w: f32, h: f32, min_val: f32, max_val: f32, initial_val: f32): Entity {
+    let e = world.spawn();
+    world.set_UIRect(e, x, y, w, h);
+    world.set_UISlider(e, min_val, max_val, initial_val, 1.0, 16.0, 0x333A4DFF, 0x5C8AE6FF);
+    world.set_UIState(e, false, false, false, false);
+    return e;
+}
+
+fn gui_progress_bar(world: World, x: f32, y: f32, w: f32, h: f32, progress: f32): Entity {
+    let e = world.spawn();
+    world.set_UIRect(e, x, y, w, h);
+    world.set_UIProgressBar(e, progress, 0x4CAF50FF, 0x222634FF);
+    return e;
+}
+
+fn gui_toggle_switch(world: World, x: f32, y: f32, is_on: bool): Entity {
+    let e = world.spawn();
+    world.set_UIRect(e, x, y, 42.0, 22.0);
+    world.set_UIToggleSwitch(e, is_on, 0x4CAF50FF, 0x4E556EFF);
+    world.set_UIState(e, false, false, false, false);
+    return e;
+}
+
+fn gui_radio_button(world: World, x: f32, y: f32, label: string, group_id: i32, selected: bool): Entity {
+    let e = world.spawn();
+    world.set_UIRect(e, x, y, 140.0, 20.0);
+    world.set_UIRadioButton(e, group_id, selected);
+    world.set_UIState(e, false, false, false, false);
+    world.set_UIText(e, label, 15, 0xE0E0E0FF, 0);
+    return e;
+}
+
+fn gui_separator(world: World, x: f32, y: f32, length: f32, is_vertical: bool): Entity {
+    let e = world.spawn();
+    if is_vertical {
+        world.set_UIRect(e, x, y, 2.0, length);
+    } else {
+        world.set_UIRect(e, x, y, length, 2.0);
+    }
+    world.set_UISeparator(e, is_vertical, 2.0, 0x3B4256FF);
+    return e;
+}
+
+fn gui_tooltip(world: World, target: Entity, text: string): void {
+    world.set_UITooltip(target, text, false);
+}

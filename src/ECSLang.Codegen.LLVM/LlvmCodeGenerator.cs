@@ -170,8 +170,8 @@ public sealed class LlvmCodeGenerator
 
         // Raylib C ABI declarations
         module.AddFunction("InitWindow", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, i8PtrType }, false));
-        module.AddFunction("IsWindowReady", LLVMTypeRef.CreateFunction(context.Int1Type, Array.Empty<LLVMTypeRef>(), false));
-        module.AddFunction("WindowShouldClose", LLVMTypeRef.CreateFunction(context.Int1Type, Array.Empty<LLVMTypeRef>(), false));
+        module.AddFunction("IsWindowReady", LLVMTypeRef.CreateFunction(context.Int8Type, Array.Empty<LLVMTypeRef>(), false));
+        module.AddFunction("WindowShouldClose", LLVMTypeRef.CreateFunction(context.Int8Type, Array.Empty<LLVMTypeRef>(), false));
         module.AddFunction("CloseWindow", LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false));
         module.AddFunction("SetTargetFPS", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type }, false));
         module.AddFunction("GetFPS", LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false));
@@ -185,14 +185,14 @@ public sealed class LlvmCodeGenerator
         module.AddFunction("DrawRectangleLines", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false));
         module.AddFunction("DrawCircle", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.FloatType, context.Int32Type }, false));
         module.AddFunction("DrawLine", LLVMTypeRef.CreateFunction(context.VoidType, new[] { context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type, context.Int32Type }, false));
-        module.AddFunction("IsKeyDown", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
-        module.AddFunction("IsKeyPressed", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
-        module.AddFunction("IsKeyReleased", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
-        module.AddFunction("IsKeyUp", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
+        module.AddFunction("IsKeyDown", LLVMTypeRef.CreateFunction(context.Int8Type, new[] { context.Int32Type }, false));
+        module.AddFunction("IsKeyPressed", LLVMTypeRef.CreateFunction(context.Int8Type, new[] { context.Int32Type }, false));
+        module.AddFunction("IsKeyReleased", LLVMTypeRef.CreateFunction(context.Int8Type, new[] { context.Int32Type }, false));
+        module.AddFunction("IsKeyUp", LLVMTypeRef.CreateFunction(context.Int8Type, new[] { context.Int32Type }, false));
         module.AddFunction("GetMouseX", LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false));
         module.AddFunction("GetMouseY", LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false));
-        module.AddFunction("IsMouseButtonDown", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
-        module.AddFunction("IsMouseButtonPressed", LLVMTypeRef.CreateFunction(context.Int1Type, new[] { context.Int32Type }, false));
+        module.AddFunction("IsMouseButtonDown", LLVMTypeRef.CreateFunction(context.Int8Type, new[] { context.Int32Type }, false));
+        module.AddFunction("IsMouseButtonPressed", LLVMTypeRef.CreateFunction(context.Int8Type, new[] { context.Int32Type }, false));
 
         // Raylib Media C ABI declarations (Textures, Audio, Camera2D)
         module.AddFunction("LoadTexture", LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType, i8PtrType }, false));
@@ -995,6 +995,65 @@ public sealed class LlvmCodeGenerator
         return false;
     }
 
+    private static LLVMValueRef CoerceValue(LLVMBuilderRef builder, LLVMContextRef context, LLVMValueRef val, LLVMTypeRef targetType)
+    {
+        if (val.TypeOf == targetType) return val;
+
+        if (targetType == context.FloatType)
+        {
+            if (val.TypeOf == context.DoubleType)
+                return builder.BuildFPTrunc(val, context.FloatType, "fptrunc");
+            if (val.TypeOf.Kind == LLVMTypeKind.LLVMIntegerTypeKind)
+                return builder.BuildSIToFP(val, context.FloatType, "sitofp");
+        }
+        else if (targetType == context.DoubleType)
+        {
+            if (val.TypeOf == context.FloatType)
+                return builder.BuildFPExt(val, context.DoubleType, "fpext");
+            if (val.TypeOf.Kind == LLVMTypeKind.LLVMIntegerTypeKind)
+                return builder.BuildSIToFP(val, context.DoubleType, "sitofp");
+        }
+        else if (targetType.Kind == LLVMTypeKind.LLVMIntegerTypeKind)
+        {
+            if (val.TypeOf == context.FloatType || val.TypeOf == context.DoubleType)
+                return builder.BuildFPToSI(val, targetType, "fptosi");
+            if (val.TypeOf.Kind == LLVMTypeKind.LLVMIntegerTypeKind)
+            {
+                if (val.TypeOf.IntWidth < targetType.IntWidth)
+                    return builder.BuildSExt(val, targetType, "sext");
+                if (val.TypeOf.IntWidth > targetType.IntWidth)
+                    return builder.BuildTrunc(val, targetType, "trunc");
+            }
+        }
+
+        return val;
+    }
+
+    private static LLVMValueRef EmitGuardedRaylibVoidCall(
+        LLVMContextRef context,
+        LLVMModuleRef module,
+        LLVMBuilderRef builder,
+        LLVMValueRef function,
+        Action emitCall)
+    {
+        var isWinReadyFunc = module.GetNamedFunction("IsWindowReady");
+        var isWinReadyType = LLVMTypeRef.CreateFunction(context.Int8Type, Array.Empty<LLVMTypeRef>(), false);
+        var rawByte = builder.BuildCall2(isWinReadyType, isWinReadyFunc, Array.Empty<LLVMValueRef>(), "win_ready_raw");
+        var winReady = builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, rawByte, LLVMValueRef.CreateConstInt(context.Int8Type, 0), "win_ready");
+
+        var callBB = function.AppendBasicBlock("rl_draw_call");
+        var mergeBB = function.AppendBasicBlock("rl_draw_merge");
+
+        builder.BuildCondBr(winReady, callBB, mergeBB);
+
+        builder.PositionAtEnd(callBB);
+        emitCall();
+        builder.BuildBr(mergeBB);
+
+        builder.PositionAtEnd(mergeBB);
+        return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
+    }
+
     private unsafe void CompileBlock(
         LLVMContextRef context,
         LLVMModuleRef module,
@@ -1029,6 +1088,7 @@ public sealed class LlvmCodeGenerator
                         locals[varDecl.Name] = alloca;
                     }
                     var initVal = CompileExpression(context, module, builder, function, varDecl.Initializer, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    initVal = CoerceValue(builder, context, initVal, varType);
                     builder.BuildStore(initVal, alloca);
                     varTypes[varDecl.Name] = tName;
                     break;
@@ -1039,7 +1099,8 @@ public sealed class LlvmCodeGenerator
                         var newVal = CompileExpression(context, module, builder, function, assign.Value, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
 
                         LLVMValueRef destPtr;
-                        if (assign.MemberName != null && varTypes.TryGetValue(assign.TargetName, out var targetTypeName))
+                        string? targetTypeName = null;
+                        if (assign.MemberName != null && varTypes.TryGetValue(assign.TargetName, out targetTypeName))
                         {
                             var structType = ecs.GetComponentStructType(targetTypeName);
                             int fieldOffset = ecs.GetFieldOffset(targetTypeName, assign.MemberName);
@@ -1100,23 +1161,47 @@ public sealed class LlvmCodeGenerator
 
                         if (assign.Op == AssignmentOperator.Assign)
                         {
+                            if (assign.MemberName != null && targetTypeName != null)
+                            {
+                                var memType = _typeChecker.GetMemberType(targetTypeName, assign.MemberName, assign.Span);
+                                var fieldType = MapType(context, memType.Name, ecs);
+                                newVal = CoerceValue(builder, context, newVal, fieldType);
+                            }
+                            else if (varTypes.TryGetValue(assign.TargetName, out var targetVarType))
+                            {
+                                var destType = MapType(context, targetVarType, ecs);
+                                newVal = CoerceValue(builder, context, newVal, destType);
+                            }
                             builder.BuildStore(newVal, destPtr);
                         }
                         else
                         {
-                            var currentVal = builder.BuildLoad2(newVal.TypeOf, destPtr, "cur_val");
+                            LLVMTypeRef destType = newVal.TypeOf;
+                            if (assign.MemberName != null && targetTypeName != null)
+                            {
+                                var memType = _typeChecker.GetMemberType(targetTypeName, assign.MemberName, assign.Span);
+                                destType = MapType(context, memType.Name, ecs);
+                            }
+                            else if (varTypes.TryGetValue(assign.TargetName, out var targetVarType))
+                            {
+                                destType = MapType(context, targetVarType, ecs);
+                            }
+
+                            newVal = CoerceValue(builder, context, newVal, destType);
+                            var currentVal = builder.BuildLoad2(destType, destPtr, "cur_val");
+                            var isFp = destType == context.FloatType || destType == context.DoubleType;
                             var resVal = assign.Op switch
                             {
-                                AssignmentOperator.PlusAssign => newVal.TypeOf == context.FloatType
+                                AssignmentOperator.PlusAssign => isFp
                                     ? builder.BuildFAdd(currentVal, newVal, "fadd")
                                     : builder.BuildAdd(currentVal, newVal, "add"),
-                                AssignmentOperator.MinusAssign => newVal.TypeOf == context.FloatType
+                                AssignmentOperator.MinusAssign => isFp
                                     ? builder.BuildFSub(currentVal, newVal, "fsub")
                                     : builder.BuildSub(currentVal, newVal, "sub"),
-                                AssignmentOperator.MulAssign => newVal.TypeOf == context.FloatType
+                                AssignmentOperator.MulAssign => isFp
                                     ? builder.BuildFMul(currentVal, newVal, "fmul")
                                     : builder.BuildMul(currentVal, newVal, "mul"),
-                                AssignmentOperator.DivAssign => newVal.TypeOf == context.FloatType
+                                AssignmentOperator.DivAssign => isFp
                                     ? builder.BuildFDiv(currentVal, newVal, "fdiv")
                                     : builder.BuildSDiv(currentVal, newVal, "div"),
                                 _ => newVal
@@ -1569,7 +1654,9 @@ public sealed class LlvmCodeGenerator
                 }
                 else
                 {
-                    long iVal = long.Parse(num.RawValue);
+                    long iVal = num.RawValue.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                        ? Convert.ToInt64(num.RawValue, 16)
+                        : long.Parse(num.RawValue);
                     return LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)iVal, false);
                 }
 
@@ -2534,7 +2621,28 @@ public sealed class LlvmCodeGenerator
                     }
                 }
 
-                bool isFloat = left.TypeOf == context.FloatType || right.TypeOf == context.FloatType;
+                bool isDouble = left.TypeOf == context.DoubleType || right.TypeOf == context.DoubleType;
+                bool isFloat = isDouble || left.TypeOf == context.FloatType || right.TypeOf == context.FloatType;
+
+                if (isFloat)
+                {
+                    var targetFp = isDouble ? context.DoubleType : context.FloatType;
+                    left = CoerceValue(builder, context, left, targetFp);
+                    right = CoerceValue(builder, context, right, targetFp);
+                }
+                else if (left.TypeOf.Kind == LLVMTypeKind.LLVMIntegerTypeKind && right.TypeOf.Kind == LLVMTypeKind.LLVMIntegerTypeKind)
+                {
+                    uint leftWidth = left.TypeOf.IntWidth;
+                    uint rightWidth = right.TypeOf.IntWidth;
+                    if (leftWidth < rightWidth)
+                    {
+                        left = builder.BuildSExt(left, right.TypeOf, "sext_l");
+                    }
+                    else if (rightWidth < leftWidth)
+                    {
+                        right = builder.BuildSExt(right, left.TypeOf, "sext_r");
+                    }
+                }
 
                 return bin.Operator switch
                 {
@@ -2710,6 +2818,14 @@ public sealed class LlvmCodeGenerator
                                     if (pArgType.IsFloatingPoint)
                                     {
                                         pVal = builder.BuildFPExt(pVal, context.DoubleType, "f_to_d");
+                                    }
+                                    else if (pVal.TypeOf == context.Int1Type || pArgType == TypeSymbol.Bool)
+                                    {
+                                        pVal = builder.BuildZExt(pVal, context.Int32Type, "b_to_i32");
+                                    }
+                                    else if (pVal.TypeOf.Kind == LLVMTypeKind.LLVMIntegerTypeKind && pVal.TypeOf.IntWidth < 32)
+                                    {
+                                        pVal = builder.BuildZExt(pVal, context.Int32Type, "int_to_i32");
                                     }
                                     printfArgs.Add(pVal);
                                 }
@@ -2929,11 +3045,19 @@ public sealed class LlvmCodeGenerator
                     var title = CompileExpression(context, module, builder, function, call.Arguments[2], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     return builder.BuildCall2(ft, f, new[] { w, h, title }, "");
                 }
+                else if (call.Callee is "is_window_ready" or "rl_is_window_ready")
+                {
+                    var f = module.GetNamedFunction("IsWindowReady");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int8Type, Array.Empty<LLVMTypeRef>(), false);
+                    var raw = builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "win_ready_raw");
+                    return builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, raw, LLVMValueRef.CreateConstInt(context.Int8Type, 0), "win_ready");
+                }
                 else if (call.Callee is "window_should_close" or "rl_window_should_close")
                 {
                     var f = module.GetNamedFunction("WindowShouldClose");
-                    var ft = LLVMTypeRef.CreateFunction(context.Int1Type, Array.Empty<LLVMTypeRef>(), false);
-                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "should_close");
+                    var ft = LLVMTypeRef.CreateFunction(context.Int8Type, Array.Empty<LLVMTypeRef>(), false);
+                    var raw = builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "should_close_raw");
+                    return builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, raw, LLVMValueRef.CreateConstInt(context.Int8Type, 0), "should_close");
                 }
                 else if (call.Callee is "render_profiler" or "render_debug_overlay" or "ecs::render_profiler")
                 {
@@ -2977,13 +3101,17 @@ public sealed class LlvmCodeGenerator
                 {
                     var f = module.GetNamedFunction("BeginDrawing");
                     var ft = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
-                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "");
+                    return EmitGuardedRaylibVoidCall(context, module, builder, function, () => {
+                        builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "");
+                    });
                 }
                 else if (call.Callee is "end_drawing" or "rl_end_drawing")
                 {
                     var f = module.GetNamedFunction("EndDrawing");
                     var ft = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
-                    return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "");
+                    return EmitGuardedRaylibVoidCall(context, module, builder, function, () => {
+                        builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "");
+                    });
                 }
                 else if (call.Callee is "clear_background" or "rl_clear_background")
                 {
@@ -3001,7 +3129,9 @@ public sealed class LlvmCodeGenerator
                     {
                         colorVal = CompileExpression(context, module, builder, function, call.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     }
-                    return builder.BuildCall2(ft, f, new[] { colorVal }, "");
+                    return EmitGuardedRaylibVoidCall(context, module, builder, function, () => {
+                        builder.BuildCall2(ft, f, new[] { colorVal }, "");
+                    });
                 }
                 else if (call.Callee is "draw_rectangle" or "rl_draw_rectangle")
                 {
@@ -3023,7 +3153,9 @@ public sealed class LlvmCodeGenerator
                     {
                         colorVal = CompileExpression(context, module, builder, function, call.Arguments[4], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     }
-                    return builder.BuildCall2(ft, f, new[] { x, y, w, h, colorVal }, "");
+                    return EmitGuardedRaylibVoidCall(context, module, builder, function, () => {
+                        builder.BuildCall2(ft, f, new[] { x, y, w, h, colorVal }, "");
+                    });
                 }
                 else if (call.Callee is "draw_circle" or "rl_draw_circle")
                 {
@@ -3044,7 +3176,9 @@ public sealed class LlvmCodeGenerator
                     {
                         colorVal = CompileExpression(context, module, builder, function, call.Arguments[3], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     }
-                    return builder.BuildCall2(ft, f, new[] { cx, cy, rad, colorVal }, "");
+                    return EmitGuardedRaylibVoidCall(context, module, builder, function, () => {
+                        builder.BuildCall2(ft, f, new[] { cx, cy, rad, colorVal }, "");
+                    });
                 }
                 else if (call.Callee is "draw_text" or "rl_draw_text")
                 {
@@ -3066,7 +3200,9 @@ public sealed class LlvmCodeGenerator
                     {
                         colorVal = CompileExpression(context, module, builder, function, call.Arguments[4], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     }
-                    return builder.BuildCall2(ft, f, new[] { txt, x, y, sz, colorVal }, "");
+                    return EmitGuardedRaylibVoidCall(context, module, builder, function, () => {
+                        builder.BuildCall2(ft, f, new[] { txt, x, y, sz, colorVal }, "");
+                    });
                 }
                 else if (call.Callee is "draw_line" or "rl_draw_line")
                 {
@@ -3088,7 +3224,9 @@ public sealed class LlvmCodeGenerator
                     {
                         colorVal = CompileExpression(context, module, builder, function, call.Arguments[4], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     }
-                    return builder.BuildCall2(ft, f, new[] { x1, y1, x2, y2, colorVal }, "");
+                    return EmitGuardedRaylibVoidCall(context, module, builder, function, () => {
+                        builder.BuildCall2(ft, f, new[] { x1, y1, x2, y2, colorVal }, "");
+                    });
                 }
                 else if (call.Callee is "is_key_down" or "rl_is_key_down")
                 {
@@ -3204,7 +3342,9 @@ public sealed class LlvmCodeGenerator
                     }
                     var f = module.GetNamedFunction("DrawTexture");
                     var ft = LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType, context.Int32Type, context.Int32Type, context.Int32Type }, false);
-                    return builder.BuildCall2(ft, f, new[] { texPtr, posX, posY, tintVal }, "");
+                    return EmitGuardedRaylibVoidCall(context, module, builder, function, () => {
+                        builder.BuildCall2(ft, f, new[] { texPtr, posX, posY, tintVal }, "");
+                    });
                 }
                 else if (call.Callee is "draw_texture_pro" or "rl_draw_texture_pro")
                 {
@@ -3267,7 +3407,9 @@ public sealed class LlvmCodeGenerator
                     var ft = LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType, i8PtrType, i8PtrType, context.Int64Type, context.FloatType, context.Int32Type }, false);
                     var srcPtr = builder.BuildBitCast(srcRect, i8PtrType, "src_ptr");
                     var dstPtr = builder.BuildBitCast(dstRect, i8PtrType, "dst_ptr");
-                    return builder.BuildCall2(ft, f, new[] { texPtr, srcPtr, dstPtr, originI64, rot, tintVal }, "");
+                    return EmitGuardedRaylibVoidCall(context, module, builder, function, () => {
+                        builder.BuildCall2(ft, f, new[] { texPtr, srcPtr, dstPtr, originI64, rot, tintVal }, "");
+                    });
                 }
                 else if (call.Callee is "unload_texture" or "rl_unload_texture")
                 {

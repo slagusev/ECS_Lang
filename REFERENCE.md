@@ -1336,9 +1336,133 @@ match res {
    let hero = world.spawn();
    world.set_name(hero, "Hero");
 
-   let found = world.find("Hero"); // Option<entity> -> Some(hero)
-   let missing = world.find("Villain"); // Option<entity> -> None
-   ```
+    let found = world.find("Hero"); // Option<entity> -> Some(hero)
+    let missing = world.find("Villain"); // Option<entity> -> None
+    ```
+
+---
+
+## 20. Стандартная библиотека ECS GUI (`std/gui.ecs`)
+
+ECSLang предоставляет богатую стандартную библиотеку графического интерфейса, полностью написанную на чистом **ECSLang** без жестко закодированных в компилятор C#-классов виджетов. Библиотека следует принципу **Data-Oriented & Pure ECS Architecture**: любой элемент интерфейса — это обычная сущность (`entity`), его свойства хранятся в ECS-компонентах, интерактивность обеспечивается системами обновления (`Update`), а отрисовка — фазовыми системами рендеринга (`Render`), объединяемыми в `pipeline GUIPipeline`.
+
+### 20.1. Подключение библиотеки
+```rust
+import "std/gui.ecs";
+```
+Благодаря автоматическому поиску модулей `ProjectLoader`, путь `std/gui.ecs` разрешается относительно стандартной библиотеки компилятора или корня проекта.
+
+### 20.2. Компоненты GUI (22 компонента)
+
+#### 1. Геометрия и компоновка
+- `UIRect { x: f32, y: f32, w: f32, h: f32 }`: абсолютные экранные координаты и габариты.
+- `UIPos { x: f32, y: f32 }`: относительное смещение позиции.
+- `UISize { width: f32, height: f32, min_w: f32, min_h: f32, max_w: f32, max_h: f32 }`: ограничения размеров.
+- `UIPadding { left: f32, right: f32, top: f32, bottom: f32 }`: внутренние отступы контейнера.
+- `UIMargin { left: f32, right: f32, top: f32, bottom: f32 }`: внешние отступы.
+- `UIAnchor { min_x: f32, min_y: f32, max_x: f32, max_y: f32 }`: привязка к границам родителя (от 0.0 до 1.0).
+- `UILayout { layout_type: i32, spacing: f32, alignment: i32 }`: тип авто-компоновки (0 = None, 1 = Vertical, 2 = Horizontal, 3 = Grid).
+- `UIZOrder { z_index: i32 }`: глубина отображения для сортировки слоев.
+
+#### 2. Стили и оформление
+- `UIBackground { color: i32, border_color: i32, border_width: f32, border_radius: f32 }`: цвет заливки, рамка, скругление.
+- `UIShadow { offset_x: f32, offset_y: f32, blur: f32, color: i32 }`: тень элемента.
+- `UIText { text: string, font_size: i32, color: i32, alignment: i32 }`: текстовая надпись (0 = Left, 1 = Center, 2 = Right).
+- `UITexture { texture_id: i64, tint: i32 }`: текстурное изображение.
+- `UITooltip { text: string, target_entity: i32, delay_ms: f32, elapsed_ms: f32, is_visible: bool }`: всплывающая подсказка.
+
+#### 3. Виджеты и состояния
+- `UIState { is_hovered: bool, is_pressed: bool, is_focused: bool, is_disabled: bool }`: универсальное состояние интерактивности.
+- `UIButton { normal_color: i32, hover_color: i32, pressed_color: i32 }`: кнопка.
+- `UICheckbox { is_checked: bool, label: string }`: флажок с надписью.
+- `UISlider { min_val: f32, max_val: f32, current_val: f32, handle_size: f32, is_dragging: bool }`: ползунок выбора значения.
+- `UIProgressBar { progress: f32, bar_color: i32, background_color: i32 }`: индикатор прогресса (от 0.0 до 1.0).
+- `UIPanel { title: string, is_movable: bool, is_dragging: bool, drag_offset_x: f32, drag_offset_y: f32 }`: перемещаемое окно / панель.
+- `UIRadioButton { group_id: i32, is_selected: bool, label: string }`: переключатель группы опций.
+- `UIToggleSwitch { is_on: bool, on_color: i32, off_color: i32 }`: тумблер (on/off).
+- `UIBadge { text: string, badge_color: i32, text_color: i32 }`: информационный бейдж / счетчик.
+- `UISeparator { is_vertical: bool, thickness: f32, color: i32 }`: разделительная черта.
+- `UIInputField { text: string, placeholder: string, cursor_pos: i32, is_editing: bool }`: поле ввода текста.
+- `UIScrollArea { scroll_x: f32, scroll_y: f32, max_scroll_x: f32, max_scroll_y: f32 }`: прокручиваемая область.
+
+---
+
+### 20.3. Реактивные события GUI
+
+- `event UIEventClick { entity: i32, mouse_button: i32 }`: клик мыши по элементу.
+- `event UIEventValueChanged { entity: i32, new_value: f32 }`: изменение числового значения (слайдер).
+- `event UIEventToggle { entity: i32, state: bool }`: переключение флага / тумблера.
+- `event UIEventDrag { entity: i32, delta_x: f32, delta_y: f32 }`: перетаскивание элемента.
+
+---
+
+### 20.4. Системы и конвейер `GUIPipeline`
+
+Стандартный конвейер GUI разделен на две фазы:
+```rust
+pipeline GUIPipeline {
+    stage Update {
+        UIHoverSystem;
+        UIPanelDragSystem;
+        UISliderSystem;
+        UICheckboxSystem;
+        UIToggleSwitchSystem;
+        UIRadioButtonSystem;
+    }
+    stage Render {
+        UIPanelRenderSystem;
+        UIBackgroundRenderSystem;
+        UIButtonRenderSystem;
+        UICheckboxRenderSystem;
+        UIRadioButtonRenderSystem;
+        UISliderRenderSystem;
+        UIProgressBarRenderSystem;
+        UIToggleSwitchRenderSystem;
+        UISeparatorRenderSystem;
+        UILabelRenderSystem;
+        UITooltipRenderSystem;
+    }
+}
+```
+
+Все системы рендеринга автоматически безопасны в headless / тестовом режиме: если графическое окно Raylib не инициализировано (`is_window_ready() == false`), функции отрисовки безопасно завершаются без сбоев OpenGL контекста.
+
+---
+
+### 20.5. Вспомогательные функции виджетов (`widgets.ecs`)
+
+Для быстрого спавна готовых виджетов предоставляются хелперы:
+```rust
+// Окно / панель
+let panel = gui_panel(world, 50.0, 50.0, 400.0, 500.0, "Настройки игры");
+
+// Текстовая надпись
+let lbl = gui_label(world, 70.0, 90.0, "Громкость звука:", 16, 0xFFFFFFFF);
+
+// Кнопка
+let btn = gui_button(world, 70.0, 125.0, 150.0, 36.0, "Сохранить");
+
+// Флажок (Checkbox)
+let cb = gui_checkbox(world, 70.0, 195.0, "Включить VSync", true);
+
+// Тумблер (Toggle Switch)
+let sw = gui_toggle_switch(world, 70.0, 260.0, true);
+
+// Радио-кнопка (Radio Button)
+let rb = gui_radio_button(world, 70.0, 295.0, "Сложный режим", 1, false);
+
+// Ползунок (Slider)
+let sld = gui_slider(world, 70.0, 370.0, 320.0, 24.0, 0.0, 100.0, 75.0);
+
+// Полоса загрузки (Progress Bar)
+let pb = gui_progress_bar(world, 70.0, 485.0, 320.0, 16.0, 0.65);
+
+// Разделитель
+let sep = gui_separator(world, 70.0, 330.0, 320.0, false);
+
+// Всплывающая подсказка
+gui_tooltip(world, btn, "Нажмите для сохранения изменений");
+```
 
 
 

@@ -1,0 +1,160 @@
+// =========================================================================
+// ECSLang Standard GUI Library - Components
+// Pure ECS Data Components for GUI Widgets, Layout, Styling and State
+// =========================================================================
+
+// 1. Geometry and Bounds
+component UIRect {
+    x: f32,
+    y: f32,
+    w: f32,
+    h: f32,
+}
+
+component UIPos {
+    x: f32,
+    y: f32,
+}
+
+component UISize {
+    w: f32,
+    h: f32,
+}
+
+component UIPadding {
+    top: f32,
+    right: f32,
+    bottom: f32,
+    left: f32,
+}
+
+component UIMargin {
+    top: f32,
+    right: f32,
+    bottom: f32,
+    left: f32,
+}
+
+// Anchor alignment: 0=TopLeft, 1=TopCenter, 2=TopRight, 3=CenterLeft, 4=Center, 5=CenterRight, 6=BottomLeft, 7=BottomCenter, 8=BottomRight
+component UIAnchor {
+    anchor_type: i32,
+}
+
+// Layout container: layout_type (0=Absolute, 1=Row, 2=Column), spacing
+component UILayout {
+    layout_type: i32,
+    spacing: f32,
+}
+
+component UIZOrder {
+    z_index: i32,
+}
+
+// 2. Styling and Decoration
+component UIBackground {
+    color: i32,
+    border_color: i32,
+    border_width: f32,
+    corner_radius: f32,
+}
+
+component UIShadow {
+    offset_x: f32,
+    offset_y: f32,
+    color: i32,
+}
+
+component UIText {
+    text: string,
+    font_size: i32,
+    color: i32,
+    align: i32,
+}
+
+component UITexture {
+    texture_id: i32,
+    tint: i32,
+}
+
+component UITooltip {
+    text: string,
+    is_visible: bool,
+}
+
+// 3. Interactive State & Specific Widgets
+component UIState {
+    is_hovered: bool,
+    is_pressed: bool,
+    is_focused: bool,
+    is_disabled: bool,
+}
+
+component UIButton {
+    normal_color: i32,
+    hover_color: i32,
+    press_color: i32,
+}
+
+component UICheckbox {
+    is_checked: bool,
+    size: f32,
+    check_color: i32,
+}
+
+component UISlider {
+    min_val: f32,
+    max_val: f32,
+    value: f32,
+    step: f32,
+    handle_size: f32,
+    track_color: i32,
+    handle_color: i32,
+}
+
+component UIProgressBar {
+    progress: f32,
+    bar_color: i32,
+    bg_color: i32,
+}
+
+component UIPanel {
+    title: string,
+    is_draggable: bool,
+    is_dragging: bool,
+    drag_offset_x: f32,
+    drag_offset_y: f32,
+}
+
+component UIRadioButton {
+    group_id: i32,
+    is_selected: bool,
+}
+
+component UIToggleSwitch {
+    is_on: bool,
+    on_color: i32,
+    off_color: i32,
+}
+
+component UIBadge {
+    count: i32,
+    badge_color: i32,
+    text_color: i32,
+}
+
+component UISeparator {
+    is_vertical: bool,
+    thickness: f32,
+    color: i32,
+}
+
+component UIInputField {
+    buffer: string,
+    placeholder: string,
+    is_active: bool,
+}
+
+component UIScrollArea {
+    scroll_y: f32,
+    max_scroll_y: f32,
+}

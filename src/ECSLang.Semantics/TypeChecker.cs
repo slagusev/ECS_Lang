@@ -1051,6 +1051,10 @@ public sealed class TypeChecker
         }
 
         // Arithmetic
+        if (leftType == TypeSymbol.F64 || rightType == TypeSymbol.F64)
+            return TypeSymbol.F64;
+        if (leftType == TypeSymbol.F32 || rightType == TypeSymbol.F32)
+            return TypeSymbol.F32;
         return leftType;
     }
 
@@ -1158,7 +1162,8 @@ public sealed class TypeChecker
         }
 
         // Raylib Input & Query built-ins
-        if (call.Callee is "window_should_close" or "rl_window_should_close" or
+        if (call.Callee is "is_window_ready" or "rl_is_window_ready" or
+            "window_should_close" or "rl_window_should_close" or
             "is_key_down" or "rl_is_key_down" or "is_key_pressed" or "rl_is_key_pressed" or
             "is_key_released" or "rl_is_key_released" or "is_key_up" or "rl_is_key_up" or
             "is_mouse_button_down" or "rl_is_mouse_button_down" or

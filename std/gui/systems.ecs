@@ -1,0 +1,282 @@
+// =========================================================================
+// ECSLang Standard GUI Library - Systems
+// Pure ECS Systems for Input Processing, Widget Logic and Rendering
+// =========================================================================
+
+// --- Input & Interaction Systems ---
+
+// 1. Hover & Press Detection for all UI Rectangles
+system UIHoverSystem {
+    query(mut rect: UIRect, mut state: UIState) {
+        let mx = 0.0 + get_mouse_x();
+        let my = 0.0 + get_mouse_y();
+        let m_down = is_mouse_button_down(0);
+
+        let inside = (mx >= rect.x) && (mx <= rect.x + rect.w) && (my >= rect.y) && (my <= rect.y + rect.h);
+        state.is_hovered = inside;
+        state.is_pressed = inside && m_down;
+    }
+}
+
+// 2. Panel Title Bar Dragging
+system UIPanelDragSystem {
+    query(mut rect: UIRect, mut panel: UIPanel, state: UIState) {
+        if panel.is_draggable {
+            let mx = 0.0 + get_mouse_x();
+            let my = 0.0 + get_mouse_y();
+            let m_pressed = is_mouse_button_pressed(0);
+            let m_down = is_mouse_button_down(0);
+
+            // Title bar area: top 28 pixels
+            let inside_title = (mx >= rect.x) && (mx <= rect.x + rect.w) && (my >= rect.y) && (my <= rect.y + 28.0);
+
+            if m_pressed && inside_title {
+                panel.is_dragging = true;
+                panel.drag_offset_x = mx - rect.x;
+                panel.drag_offset_y = my - rect.y;
+            }
+
+            if panel.is_dragging {
+                if m_down {
+                    rect.x = mx - panel.drag_offset_x;
+                    rect.y = my - panel.drag_offset_y;
+                } else {
+                    panel.is_dragging = false;
+                }
+            }
+        }
+    }
+}
+
+// 3. Slider Value Tracking
+system UISliderSystem {
+    query(rect: UIRect, mut slider: UISlider, state: UIState) {
+        if state.is_pressed {
+            let mx = 0.0 + get_mouse_x();
+            let rel_x = mx - rect.x;
+            let mut t = rel_x / rect.w;
+            if t < 0.0 {
+                t = 0.0;
+            }
+            if t > 1.0 {
+                t = 1.0;
+            }
+            slider.value = slider.min_val + t * (slider.max_val - slider.min_val);
+        }
+    }
+}
+
+// 4. Checkbox Toggle
+system UICheckboxSystem {
+    query(rect: UIRect, mut cb: UICheckbox, state: UIState) {
+        if state.is_hovered && is_mouse_button_pressed(0) {
+            cb.is_checked = !cb.is_checked;
+        }
+    }
+}
+
+// 5. Toggle Switch Toggle
+system UIToggleSwitchSystem {
+    query(rect: UIRect, mut sw: UIToggleSwitch, state: UIState) {
+        if state.is_hovered && is_mouse_button_pressed(0) {
+            sw.is_on = !sw.is_on;
+        }
+    }
+}
+
+// 6. Radio Button Selection
+system UIRadioButtonSystem {
+    query(rect: UIRect, mut rb: UIRadioButton, state: UIState) {
+        if state.is_hovered && is_mouse_button_pressed(0) {
+            rb.is_selected = true;
+        }
+    }
+}
+
+// --- Rendering Systems ---
+
+// 7. Panel (Window) Rendering
+system UIPanelRenderSystem {
+    query(rect: UIRect, panel: UIPanel, bg: UIBackground) {
+        // Shadow
+        draw_rectangle(rect.x + 4.0, rect.y + 4.0, rect.w, rect.h, 0x0A0A1077);
+
+        // Body background
+        draw_rectangle(rect.x, rect.y, rect.w, rect.h, bg.color);
+
+        // Title bar header (28px)
+        draw_rectangle(rect.x, rect.y, rect.w, 28.0, 0x2A2E3DFF);
+
+        // Title bar border line
+        draw_line(rect.x, rect.y + 28.0, rect.x + rect.w, rect.y + 28.0, 0x3E445BFF);
+
+        // Title text
+        draw_text(panel.title, rect.x + 10.0, rect.y + 6.0, 16, 0xFFFFFFFF);
+
+        // Panel outer border
+        draw_line(rect.x, rect.y, rect.x + rect.w, rect.y, bg.border_color);
+        draw_line(rect.x, rect.y + rect.h, rect.x + rect.w, rect.y + rect.h, bg.border_color);
+        draw_line(rect.x, rect.y, rect.x, rect.y + rect.h, bg.border_color);
+        draw_line(rect.x + rect.w, rect.y, rect.x + rect.w, rect.y + rect.h, bg.border_color);
+    }
+}
+
+// 8. Generic UI Backgrounds
+system UIBackgroundRenderSystem {
+    query(rect: UIRect, bg: UIBackground, without: UIPanel, without: UIButton) {
+        draw_rectangle(rect.x, rect.y, rect.w, rect.h, bg.color);
+        if bg.border_width > 0.0 {
+            draw_line(rect.x, rect.y, rect.x + rect.w, rect.y, bg.border_color);
+            draw_line(rect.x, rect.y + rect.h, rect.x + rect.w, rect.y + rect.h, bg.border_color);
+            draw_line(rect.x, rect.y, rect.x, rect.y + rect.h, bg.border_color);
+            draw_line(rect.x + rect.w, rect.y, rect.x + rect.w, rect.y + rect.h, bg.border_color);
+        }
+    }
+}
+
+// 9. Interactive Buttons Rendering
+system UIButtonRenderSystem {
+    query(rect: UIRect, btn: UIButton, state: UIState, txt: UIText) {
+        let mut col = btn.normal_color;
+        if state.is_pressed {
+            col = btn.press_color;
+        } else if state.is_hovered {
+            col = btn.hover_color;
+        }
+
+        // Button background
+        draw_rectangle(rect.x, rect.y, rect.w, rect.h, col);
+
+        // Button borders
+        draw_line(rect.x, rect.y, rect.x + rect.w, rect.y, 0xFFFFFF33);
+        draw_line(rect.x, rect.y + rect.h, rect.x + rect.w, rect.y + rect.h, 0x00000044);
+
+        // Button text
+        let tx = rect.x + (rect.w * 0.5) - (txt.font_size * 2.0);
+        let ty = rect.y + (rect.h * 0.5) - (txt.font_size * 0.5);
+        draw_text(txt.text, tx, ty, txt.font_size, txt.color);
+    }
+}
+
+// 10. Checkboxes Rendering
+system UICheckboxRenderSystem {
+    query(rect: UIRect, cb: UICheckbox, state: UIState, txt: UIText) {
+        // Outer box
+        draw_rectangle(rect.x, rect.y, cb.size, cb.size, 0x222634FF);
+        draw_line(rect.x, rect.y, rect.x + cb.size, rect.y, 0x4E556EFF);
+        draw_line(rect.x, rect.y + cb.size, rect.x + cb.size, rect.y + cb.size, 0x4E556EFF);
+        draw_line(rect.x, rect.y, rect.x, rect.y + cb.size, 0x4E556EFF);
+        draw_line(rect.x + cb.size, rect.y, rect.x + cb.size, rect.y + cb.size, 0x4E556EFF);
+
+        // Inner check fill
+        if cb.is_checked {
+            draw_rectangle(rect.x + 3.0, rect.y + 3.0, cb.size - 6.0, cb.size - 6.0, cb.check_color);
+        }
+
+        // Label text next to checkbox
+        draw_text(txt.text, rect.x + cb.size + 10.0, rect.y + 2.0, txt.font_size, txt.color);
+    }
+}
+
+// 11. Radio Buttons Rendering
+system UIRadioButtonRenderSystem {
+    query(rect: UIRect, rb: UIRadioButton, state: UIState, txt: UIText) {
+        let size = 18.0;
+        draw_rectangle(rect.x, rect.y, size, size, 0x222634FF);
+        draw_line(rect.x, rect.y, rect.x + size, rect.y, 0x4E556EFF);
+        draw_line(rect.x, rect.y + size, rect.x + size, rect.y + size, 0x4E556EFF);
+        draw_line(rect.x, rect.y, rect.x, rect.y + size, 0x4E556EFF);
+        draw_line(rect.x + size, rect.y, rect.x + size, rect.y + size, 0x4E556EFF);
+
+        if rb.is_selected {
+            draw_rectangle(rect.x + 4.0, rect.y + 4.0, size - 8.0, size - 8.0, 0x50C878FF);
+        }
+
+        draw_text(txt.text, rect.x + size + 10.0, rect.y + 1.0, txt.font_size, txt.color);
+    }
+}
+
+// 12. Sliders Rendering
+system UISliderRenderSystem {
+    query(rect: UIRect, slider: UISlider, state: UIState) {
+        // Track background
+        draw_rectangle(rect.x, rect.y + (rect.h * 0.5) - 3.0, rect.w, 6.0, slider.track_color);
+
+        // Handle / Knob position
+        let range = slider.max_val - slider.min_val;
+        let mut t = 0.0;
+        if range > 0.0 {
+            t = (slider.value - slider.min_val) / range;
+        }
+        let kx = rect.x + t * (rect.w - slider.handle_size);
+        let ky = rect.y + (rect.h * 0.5) - (slider.handle_size * 0.5);
+
+        let mut hc = slider.handle_color;
+        if state.is_pressed {
+            hc = 0xFFFFFFFF;
+        } else if state.is_hovered {
+            hc = 0xE0E0E0FF;
+        }
+        draw_rectangle(kx, ky, slider.handle_size, slider.handle_size, hc);
+    }
+}
+
+// 13. Progress Bars Rendering
+system UIProgressBarRenderSystem {
+    query(rect: UIRect, bar: UIProgressBar) {
+        // Track background
+        draw_rectangle(rect.x, rect.y, rect.w, rect.h, bar.bg_color);
+
+        // Filled progress portion
+        let mut p = bar.progress;
+        if p < 0.0 { p = 0.0; }
+        if p > 1.0 { p = 1.0; }
+        draw_rectangle(rect.x, rect.y, rect.w * p, rect.h, bar.bar_color);
+
+        // Border outline
+        draw_line(rect.x, rect.y, rect.x + rect.w, rect.y, 0x444A60FF);
+        draw_line(rect.x, rect.y + rect.h, rect.x + rect.w, rect.y + rect.h, 0x444A60FF);
+        draw_line(rect.x, rect.y, rect.x, rect.y + rect.h, 0x444A60FF);
+        draw_line(rect.x + rect.w, rect.y, rect.x + rect.w, rect.y + rect.h, 0x444A60FF);
+    }
+}
+
+// 14. Toggle Switches Rendering
+system UIToggleSwitchRenderSystem {
+    query(rect: UIRect, sw: UIToggleSwitch, state: UIState) {
+        let mut bg_c = sw.off_color;
+        let mut kx = rect.x + 2.0;
+        if sw.is_on {
+            bg_c = sw.on_color;
+            kx = rect.x + rect.w - rect.h + 2.0;
+        }
+        draw_rectangle(rect.x, rect.y, rect.w, rect.h, bg_c);
+        draw_rectangle(kx, rect.y + 2.0, rect.h - 4.0, rect.h - 4.0, 0xFFFFFFFF);
+    }
+}
+
+// 15. Separators Rendering
+system UISeparatorRenderSystem {
+    query(rect: UIRect, sep: UISeparator) {
+        draw_rectangle(rect.x, rect.y, rect.w, rect.h, sep.color);
+    }
+}
+
+// 16. Standalone Text Labels Rendering
+system UILabelRenderSystem {
+    query(rect: UIRect, txt: UIText, without: UIButton, without: UICheckbox, without: UIRadioButton) {
+        draw_text(txt.text, rect.x, rect.y, txt.font_size, txt.color);
+    }
+}
+
+// 17. Tooltips Rendering
+system UITooltipRenderSystem {
+    query(rect: UIRect, tip: UITooltip, state: UIState) {
+        if state.is_hovered {
+            let mx = get_mouse_x();
+            let my = get_mouse_y();
+            draw_rectangle(mx + 12.0, my + 12.0, 150.0, 24.0, 0x161822EE);
+            draw_text(tip.text, mx + 16.0, my + 16.0, 14, 0xFFFFFFFF);
+        }
+    }
+}

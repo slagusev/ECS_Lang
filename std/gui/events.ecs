@@ -1,0 +1,25 @@
+// =========================================================================
+// ECSLang Standard GUI Library - Events
+// Reactive Event Payloads for GUI Interactions
+// =========================================================================
+
+event UIEventClick {
+    target: Entity,
+    mouse_button: i32,
+}
+
+event UIEventValueChanged {
+    target: Entity,
+    value: f32,
+}
+
+event UIEventToggle {
+    target: Entity,
+    is_active: bool,
+}
+
+event UIEventDrag {
+    target: Entity,
+    delta_x: f32,
+    delta_y: f32,
+}

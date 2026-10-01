@@ -127,16 +127,11 @@ public sealed class ProjectLoader
                 if (string.IsNullOrWhiteSpace(rawPath))
                     continue;
 
-                string resolved = Path.GetFullPath(Path.Combine(currentDir, rawPath));
-                if (!File.Exists(resolved) && File.Exists(resolved + ".ecs"))
-                {
-                    resolved += ".ecs";
-                }
-
-                if (!File.Exists(resolved))
+                string? resolved = ResolveModulePath(currentDir, rawPath);
+                if (resolved == null)
                 {
                     _diagnostics.ReportError(
-                        $"Module not found: '{rawPath}' (searched at '{resolved}').",
+                        $"Module not found: '{rawPath}' (searched relative to '{currentDir}' and std library paths).",
                         importDecl.Span);
                     continue;
                 }
@@ -151,5 +146,59 @@ public sealed class ProjectLoader
         {
             _topologicalOrder.Add(filePath);
         }
+    }
+
+    private static string? ResolveModulePath(string currentDir, string rawPath)
+    {
+        var candidates = new List<string>();
+
+        // 1. Direct relative to importing file
+        candidates.Add(Path.Combine(currentDir, rawPath));
+
+        // 2. Relative to working directory
+        candidates.Add(Path.Combine(Directory.GetCurrentDirectory(), rawPath));
+
+        // 3. Search for repo root containing "std" folder walking up from currentDir
+        var searchDir = new DirectoryInfo(currentDir);
+        while (searchDir != null)
+        {
+            var stdDir = Path.Combine(searchDir.FullName, "std");
+            if (Directory.Exists(stdDir))
+            {
+                candidates.Add(Path.Combine(searchDir.FullName, rawPath));
+                if (!rawPath.StartsWith("std", StringComparison.OrdinalIgnoreCase))
+                {
+                    candidates.Add(Path.Combine(stdDir, rawPath));
+                }
+                break;
+            }
+            searchDir = searchDir.Parent;
+        }
+
+        // 4. AppContext.BaseDirectory
+        candidates.Add(Path.Combine(AppContext.BaseDirectory, rawPath));
+        candidates.Add(Path.Combine(AppContext.BaseDirectory, "std", rawPath));
+
+        foreach (var candidate in candidates)
+        {
+            try
+            {
+                var fullPath = Path.GetFullPath(candidate);
+                if (File.Exists(fullPath))
+                {
+                    return fullPath;
+                }
+                if (File.Exists(fullPath + ".ecs"))
+                {
+                    return fullPath + ".ecs";
+                }
+            }
+            catch
+            {
+                // Ignore invalid paths
+            }
+        }
+
+        return null;
     }
 }

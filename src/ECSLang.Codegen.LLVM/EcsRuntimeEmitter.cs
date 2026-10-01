@@ -2006,15 +2006,17 @@ public sealed class EcsRuntimeEmitter
         _builder.PositionAtEnd(entryBB);
 
         var isWinReadyFunc = _module.GetNamedFunction("IsWindowReady");
-        var isWinReadyType = LLVMTypeRef.CreateFunction(_context.Int1Type, Array.Empty<LLVMTypeRef>(), false);
-        var winReady = _builder.BuildCall2(isWinReadyType, isWinReadyFunc, Array.Empty<LLVMValueRef>(), "win_ready");
+        var isWinReadyType = LLVMTypeRef.CreateFunction(_context.Int8Type, Array.Empty<LLVMTypeRef>(), false);
+        var winReadyRaw = _builder.BuildCall2(isWinReadyType, isWinReadyFunc, Array.Empty<LLVMValueRef>(), "win_ready_raw");
+        var winReady = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, winReadyRaw, LLVMValueRef.CreateConstInt(_context.Int8Type, 0), "win_ready");
         _builder.BuildCondBr(winReady, checkKeyBB, exitBB);
 
         // check_key: F1 is keycode 290
         _builder.PositionAtEnd(checkKeyBB);
         var isKeyPressedFunc = _module.GetNamedFunction("IsKeyPressed");
-        var isKeyPressedType = LLVMTypeRef.CreateFunction(_context.Int1Type, new[] { _context.Int32Type }, false);
-        var f1Pressed = _builder.BuildCall2(isKeyPressedType, isKeyPressedFunc, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 290) }, "f1_pressed");
+        var isKeyPressedType = LLVMTypeRef.CreateFunction(_context.Int8Type, new[] { _context.Int32Type }, false);
+        var f1PressedRaw = _builder.BuildCall2(isKeyPressedType, isKeyPressedFunc, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 290) }, "f1_pressed_raw");
+        var f1Pressed = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, f1PressedRaw, LLVMValueRef.CreateConstInt(_context.Int8Type, 0), "f1_pressed");
 
         var toggleBB = profilerFunc.AppendBasicBlock("toggle_vis");
         _builder.BuildCondBr(f1Pressed, toggleBB, renderCheckBB);

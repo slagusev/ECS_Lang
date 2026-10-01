@@ -405,14 +405,17 @@ fn main(): i32 {
 - [x] Интеграция с конструкцией `match` для безопасного разворачивания с привязкой локальных переменных (`Some(x) => ...`, `None => ...`, `Ok(v) => ...`, `Err(e) => ...`).
 - [x] Сквозной тест безопасности и сопоставления: [`examples/option_result_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/option_result_test.ecs), успешно пройден в Debug (`-O0`) и Release (`-O3`).
 
-### [ ] Этап 28: Стандартная библиотека ECS GUI (`Button`, `Text`, `Slider`, `Panel`) на чистом ECSLang
-- [ ] Стандартная библиотека пишется **целиком на ECSLang** (файлы `std/gui.ecs`, `std/gui/widgets.ecs`, `std/gui/systems.ecs`), а не в компиляторе на C#. Компилятор лишь предоставляет стандартный путь импорта.
-- [ ] Пользовательский интерфейс как чистая ECS-парадигма: элементы UI являются обычными сущностями с компонентами.
-- [ ] Набор стандартных компонентов на ECSLang: `UIRect`, `UIButton`, `UIText`, `UISlider`, `UIPanel`, `UIState`.
-- [ ] Системы GUI на ECSLang: `UIInputSystem` (опрос мыши Raylib, hover, click), `UILayoutSystem` (позиционирование с иерархией `ChildOf`), `UIRenderSystem`.
-- [ ] Взаимодействие через ECS-события: `event OnClick { target: Entity, mouse_btn: i32 }`, `event OnValueChanged`.
-- [ ] Хелперы спавна виджетов в ECSLang: функции `gui_button(world, ...)` и методы `impl UIButton`.
-- [ ] Демонстрационное интерактивное GUI-приложение с кнопками, слайдерами и панелями.
+### [x] Этап 28: Стандартная библиотека ECS GUI (`Button`, `Text`, `Slider`, `Panel`) на чистом ECSLang
+- [x] Стандартная библиотека написана **целиком на чистом ECSLang** (файлы `std/gui.ecs`, `std/gui/components.ecs`, `std/gui/events.ecs`, `std/gui/systems.ecs`, `std/gui/widgets.ecs`, `std/gui/pipeline.ecs`), без захардкоженных типов в C# компиляторе.
+- [x] Разрешение путей стандартных модулей: в `ProjectLoader.cs` добавлена поддержка резолвинга импортов `std/...` относительно корня компилятора и корня проекта.
+- [x] Расширенный набор из 22 ECS GUI компонентов: `UIRect`, `UIPos`, `UISize`, `UIPadding`, `UIMargin`, `UIAnchor`, `UILayout`, `UIZOrder`, `UIBackground`, `UIShadow`, `UIText`, `UITexture`, `UITooltip`, `UIState`, `UIButton`, `UICheckbox`, `UISlider`, `UIProgressBar`, `UIPanel`, `UIRadioButton`, `UIToggleSwitch`, `UIBadge`, `UISeparator`, `UIInputField`, `UIScrollArea`.
+- [x] Реактивные ECS события: `event UIEventClick`, `event UIEventValueChanged`, `event UIEventToggle`, `event UIEventDrag`.
+- [x] Системы взаимодействия и рендеринга на ECSLang: `UIInputSystem`, `UIButtonClickSystem`, `UICheckboxToggleSystem`, `UISliderDragSystem`, `UIRenderPanels`, `UIRenderButtons`, `UIRenderLabels`, `UIRenderCheckboxes`, `UIRenderSliders`, `UIRenderProgressBars`, `UIRenderSeparators`, `UIRenderTooltips` с поддержкой `without: Component`.
+- [x] Конструкторы виджетов: `gui_panel`, `gui_button`, `gui_label`, `gui_checkbox`, `gui_slider`, `gui_progress_bar`, `gui_toggle_switch`, `gui_radio_button`, `gui_separator`, `gui_tooltip`.
+- [x] Конвейер GUI: `pipeline GUIPipeline` со стадиями `Update` и `Render`.
+- [x] Защита от сбоев в headless-режиме: `EmitGuardedRaylibVoidCall` с проверкой `IsWindowReady()` исключает краши OpenGL при выполнении тестов или консольных приложений.
+- [x] Безопасность C ABI для булевых функций Raylib: объявление функций с возвратом `Int8Type` и сравнение `ne 0` исключает попадание мусора в верхние биты регистра.
+- [x] Сквозной тест стандартной библиотеки: [`examples/gui_standard_lib_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/gui_standard_lib_test.ecs) (22 компонента, все виджеты, 10 фреймов `GUIPipeline`), успешно пройден в Debug (`-O0`) и Release (`-O3`).
 
 ### [ ] Этап 29: Замыкания и лямбды (`|e| ...`)
 - [ ] Синтаксис анонимных функций: `|param: Type| -> Ret { body }` и компактный `|e| expr`.

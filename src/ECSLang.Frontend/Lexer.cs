@@ -134,7 +134,21 @@ public sealed class Lexer
             return new Token(TokenType.EndOfFile, "", new SourceSpan(_filePath, startLine, startCol, 0));
         }
 
-        // Numbers (integers or floats)
+        // Numbers (integers, floats, or hex)
+        if (Current == '0' && (Peek(1) == 'x' || Peek(1) == 'X'))
+        {
+            var sb = new StringBuilder("0x");
+            Advance(); // '0'
+            Advance(); // 'x'
+            while (char.IsAsciiHexDigit(Current))
+            {
+                sb.Append(Current);
+                Advance();
+            }
+            string hexText = sb.ToString();
+            return new Token(TokenType.NumberLiteral, hexText, new SourceSpan(_filePath, startLine, startCol, hexText.Length));
+        }
+
         if (char.IsAsciiDigit(Current))
         {
             var sb = new StringBuilder();

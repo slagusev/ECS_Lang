@@ -1,0 +1,28 @@
+// =========================================================================
+// ECSLang Standard GUI Library - Pipeline
+// Standard Execution Pipeline for GUI Stages
+// =========================================================================
+
+pipeline GUIPipeline {
+    stage Update {
+        UIHoverSystem;
+        UIPanelDragSystem;
+        UISliderSystem;
+        UICheckboxSystem;
+        UIToggleSwitchSystem;
+        UIRadioButtonSystem;
+    }
+    stage Render {
+        UIPanelRenderSystem;
+        UIBackgroundRenderSystem;
+        UIButtonRenderSystem;
+        UICheckboxRenderSystem;
+        UIRadioButtonRenderSystem;
+        UISliderRenderSystem;
+        UIProgressBarRenderSystem;
+        UIToggleSwitchRenderSystem;
+        UISeparatorRenderSystem;
+        UILabelRenderSystem;
+        UITooltipRenderSystem;
+    }
+}

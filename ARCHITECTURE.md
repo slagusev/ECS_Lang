@@ -704,6 +704,43 @@ classDiagram
 
 ---
 
+## 20. Стандартная библиотека чистого ECS GUI (`std/gui.ecs`)
+
+В соответствии с философией ECSLang («ECSLang — это язык общего назначения с ECS как основой»), стандартная библиотека графического интерфейса реализована **целиком на чистом языке ECSLang** в директории `std/gui/`, без захардкоженных в C#-компиляторе специализированных UI-типов.
+
+### 20.1. Архитектура модулей стандартной библиотеки
+
+```mermaid
+flowchart TD
+    App["Приложение пользователя (main.ecs)"] --> GUI["import \"std/gui.ecs\";"]
+    GUI --> Pipe["std/gui/pipeline.ecs (GUIPipeline)"]
+    GUI --> Widg["std/gui/widgets.ecs (gui_button, gui_slider, etc.)"]
+    Widg --> Sys["std/gui/systems.ecs (Update & Render Systems)"]
+    Sys --> Evt["std/gui/events.ecs (UI Events)"]
+    Sys --> Comp["std/gui/components.ecs (22 ECS GUI Components)"]
+```
+
+1. **Разрешение путей стандартной библиотеки (`ProjectLoader.cs`)**:
+   При обработке директив `import "std/...";` компилятор проверяет путь относительно текущего файла, а также относительно корня исполняемого файла компилятора (`AppDomain.CurrentDomain.BaseDirectory`) и рабочего каталога. Это позволяет импортировать библиотеку единообразно из любого подкаталога проекта.
+2. **22 ECS GUI-компонента (`components.ecs`)**:
+   - *Геометрия и разметка*: `UIRect`, `UIPos`, `UISize`, `UIPadding`, `UIMargin`, `UIAnchor`, `UILayout`, `UIZOrder`.
+   - *Внешний вид*: `UIBackground`, `UIShadow`, `UIText`, `UITexture`, `UITooltip`.
+   - *Состояние и интерактивность*: `UIState` (idle, hover, pressed, focused, disabled), `UIButton`, `UICheckbox`, `UISlider`, `UIProgressBar`, `UIPanel`, `UIRadioButton`, `UIToggleSwitch`, `UIBadge`, `UISeparator`, `UIInputField`, `UIScrollArea`.
+3. **Реактивные события (`events.ecs`)**:
+   - `UIEventClick`, `UIEventValueChanged`, `UIEventToggle`, `UIEventDrag`.
+   - Двойная буферизация событий через `swap_events;` гарантирует детерминированную передачу сигналов между интерактивными системами и пользовательской бизнес-логикой.
+4. **Конвейер стадий (`pipeline.ecs`)**:
+   `pipeline GUIPipeline` разделен на стадии `stage Update` (системы взаимодействия и расчета геометрии) и `stage Render` (системы послойной отрисовки через Raylib).
+
+### 20.2. Headless OpenGL Safety и x64 C ABI
+
+1. **Защита от сбоев в headless-режиме (`EmitGuardedRaylibVoidCall`)**:
+   Функции рендеринга Raylib (`DrawRectangle`, `DrawLine`, `DrawText` и др.) обращаются к контексту OpenGL. Вызов этих функций в консольных утилитах, тестах или на сервере без создания окна приводит к ошибке нарушения доступа памяти (`0xC0000005`). Компилятор автоматически оборачивает подобные вызовы проверкой `IsWindowReady()`, обеспечивая безопасное выполнение GUI-конвейера в headless-окружении с нулевыми накладными расходами.
+2. **Соглашение вызова C ABI для `bool`**:
+   Raylib возвращает логические значения размером в 1 байт в регистре `AL`. В LLVM объявление сигнатур функций с типом `Int1Type` приводит к отсутствию инструкций расширения `movzx`, оставляя мусор в старших битах регистра `EAX`. Компилятор объявляет внешние функции C с возвратом `Int8Type` и выполняет явное сравнение `icmp ne val, 0`, гарантируя надежную нормализацию булевых значений.
+
+---
+
 ## 21. Размеченные объединения (Tagged Unions): `Option<T>` и `Result<T, E>`
 
 Для гарантии типобезопасности и исключения неопределенного поведения при работе с потенциально отсутствующими данными, ECSLang реализует первоклассные разметченные объединения (**Tagged / Discriminated Unions**).
