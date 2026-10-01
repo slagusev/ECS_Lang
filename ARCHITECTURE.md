@@ -940,28 +940,42 @@ public interface ILinker
 Начиная с Этапа 32, язык ECSLang оснащен модульной сетевой подсистемой (`std/net.ecs`), построенной строго в парадигме **Data-Oriented Design (DOD)** и **Pure ECS**. Сетевое взаимодействие полностью интегрировано в мир сущностей, компонентов, реактивных событий и стадий конвейера.
 
 ### 27.1. Архитектурные принципы сетевого стека
-1. **Сущность вместо дескриптора в процедурном коде**:
+1. **Сущность вместо дескриптора в процедурном коде (Фабричные функции)**:
    - Никаких сокетов в `main()` или прямого вызова сетевого I/O в бизнес-логике. Сокеты TCP и UDP представляются компонентами сущностей:
      - `TcpListener { port: i32, fd: i32, is_active: bool }`
-     - `TcpConnection { fd: i32, remote_ip: string, remote_port: i32, is_alive: bool }`
-     - `UdpSocket { port: i32, fd: i32 }`
+     - `TcpConnection { fd: i32, peer_ip: string, peer_port: i32, is_connected: bool }`
+     - `UdpSocket { port: i32, fd: i32, is_active: bool }`
      - `PacketBuffer { buffer: string, is_complete: bool }`
-   - Инициализация и подключение сокетов обернуты в типобезопасные функции с возвратом `Result<i32, string>`, распаковываемыми через `match`.
+     - `SocketClosing { }` (маркер жизненного цикла для систем-деструкторов)
+   - Инициализация и порождение сущностей производятся через фабричные функции `net_spawn_tcp_listener(world, port)`, `net_spawn_tcp_client(world, ip, port)`, `net_spawn_udp_socket(world, port)`, `net_spawn_udp_connected_socket(world, local_port, remote_ip, remote_port)` с возвратом типобезопасного `Result<entity, string>`, распаковываемого через `match`.
 
-2. **Неблокирующий ввод-вывод (Non-blocking I/O)**:
+2. **Интеграция с `Option<T>` для поиска сущностей по дескриптору сокета**:
+   - При спавне сокетов дескриптор автоматически регистрируется в Name Index мира: `world.set_name(ent, $"net_fd_{fd}")`.
+   - Вспомогательная функция `net_find_entity_by_fd(world, fd) -> Option<entity>` позволяет осуществлять безопасный поиск сущности сокета за $O(1)$ без линейных переборов, возвращая `Some(ent)` при наличии и `None` при отсутствии.
+
+3. **Неблокирующий ввод-вывод и микро-троттлинг (Non-blocking I/O + Throttle)**:
    - Все сокеты переводятся в неблокирующий режим (`FIONBIO` в WinSock2 и `O_NONBLOCK` в POSIX).
-   - Никаких блокирующих вызовов `recv` и `busy-wait` циклов (`while msg.len() == 0`). Опрос сокетов происходит на каждом кадре конвейера в специализированных стадиях за $O(1)$ без утилизации ядер процессора.
+   - Ликвидированы все `busy-wait` циклы. Для устранения холостой нагрузки на CPU (0% при отсутствии пакетов) на фазе `NetPoll` выполняется системный неблокирующий микро-слип `net_poll_wait(1)` через систему `NetPollThrottleSystem`.
 
-3. **Реактивные события и разделитель стадий конвейера**:
-   - Прием и отправка данных развязаны через двухбуферные события ECS:
+4. **Обработка ошибок отправки и реактивные события**:
+   - Ошибки сокетов при передаче отслеживаются в `OutboundSendSystem`. При возврате кода `< 0` генерируется событие `NetEventSendFailed { fd: i32, error_code: i32 }`.
+   - Реактивная шина событий:
      - `NetPacketReceived { fd: i32, payload: string }`
      - `NetPacketSend { fd: i32, payload: string }`
-     - `NetEventConnected { fd: i32, remote_ip: string, remote_port: i32 }`
-     - `NetEventDisconnected { fd: i32 }`
-   - Пайплайн разделен на три изолированные фазы:
+     - `NetEventConnected { client_fd: i32, ip: string, port: i32 }`
+     - `NetEventDisconnected { fd: i32, reason: string }`
+     - `NetEventSendFailed { fd: i32, error_code: i32 }`
+
+5. **Жизненный цикл и системы-деструкторы сокетов (ECS Destructors)**:
+   - В языке отсутствует процедурное закрытие сокетов. Для закрытия сущность помечается компонентом-маркером `SocketClosing` (вызовом `net_close_entity(world, ent)`).
+   - Системы `TcpConnectionDestructorSystem`, `TcpListenerDestructorSystem`, `UdpSocketDestructorSystem` фильтруют сущности по `with: SocketClosing`, вызывают нативное закрытие `net_close(fd)` и отложенно удаляют сущность через `cmd.despawn(e)`.
+
+6. **Структура конвейера NetPipeline**:
+   - Пайплайн разделен на четыре изолированные фазы:
      ```ecs
      pipeline NetPipeline {
          stage NetPoll {
+             NetPollThrottleSystem;
              TcpListenerSystem;
              TcpReceiverSystem;
              UdpReceiverSystem;
@@ -976,17 +990,18 @@ public interface ILinker
              swap_events;
              OutboundSendSystem;
          }
+         stage NetCleanup {
+             apply_commands;
+             TcpConnectionDestructorSystem;
+             TcpListenerDestructorSystem;
+             UdpSocketDestructorSystem;
+             apply_commands;
+         }
      }
      ```
-   - `NetPoll` считывает байты из сетевых дескрипторов и порождает события `NetPacketReceived`.
-   - `BusinessLogic` обрабатывает полученные пакеты и порождает события `NetPacketSend`.
-   - `NetFlush` передает данные в стек ОС через `OutboundSendSystem`.
-
-4. **Единообразие протоколов TCP и UDP**:
-   - Для UDP сокетов используется вызов `connect()` в рантайме, фиксирующий целевой адрес пира на уровне ОС.
-   - Это позволяет системам бизнес-логики (`EchoHandlerSystem`) и отправки (`OutboundSendSystem`) работать с дескрипторами `fd` абсолютно одинаково, не делая различий между потоковым TCP и датаграммным UDP.
 
 ---
+
 
 ## 28. Правила поддержания архитектурной чистоты
 
