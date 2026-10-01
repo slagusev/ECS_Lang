@@ -502,11 +502,22 @@ fn main(): i32 {
   - Успешный запуск тестов на Windows (`generics_test.ecs`, `closures_test.ecs` с кодом 0).
   - Успешная сборка LLVM IR и объектных файлов для Linux ELF (`x86_64-unknown-linux-gnu`) и macOS Mach-O ARM64 (`arm64-apple-darwin`).
 
-### [ ] Этап 32: Сетевые компоненты и протоколы (TCP/UDP через ECS) [после кроссплатформенности]
-- [ ] Сетевой стек на базе ECS: сетевые подключения и пакеты моделируются как компоненты и сущности.
-- [ ] Компоненты `Socket`, `Connection`, `PacketBuffer`, `NetAddress`, `PingStats`.
-- [ ] Системы приема, отправки и сериализации пакетов по таймлайну конвейера.
-- [ ] Демонстрационный проект: сетевой сервер и клиент на базе ECSLang.
+### [x] Этап 32: Сетевые компоненты и протоколы (TCP/UDP через ECS)
+- [x] Низкоуровневый C ABI сетевой рантайм (`LlvmCodeGenerator.Net.cs`):
+  - Кроссплатформенная поддержка сокетов: WinSock2 (`ws2_32.lib`, `WSAStartup`/`WSACleanup`, `ioctlsocket`, `closesocket`) под Windows и стандартный POSIX сокетный стек (`close`, `fcntl`/`ioctl`) под Linux/macOS.
+  - Нативные примитивы: `net_start`, `net_stop`, `net_tcp_listen`, `net_tcp_connect`, `net_tcp_accept`, `net_tcp_send`, `net_tcp_recv`, `net_udp_bind`, `net_udp_send_to`, `net_udp_recv_from`, `net_close`, `net_get_last_error`.
+  - Неблокирующий режим сокетов (`FIONBIO`), защита от коллизий портов и угона адресов (`SO_EXCLUSIVEADDRUSE` / проверка ошибок `bind`/`listen`).
+- [x] Стандартная библиотека `std/net.ecs` в парадигме Pure ECS (Data-Oriented Design):
+  - Компоненты (`std/net/components.ecs`): `TcpListener { port, fd, is_active }`, `TcpConnection { fd, peer_ip, peer_port, is_connected }`, `UdpSocket { port, fd }`, `NetAddress { ip, port }`, `PingStats { rtt_ms, packets_sent, packets_recv }`.
+  - Реактивные события (`std/net/events.ecs`): `NetEventConnected { client_fd, ip, port }`, `NetEventDisconnected { fd, reason }`, `NetPacketReceived { fd, payload }`, `NetPacketSend { fd, payload }`.
+  - Сетевые системы (`std/net/systems.ecs`):
+    - `TcpListenerSystem`: опрос неблокирующих слушающих сокетов, спавн сущностей `TcpConnection` и отправка событий `NetEventConnected`.
+    - `TcpReceiverSystem`: опрос TCP соединений в неблокирующем режиме, отправка событий `NetPacketReceived`.
+    - `UdpReceiverSystem`: опрос неблокирующих UDP датаграмм в цикле `query(mut u: UdpSocket)`, отправка событий `NetPacketReceived`.
+    - `OutboundSendSystem`: наблюдатель `read(packet: NetPacketSend)`, отправка исходящих сообщений в сокеты.
+  - Конвейер (`std/net/pipeline.ecs`): `NetPipeline` со стадиями `NetPoll` (TCP listener, TCP receiver, UDP receiver) и `NetFlush` (`swap_events`, `OutboundSendSystem`).
+- [x] Поддержка метода длины строк `.len()` наряду со свойством `.len` в `TypeChecker.Expressions.cs` и `LlvmCodeGenerator.Expressions.cs`.
+- [x] Сквозной тест сетевой подсистемы: [`examples/net_echo_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/net_echo_test.ecs) — одновременная неблокирующая передача данных по TCP и UDP через шину событий ECS, реакция систем `read(packet: NetPacketReceived)` и успешное завершение с кодом 0.
 
 ### [ ] Этап 33: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.

@@ -522,6 +522,23 @@ public sealed partial class TypeChecker
             return TypeSymbol.I32;
         }
 
+        // Networking built-ins
+        if (call.Callee is "net_init" or "net_tcp_listen" or "net_tcp_connect" or "net_tcp_accept" or
+            "net_tcp_send" or "net_udp_bind" or "net_udp_send_to" or "net_get_last_error")
+        {
+            return TypeSymbol.I32;
+        }
+
+        if (call.Callee is "net_tcp_recv" or "net_udp_recv_from")
+        {
+            return TypeSymbol.String;
+        }
+
+        if (call.Callee is "net_cleanup" or "net_close")
+        {
+            return TypeSymbol.Void;
+        }
+
         if (call.Callee is "ecs::create_world" or "create_world")
         {
             return TypeSymbol.World;
@@ -1108,6 +1125,19 @@ public sealed partial class TypeChecker
                 }
                 _nodeTypes[methodCall] = TypeSymbol.Void;
                 return TypeSymbol.Void;
+            }
+        }
+
+        if (targetType == TypeSymbol.String)
+        {
+            if (methodCall.MethodName is "len" or "length")
+            {
+                if (methodCall.Arguments.Count != 0)
+                {
+                    _diagnostics.ReportError($"Method '{methodCall.MethodName}' expects 0 arguments.", methodCall.Span);
+                }
+                _nodeTypes[methodCall] = TypeSymbol.I32;
+                return TypeSymbol.I32;
             }
         }
 

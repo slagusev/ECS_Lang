@@ -261,6 +261,7 @@ public sealed partial class LlvmCodeGenerator
         // Emit Multi-Archetype Runtime (spawn, add, remove, has, setters, sort)
         ecsEmitter.EmitMultiArchetypeRuntime(dataLayout, reallocType, reallocFunc, memcpyType, memcpyFunc, memsetType, memsetFunc, mallocType, mallocFunc, freeType, freeFunc);
         ecsEmitter.EmitProfilerRuntime(dataLayout);
+        EmitNetworkDeclarations(context, module);
 
         var allDeclarations = program.Declarations
             .Concat(_typeChecker.MonomorphizedDeclarations)

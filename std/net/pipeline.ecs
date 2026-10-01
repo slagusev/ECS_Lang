@@ -1,0 +1,15 @@
+// =========================================================================
+// ECSLang Standard Network Pipelines
+// =========================================================================
+
+pipeline NetPipeline {
+    stage NetPoll {
+        TcpListenerSystem;
+        TcpReceiverSystem;
+        UdpReceiverSystem;
+    }
+    stage NetFlush {
+        swap_events;
+        OutboundSendSystem;
+    }
+}

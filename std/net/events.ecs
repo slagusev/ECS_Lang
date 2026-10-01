@@ -1,0 +1,24 @@
+// =========================================================================
+// ECSLang Standard Network Events
+// =========================================================================
+
+event NetEventConnected {
+    client_fd: i32,
+    ip: string,
+    port: i32,
+}
+
+event NetEventDisconnected {
+    fd: i32,
+    reason: string,
+}
+
+event NetPacketReceived {
+    fd: i32,
+    payload: string,
+}
+
+event NetPacketSend {
+    fd: i32,
+    payload: string,
+}

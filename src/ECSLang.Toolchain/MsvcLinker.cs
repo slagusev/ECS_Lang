@@ -56,6 +56,7 @@ public sealed class MsvcLinker : ILinker
         args.Add("vcruntime.lib");
         args.Add("ucrt.lib");
         args.Add("kernel32.lib");
+        args.Add("ws2_32.lib");
 
         // Native Raylib & Win32 graphics libraries
         string? raylibDir = FindNativeRaylibDir();

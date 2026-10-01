@@ -1,0 +1,32 @@
+// =========================================================================
+// ECSLang Standard Network Components (Pure ECS DOD)
+// =========================================================================
+
+component TcpListener {
+    port: i32,
+    fd: i32,
+    is_active: bool,
+}
+
+component TcpConnection {
+    fd: i32,
+    peer_ip: string,
+    peer_port: i32,
+    is_connected: bool,
+}
+
+component UdpSocket {
+    port: i32,
+    fd: i32,
+}
+
+component NetAddress {
+    ip: string,
+    port: i32,
+}
+
+component PingStats {
+    rtt_ms: i32,
+    packets_sent: i32,
+    packets_recv: i32,
+}

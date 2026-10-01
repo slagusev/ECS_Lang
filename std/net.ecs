@@ -1,0 +1,17 @@
+// =========================================================================
+// ECSLang Standard Network Library
+// Pure Data-Oriented ECS Network Subsystem
+// =========================================================================
+
+import "net/components.ecs";
+import "net/events.ecs";
+import "net/systems.ecs";
+import "net/pipeline.ecs";
+
+fn net_start(): i32 {
+    return net_init();
+}
+
+fn net_stop() {
+    net_cleanup();
+}

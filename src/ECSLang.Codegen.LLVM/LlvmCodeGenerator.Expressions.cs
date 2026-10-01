@@ -1226,11 +1226,11 @@ public sealed partial class LlvmCodeGenerator
                             var ctorArgs = new List<LLVMValueRef>
                             {
                                 targetVal,
-                                CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc)
+                                CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs!, putsType, putsFunc, printfType, printfFunc)
                             };
                             foreach (var arg in ctorCall.Arguments)
                             {
-                                ctorArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                                ctorArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs!, putsType, putsFunc, printfType, printfFunc));
                             }
                             var ctorFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(ctorFunc);
                             return builder.BuildCall2(ctorFuncType, ctorFunc, ctorArgs.ToArray(), "");
@@ -1261,11 +1261,11 @@ public sealed partial class LlvmCodeGenerator
                             var ctorArgs = new List<LLVMValueRef>
                             {
                                 targetVal,
-                                CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc)
+                                CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs!, putsType, putsFunc, printfType, printfFunc)
                             };
                             foreach (var arg in wCtorCall.Arguments)
                             {
-                                ctorArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                                ctorArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs!, putsType, putsFunc, printfType, printfFunc));
                             }
                             var ctorFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(ctorFunc);
                             return builder.BuildCall2(ctorFuncType, ctorFunc, ctorArgs.ToArray(), "");
@@ -1282,7 +1282,7 @@ public sealed partial class LlvmCodeGenerator
                                 var ctorArgs = new List<LLVMValueRef> { targetVal };
                                 foreach (var arg in ctorCall.Arguments)
                                 {
-                                    ctorArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                                    ctorArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs!, putsType, putsFunc, printfType, printfFunc));
                                 }
                                 var ctorFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(ctorFunc);
                                 return builder.BuildCall2(ctorFuncType, ctorFunc, ctorArgs.ToArray(), "");
@@ -1301,7 +1301,7 @@ public sealed partial class LlvmCodeGenerator
                 var mArgs = new List<LLVMValueRef> { targetVal };
                 foreach (var arg in methodCall.Arguments)
                 {
-                    mArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    mArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs!, putsType, putsFunc, printfType, printfFunc));
                 }
 
                 var mFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(mFunc);
@@ -2542,6 +2542,10 @@ public sealed partial class LlvmCodeGenerator
                     {
                         funcName = call.Callee.Replace("::", "_");
                     }
+                    else if (call.Callee.StartsWith("net_"))
+                    {
+                        funcName = $"ecs_{call.Callee}";
+                    }
                     else if (_typeChecker.Pipelines.Any(p => p.Name == call.Callee))
                     {
                         funcName = $"pipeline_{call.Callee}";
@@ -2577,6 +2581,15 @@ public sealed partial class LlvmCodeGenerator
                     }
 
                     var argValues = call.Arguments.Select(a => CompileExpression(context, module, builder, function, a, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc)).ToArray();
+                    for (int i = 0; i < argValues.Length && i < (int)targetFunc.ParamsCount; i++)
+                    {
+                        var expectedParamType = targetFunc.GetParam((uint)i).TypeOf;
+                        if (expectedParamType == context.Int64Type && argValues[i].TypeOf == context.Int32Type)
+                        {
+                            argValues[i] = builder.BuildZExt(argValues[i], context.Int64Type, "zext_i64");
+                        }
+                    }
+
                     var targetFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(targetFunc);
                     string callName = targetFuncType.ReturnType == context.VoidType ? "" : $"{call.Callee}_call";
                     return builder.BuildCall2(targetFuncType, targetFunc, argValues, callName);

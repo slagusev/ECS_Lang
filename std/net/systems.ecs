@@ -1,0 +1,50 @@
+// =========================================================================
+// ECSLang Standard Network Systems
+// =========================================================================
+
+// System 1: Poll server sockets for incoming client connections
+system TcpListenerSystem {
+    query(cmd: Commands, mut listener: TcpListener) {
+        if listener.is_active {
+            let client_fd = net_tcp_accept(listener.fd);
+            if client_fd > 0 {
+                let client_ent = cmd.spawn();
+                cmd.set_TcpConnection(client_ent, client_fd, "127.0.0.1", listener.port, true);
+                world.emit_NetEventConnected(client_fd, "127.0.0.1", listener.port);
+            }
+        }
+    }
+}
+
+// System 2: Poll TCP connections for incoming non-blocking data
+system TcpReceiverSystem {
+    query(mut conn: TcpConnection) {
+        if conn.is_connected {
+            let data = net_tcp_recv(conn.fd, 4096);
+            if data.len() > 0 {
+                world.emit_NetPacketReceived(conn.fd, data);
+            }
+        }
+    }
+}
+
+// System 3: Poll UDP sockets for incoming non-blocking datagrams
+system UdpReceiverSystem {
+    query(mut u: UdpSocket) {
+        if u.fd > 0 {
+            let data = net_udp_recv_from(u.fd, 4096);
+            if data.len() > 0 {
+                world.emit_NetPacketReceived(u.fd, data);
+            }
+        }
+    }
+}
+
+// System 4: Flush outbound messages via NetPacketSend reactive event
+system OutboundSendSystem {
+    read(packet: NetPacketSend) {
+        if packet.fd > 0 && packet.payload.len() > 0 {
+            net_tcp_send(packet.fd, packet.payload);
+        }
+    }
+}
