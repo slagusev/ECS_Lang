@@ -665,7 +665,7 @@ public sealed partial class LlvmCodeGenerator
                 // Dynamic array: [T] => { T* data, i32 length, i32 capacity }
                 var elemType = MapType(context, inner.Trim(), ecs);
                 var elemPtrType = LLVMTypeRef.CreatePointer(elemType, 0);
-                return LLVMTypeRef.CreateStruct(new[] { elemPtrType, context.Int32Type, context.Int32Type }, false);
+                return context.GetStructType(new[] { elemPtrType, context.Int32Type, context.Int32Type }, false);
             }
         }
 
@@ -678,7 +678,7 @@ public sealed partial class LlvmCodeGenerator
                 return _mapEmitter.GetMapType(kSym.Name, vSym.Name, (t) => MapType(context, t, ecs));
             }
             var i8Ptr = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
-            return LLVMTypeRef.CreateStruct(new[] { i8Ptr, context.Int32Type, context.Int32Type }, false);
+            return context.GetStructType(new[] { i8Ptr, context.Int32Type, context.Int32Type }, false);
         }
 
         if (typeName != null && typeName.StartsWith("Option<") && typeName.EndsWith(">"))
@@ -686,7 +686,7 @@ public sealed partial class LlvmCodeGenerator
             var optTypeSym = TypeSymbol.FromName(typeName);
             optTypeSym.TryGetOptionInfo(out var valSym);
             var valLlvmType = MapType(context, valSym.Name, ecs);
-            return LLVMTypeRef.CreateStruct(new[] { context.Int32Type, valLlvmType }, false);
+            return context.GetStructType(new[] { context.Int32Type, valLlvmType }, false);
         }
 
         if (typeName != null && typeName.StartsWith("Result<") && typeName.EndsWith(">"))
@@ -695,13 +695,13 @@ public sealed partial class LlvmCodeGenerator
             resTypeSym.TryGetResultInfo(out var okSym, out var errSym);
             var okLlvmType = MapType(context, okSym.Name, ecs);
             var errLlvmType = MapType(context, errSym.Name, ecs);
-            return LLVMTypeRef.CreateStruct(new[] { context.Int32Type, okLlvmType, errLlvmType }, false);
+            return context.GetStructType(new[] { context.Int32Type, okLlvmType, errLlvmType }, false);
         }
 
         if (typeName != null && (typeName.StartsWith("fn(") || typeName.StartsWith("closure(") || TypeSymbol.FromName(typeName).IsFunction))
         {
             var i8Ptr = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
-            return LLVMTypeRef.CreateStruct(new[] { i8Ptr, i8Ptr }, false);
+            return context.GetStructType(new[] { i8Ptr, i8Ptr }, false);
         }
 
         if (typeName != null && _typeChecker.Structs.ContainsKey(typeName) && ecs != null)

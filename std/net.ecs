@@ -9,9 +9,41 @@ import "net/systems.ecs";
 import "net/pipeline.ecs";
 
 fn net_start(): i32 {
-    return net_init();
+    return raw_net_init();
 }
 
 fn net_stop() {
-    net_cleanup();
+    raw_net_cleanup();
+}
+
+fn net_tcp_listen(port: i32): Result<i32, string> {
+    let fd = raw_net_tcp_listen(port);
+    if fd > 0 {
+        return Ok(fd);
+    }
+    return Err($"Failed to bind TCP listener on port {port}");
+}
+
+fn net_tcp_connect(ip: string, port: i32): Result<i32, string> {
+    let fd = raw_net_tcp_connect(ip, port);
+    if fd > 0 {
+        return Ok(fd);
+    }
+    return Err($"Failed to connect TCP client to {ip}:{port}");
+}
+
+fn net_udp_bind(port: i32): Result<i32, string> {
+    let fd = raw_net_udp_bind(port);
+    if fd > 0 {
+        return Ok(fd);
+    }
+    return Err($"Failed to bind UDP socket on port {port}");
+}
+
+fn net_udp_connect(fd: i32, ip: string, port: i32): Result<i32, string> {
+    let res = raw_net_udp_connect(fd, ip, port);
+    if res == 0 {
+        return Ok(fd);
+    }
+    return Err($"Failed to connect UDP socket to {ip}:{port}");
 }

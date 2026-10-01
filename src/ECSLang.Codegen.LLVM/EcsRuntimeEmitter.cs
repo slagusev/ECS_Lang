@@ -280,14 +280,14 @@ public sealed partial class EcsRuntimeEmitter
             {
                 var elemType = MapType(inner.Trim());
                 var elemPtrType = LLVMTypeRef.CreatePointer(elemType, 0);
-                return LLVMTypeRef.CreateStruct(new[] { elemPtrType, _context.Int32Type, _context.Int32Type }, false);
+                return _context.GetStructType(new[] { elemPtrType, _context.Int32Type, _context.Int32Type }, false);
             }
         }
 
         if ((typeName.StartsWith("Map<") || typeName.StartsWith("HashMap<")) && typeName.EndsWith(">"))
         {
             var i8Ptr = LLVMTypeRef.CreatePointer(_context.Int8Type, 0);
-            return LLVMTypeRef.CreateStruct(new[] { i8Ptr, _context.Int32Type, _context.Int32Type }, false);
+            return _context.GetStructType(new[] { i8Ptr, _context.Int32Type, _context.Int32Type }, false);
         }
 
         return typeName switch

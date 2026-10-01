@@ -523,20 +523,27 @@ public sealed partial class TypeChecker
         }
 
         // Networking built-ins
-        if (call.Callee is "net_init" or "net_tcp_listen" or "net_tcp_connect" or "net_tcp_accept" or
-            "net_tcp_send" or "net_udp_bind" or "net_udp_send_to" or "net_get_last_error")
+        if (call.Callee.StartsWith("raw_net_") ||
+            (call.Callee.StartsWith("net_") && !_functions.ContainsKey(call.Callee)))
         {
-            return TypeSymbol.I32;
-        }
+            if (call.Callee is "net_init" or "raw_net_init" or "net_tcp_listen" or "raw_net_tcp_listen" or
+                "net_tcp_connect" or "raw_net_tcp_connect" or "net_tcp_accept" or "raw_net_tcp_accept" or
+                "net_tcp_send" or "raw_net_tcp_send" or "net_udp_bind" or "raw_net_udp_bind" or
+                "net_udp_connect" or "raw_net_udp_connect" or "net_udp_send_to" or "raw_net_udp_send_to" or
+                "net_get_last_error" or "raw_net_get_last_error")
+            {
+                return TypeSymbol.I32;
+            }
 
-        if (call.Callee is "net_tcp_recv" or "net_udp_recv_from")
-        {
-            return TypeSymbol.String;
-        }
+            if (call.Callee is "net_tcp_recv" or "raw_net_tcp_recv" or "net_udp_recv_from" or "raw_net_udp_recv_from")
+            {
+                return TypeSymbol.String;
+            }
 
-        if (call.Callee is "net_cleanup" or "net_close")
-        {
-            return TypeSymbol.Void;
+            if (call.Callee is "net_cleanup" or "raw_net_cleanup" or "net_close" or "raw_net_close")
+            {
+                return TypeSymbol.Void;
+            }
         }
 
         if (call.Callee is "ecs::create_world" or "create_world")

@@ -442,7 +442,7 @@ public sealed partial class LlvmCodeGenerator
                         var ltLen = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, idxVal, curLen, "lt_len");
                         var inBounds = builder.BuildAnd(geZero, ltLen, "in_bounds");
 
-                        var optStructType = LLVMTypeRef.CreateStruct(new[] { context.Int32Type, dynElemType }, false);
+                        var optStructType = context.GetStructType(new[] { context.Int32Type, dynElemType }, false);
                         var retAlloca = CreateEntryBlockAlloca(context, function, optStructType, "opt_arr_get_res");
 
                         var inBB = function.AppendBasicBlock("arr_get_in");
@@ -724,7 +724,7 @@ public sealed partial class LlvmCodeGenerator
                         var findFnType = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { i8PtrType, dynElemType }, false);
                         var findTypedFn = builder.BuildBitCast(fnRaw, LLVMTypeRef.CreatePointer(findFnType, 0), "find_typed_fn");
 
-                        var optStructType = LLVMTypeRef.CreateStruct(new[] { context.Int32Type, dynElemType }, false);
+                        var optStructType = context.GetStructType(new[] { context.Int32Type, dynElemType }, false);
                         var optAlloca = CreateEntryBlockAlloca(context, function, optStructType, "find_opt_res");
 
                         var lenSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 1, "dyn_len_slot");
@@ -832,7 +832,7 @@ public sealed partial class LlvmCodeGenerator
 
                         var hasIt = builder.BuildCall2(cfType, containsFunc, new[] { mapStructPtr, kArg }, "map_has_key");
                         var valLlvmType = MapType(context, mapValSym.Name, ecs);
-                        var optStructType = LLVMTypeRef.CreateStruct(new[] { context.Int32Type, valLlvmType }, false);
+                        var optStructType = context.GetStructType(new[] { context.Int32Type, valLlvmType }, false);
                         var retAlloca = CreateEntryBlockAlloca(context, function, optStructType, "opt_map_find_res");
 
                         var foundBB = function.AppendBasicBlock("map_find_found");
@@ -1139,7 +1139,7 @@ public sealed partial class LlvmCodeGenerator
 
                     var hasIt = builder.BuildCall2(cfType, containsFunc, new[] { nameMapPtr, nameArg }, "find_has_key");
                     var entLlvmType = MapType(context, "Entity", ecs);
-                    var optStructType = LLVMTypeRef.CreateStruct(new[] { context.Int32Type, entLlvmType }, false);
+                    var optStructType = context.GetStructType(new[] { context.Int32Type, entLlvmType }, false);
                     var retAlloca = CreateEntryBlockAlloca(context, function, optStructType, "opt_find_res");
 
                     var foundBB = function.AppendBasicBlock("find_found");
@@ -1453,7 +1453,7 @@ public sealed partial class LlvmCodeGenerator
                 var lambdaVarTypes = new Dictionary<string, string>();
 
                 // 1. Environment unpacking (if captures exist)
-                LLVMTypeRef envStructType = LLVMTypeRef.CreateStruct(Array.Empty<LLVMTypeRef>(), false);
+                LLVMTypeRef envStructType = context.GetStructType(Array.Empty<LLVMTypeRef>(), false);
                 if (lambda.Captures.Count > 0)
                 {
                     var envFieldTypes = new List<LLVMTypeRef>();
@@ -1465,7 +1465,7 @@ public sealed partial class LlvmCodeGenerator
                         envFieldTypes.Add(LLVMTypeRef.CreatePointer(capLlvmType, 0));
                     }
 
-                    envStructType = LLVMTypeRef.CreateStruct(envFieldTypes.ToArray(), false);
+                    envStructType = context.GetStructType(envFieldTypes.ToArray(), false);
                     var envStructPtrType = LLVMTypeRef.CreatePointer(envStructType, 0);
 
                     var envParam = lambdaFunc.GetParam(0);
@@ -1510,7 +1510,7 @@ public sealed partial class LlvmCodeGenerator
                 lambdaBuilder.Dispose();
 
                 // 4. In caller function: instantiate closure fat pointer { ptr fn, ptr env }
-                var closureStructType = LLVMTypeRef.CreateStruct(new[] { i8PtrType, i8PtrType }, false);
+                var closureStructType = context.GetStructType(new[] { i8PtrType, i8PtrType }, false);
                 var closureAlloca = CreateEntryBlockAlloca(context, function, closureStructType, "closure_tmp");
                 var fnSlot = builder.BuildStructGEP2(closureStructType, closureAlloca, 0, "fn_slot");
                 var envSlot = builder.BuildStructGEP2(closureStructType, closureAlloca, 1, "env_slot");
@@ -1590,7 +1590,7 @@ public sealed partial class LlvmCodeGenerator
                     var cSignature = LLVMTypeRef.CreateFunction(cRetLlvm, cParamLlvm.ToArray(), false);
                     var cSigPtr = LLVMTypeRef.CreatePointer(cSignature, 0);
 
-                    var closureVal = builder.BuildLoad2(LLVMTypeRef.CreateStruct(new[] { i8PtrType, i8PtrType }, false), closureLocalPtr, $"{call.Callee}_val");
+                    var closureVal = builder.BuildLoad2(context.GetStructType(new[] { i8PtrType, i8PtrType }, false), closureLocalPtr, $"{call.Callee}_val");
                     var cFnRaw = builder.BuildExtractValue(closureVal, 0, "c_fn_raw");
                     var cEnvPtr = builder.BuildExtractValue(closureVal, 1, "c_env_ptr");
                     var cTypedFn = builder.BuildBitCast(cFnRaw, cSigPtr, "c_typed_fn");
@@ -2542,7 +2542,11 @@ public sealed partial class LlvmCodeGenerator
                     {
                         funcName = call.Callee.Replace("::", "_");
                     }
-                    else if (call.Callee.StartsWith("net_"))
+                    else if (call.Callee.StartsWith("raw_net_"))
+                    {
+                        funcName = $"ecs_{call.Callee.Substring(4)}";
+                    }
+                    else if (call.Callee.StartsWith("net_") && !_typeChecker.Functions.ContainsKey(call.Callee))
                     {
                         funcName = $"ecs_{call.Callee}";
                     }

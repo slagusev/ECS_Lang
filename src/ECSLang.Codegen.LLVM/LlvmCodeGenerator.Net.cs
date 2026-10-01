@@ -439,6 +439,37 @@ public sealed partial class LlvmCodeGenerator
         var usVal32 = netBuilder.BuildTrunc(usVal, i32Type, "");
         netBuilder.BuildRet(usVal32);
 
+        // 8b. ecs_net_udp_connect(fd: i32, ip: ptr, port: i32) -> i32
+        var netUdpConnectType = LLVMTypeRef.CreateFunction(i32Type, new[] { i32Type, i8PtrType, i32Type }, false);
+        var netUdpConnectFunc = module.AddFunction("ecs_net_udp_connect", netUdpConnectType);
+        var ucBB = netUdpConnectFunc.AppendBasicBlock("entry");
+        netBuilder.PositionAtEnd(ucBB);
+        var ucFd = netUdpConnectFunc.GetParam(0);
+        var ucFd64 = netBuilder.BuildZExt(ucFd, i64Type, "");
+        var ucIp = netUdpConnectFunc.GetParam(1);
+        var ucPort = netUdpConnectFunc.GetParam(2);
+
+        var ucAddrAlloca = netBuilder.BuildAlloca(LLVMTypeRef.CreateArray(context.Int8Type, 16), "uc_addr");
+        var ucAddrPtr = netBuilder.BuildBitCast(ucAddrAlloca, i8PtrType, "");
+        netBuilder.BuildCall2(memsetType, memsetFunc, new[] { ucAddrPtr, LLVMValueRef.CreateConstInt(i32Type, 0), LLVMValueRef.CreateConstInt(i64Type, 16) }, "");
+
+        var ucFamPtr = netBuilder.BuildBitCast(ucAddrPtr, LLVMTypeRef.CreatePointer(i16Type, 0), "");
+        netBuilder.BuildStore(LLVMValueRef.CreateConstInt(i16Type, 2), ucFamPtr);
+
+        var ucPortI16 = netBuilder.BuildTrunc(ucPort, i16Type, "");
+        var ucNetPort = netBuilder.BuildCall2(htonsType, htonsFunc, new[] { ucPortI16 }, "");
+        var ucPortRaw = netBuilder.BuildGEP2(context.Int8Type, ucAddrPtr, new[] { LLVMValueRef.CreateConstInt(i32Type, 2) }, "");
+        var ucPortPtr = netBuilder.BuildBitCast(ucPortRaw, LLVMTypeRef.CreatePointer(i16Type, 0), "");
+        netBuilder.BuildStore(ucNetPort, ucPortPtr);
+
+        var ucInAddr = netBuilder.BuildCall2(inetAddrType, inetAddrFunc, new[] { ucIp }, "");
+        var ucInRaw = netBuilder.BuildGEP2(context.Int8Type, ucAddrPtr, new[] { LLVMValueRef.CreateConstInt(i32Type, 4) }, "");
+        var ucInPtr = netBuilder.BuildBitCast(ucInRaw, LLVMTypeRef.CreatePointer(i32Type, 0), "");
+        netBuilder.BuildStore(ucInAddr, ucInPtr);
+
+        var ucRes = netBuilder.BuildCall2(connectType, connectFunc, new[] { ucFd64, ucAddrPtr, LLVMValueRef.CreateConstInt(i32Type, 16) }, "uc_res");
+        netBuilder.BuildRet(ucRes);
+
         // 9. ecs_net_udp_send_to(fd: i32, ip: ptr, port: i32, data: ptr) -> i32
         var netUdpSendType = LLVMTypeRef.CreateFunction(i32Type, new[] { i32Type, i8PtrType, i32Type, i8PtrType }, false);
         var netUdpSendFunc = module.AddFunction("ecs_net_udp_send_to", netUdpSendType);

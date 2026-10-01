@@ -30,3 +30,8 @@ component PingStats {
     packets_sent: i32,
     packets_recv: i32,
 }
+
+component PacketBuffer {
+    buffer: string,
+    is_complete: bool,
+}

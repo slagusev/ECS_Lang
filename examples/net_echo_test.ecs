@@ -1,17 +1,60 @@
 // =========================================================================
 // ECSLang Stage 32: Pure Data-Oriented Network Test (TCP & UDP)
+// Pure ECS Architecture with Reactive Events, Type-Safe Results and Pipeline
 // =========================================================================
 
 import "std/net.ecs";
 
+component ClientTag {
+    sent: bool,
+    tcp_verified: bool,
+    udp_verified: bool,
+}
+
+component UdpClientTag {
+    sent: bool,
+    verified: bool,
+}
+
+// System 1: Client system that initiates outbound network traffic via ECS events
+system ClientSenderSystem {
+    query(mut tag: ClientTag, conn: TcpConnection) {
+        if !tag.sent {
+            tag.sent = true;
+            world.emit_NetPacketSend(conn.fd, "Hello ECSLang Network!");
+            println($"[Client System] Queued TCP send on fd={conn.fd}");
+        }
+    }
+}
+
+// System 2: Client system that initiates outbound UDP datagrams via ECS events
+system UdpClientSenderSystem {
+    query(mut tag: UdpClientTag, u: UdpSocket) {
+        if !tag.sent {
+            tag.sent = true;
+            world.emit_NetPacketSend(u.fd, "UDP Datagram to ECS!");
+            println($"[Client System] Queued UDP send on fd={u.fd}");
+        }
+    }
+}
+
+// System 3: Server Echo system - uniformly processes ANY packet and responds via NetPacketSend
 system EchoHandlerSystem {
     read(packet: NetPacketReceived) {
         println($"[Server System] Received inbound packet: '{packet.payload}' from fd={packet.fd}");
-        if packet.payload == "UDP Datagram to ECS!" {
-            net_udp_send_to(packet.fd, "127.0.0.1", 39873, $"ECHO: {packet.payload}");
-        } else {
-            let echo_payload = $"ECHO: {packet.payload}";
-            world.emit_NetPacketSend(packet.fd, echo_payload);
+        let echo_payload = $"ECHO: {packet.payload}";
+        world.emit_NetPacketSend(packet.fd, echo_payload);
+    }
+}
+
+// System 4: Client response verifier - listens on reactive NetPacketReceived events
+system ClientEchoVerifierSystem {
+    read(packet: NetPacketReceived) {
+        if packet.payload == "ECHO: Hello ECSLang Network!" {
+            println($"[Client System] Received verified TCP response: '{packet.payload}' from fd={packet.fd}");
+        }
+        if packet.payload == "ECHO: UDP Datagram to ECS!" {
+            println($"[Client System] Received verified UDP response: '{packet.payload}' from fd={packet.fd}");
         }
     }
 }
@@ -24,7 +67,10 @@ pipeline NetEchoServerPipeline {
     }
     stage BusinessLogic {
         swap_events;
+        ClientSenderSystem;
+        UdpClientSenderSystem;
         EchoHandlerSystem;
+        ClientEchoVerifierSystem;
     }
     stage NetFlush {
         swap_events;
@@ -39,86 +85,112 @@ fn main(): i32 {
     let init_res = net_start();
     println($"1. Net initialization result: {init_res}");
 
-    // 2. Setup Server Sockets (TCP on 39871, UDP on 39872)
+    // 2. Setup Server and Client Sockets with Result<T, E> and safe match
     let tcp_port = 39871;
     let udp_server_port = 39872;
     let udp_client_port = 39873;
 
-    let server_tcp_fd = net_tcp_listen(tcp_port);
-    if server_tcp_fd <= 0 {
-        println($"ERROR: Failed to bind TCP listener on port {tcp_port}");
-        return 1;
+    let mut server_tcp_fd = 0;
+    match net_tcp_listen(tcp_port) {
+        Ok(fd) => {
+            server_tcp_fd = fd;
+            println($"2. TCP Server listening on port {tcp_port} (fd={fd})");
+        }
+        Err(e) => {
+            println($"ERROR: {e}");
+            return 1;
+        }
     }
-    println($"2. TCP Server listening on port {tcp_port} (fd={server_tcp_fd})");
 
-    let server_udp_fd = net_udp_bind(udp_server_port);
-    if server_udp_fd <= 0 {
-        println($"ERROR: Failed to bind UDP server on port {udp_server_port}");
-        net_close(server_tcp_fd);
-        return 1;
+    let mut server_udp_fd = 0;
+    match net_udp_bind(udp_server_port) {
+        Ok(fd) => {
+            server_udp_fd = fd;
+            println($"3. UDP Server bound on port {udp_server_port} (fd={fd})");
+        }
+        Err(e) => {
+            println($"ERROR: {e}");
+            net_close(server_tcp_fd);
+            return 1;
+        }
     }
-    println($"3. UDP Server bound on port {udp_server_port} (fd={server_udp_fd})");
 
-    // 3. Connect TCP Client and Bind UDP Client
-    let client_tcp_fd = net_tcp_connect("127.0.0.1", tcp_port);
-    if client_tcp_fd <= 0 {
-        println("ERROR: Failed to connect TCP client");
-        net_close(server_tcp_fd);
-        net_close(server_udp_fd);
-        return 1;
+    let mut client_tcp_fd = 0;
+    match net_tcp_connect("127.0.0.1", tcp_port) {
+        Ok(fd) => {
+            client_tcp_fd = fd;
+            println($"4. TCP Client connected (fd={fd})");
+        }
+        Err(e) => {
+            println($"ERROR: {e}");
+            net_close(server_tcp_fd);
+            net_close(server_udp_fd);
+            return 1;
+        }
     }
-    println($"4. TCP Client connected (fd={client_tcp_fd})");
 
-    let client_udp_fd = net_udp_bind(udp_client_port);
-    if client_udp_fd <= 0 {
-        println("ERROR: Failed to bind UDP client");
-        net_close(client_tcp_fd);
-        net_close(server_tcp_fd);
-        net_close(server_udp_fd);
-        return 1;
+    let mut client_udp_fd = 0;
+    match net_udp_bind(udp_client_port) {
+        Ok(fd) => {
+            client_udp_fd = fd;
+            println($"5. UDP Client bound on port {udp_client_port} (fd={fd})");
+        }
+        Err(e) => {
+            println($"ERROR: {e}");
+            net_close(client_tcp_fd);
+            net_close(server_tcp_fd);
+            net_close(server_udp_fd);
+            return 1;
+        }
     }
-    println($"5. UDP Client bound on port {udp_client_port} (fd={client_udp_fd})");
 
-    // 4. Set up Pure ECS World and Spawn Entities for TCP Listener and UDP Socket
+    // Connect UDP endpoints to establish peer destinations
+    match net_udp_connect(client_udp_fd, "127.0.0.1", udp_server_port) {
+        Ok(fd) => {
+            println($"6. UDP Client connected to server {udp_server_port}");
+        }
+        Err(e) => {
+            println($"ERROR: {e}");
+            return 1;
+        }
+    }
+
+    match net_udp_connect(server_udp_fd, "127.0.0.1", udp_client_port) {
+        Ok(fd) => {
+            println($"7. UDP Server connected to client {udp_client_port}");
+        }
+        Err(e) => {
+            println($"ERROR: {e}");
+            return 1;
+        }
+    }
+
+    // 3. Set up Pure ECS World and Spawn Entities for Server and Client
     let mut world = ecs::create_world();
 
+    // Server entities
     let tcp_srv_ent = world.spawn();
     world.set_TcpListener(tcp_srv_ent, tcp_port, server_tcp_fd, true);
 
     let udp_srv_ent = world.spawn();
     world.set_UdpSocket(udp_srv_ent, udp_server_port, server_udp_fd);
 
-    // 5. Tick 1: Server accepts incoming TCP client connection via TcpListenerSystem
-    NetEchoServerPipeline(world);
+    // Client entities
+    let tcp_cl_ent = world.spawn();
+    world.set_TcpConnection(tcp_cl_ent, client_tcp_fd, "127.0.0.1", tcp_port, true);
+    world.set_ClientTag(tcp_cl_ent, false, false, false);
 
-    // 6. Clients transmit payloads over TCP and UDP
-    let sent_tcp = net_tcp_send(client_tcp_fd, "Hello ECSLang Network!");
-    println($"6. Client sent {sent_tcp} bytes over TCP");
+    let udp_cl_ent = world.spawn();
+    world.set_UdpSocket(udp_cl_ent, udp_client_port, client_udp_fd);
+    world.set_UdpClientTag(udp_cl_ent, false, false);
 
-    let sent_udp = net_udp_send_to(client_udp_fd, "127.0.0.1", udp_server_port, "UDP Datagram to ECS!");
-    println($"7. Client sent {sent_udp} bytes over UDP");
-
-    // 7. Tick 2: Server processes inbound TCP & UDP packets in pure ECS pipeline:
-    //    - Stage NetPoll: TcpReceiverSystem & UdpReceiverSystem poll sockets and emit NetPacketReceived
-    //    - Stage BusinessLogic: EchoHandlerSystem handles both packets via read(packet: NetPacketReceived)
-    //    - Stage NetFlush: OutboundSendSystem flushes echo responses back
-    NetEchoServerPipeline(world);
-
-    // 8. Client receives TCP Echo response with non-blocking poll loop
-    let mut tcp_reply = "";
-    while tcp_reply.len() == 0 {
-        tcp_reply = net_tcp_recv(client_tcp_fd, 1024);
+    // 4. Execute pipeline across frames (non-blocking, zero busy-wait CPU load)
+    println("8. Running ECS network pipeline ticks...");
+    for tick in 0..5 {
+        NetEchoServerPipeline(world);
     }
-    println($"8. Client received TCP response: '{tcp_reply}'");
 
-    // 9. Client receives UDP Echo response with non-blocking poll loop
-    let mut udp_reply = "";
-    while udp_reply.len() == 0 {
-        udp_reply = net_udp_recv_from(client_udp_fd, 1024);
-    }
-    println($"9. Client received UDP response: '{udp_reply}'");
-
-    // 10. Clean up
+    // 5. Clean up
     net_close(client_tcp_fd);
     net_close(client_udp_fd);
     net_close(server_tcp_fd);
