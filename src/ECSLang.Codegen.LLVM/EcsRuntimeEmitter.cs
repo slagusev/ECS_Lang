@@ -18,6 +18,7 @@ public sealed partial class EcsRuntimeEmitter
     private readonly Dictionary<string, LLVMTypeRef> _compStructTypes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _compIds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ulong> _compSizes = new(StringComparer.Ordinal);
+    private readonly List<string> _orderedCompNames = new();
     private readonly Dictionary<string, int> _resourceWorldOffsets = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _eventWorldOffsets = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ulong> _eventSizes = new(StringComparer.Ordinal);
@@ -121,14 +122,29 @@ public sealed partial class EcsRuntimeEmitter
         int compIndex = 0;
         foreach (var (compName, compSym) in _typeChecker.Components)
         {
+            if (_compStructTypes.ContainsKey(compName)) continue;
+            var cleanName = TypeSymbol.ToMonomorphizedIdentifier(compName);
+            if (_compStructTypes.TryGetValue(cleanName, out var existingType))
+            {
+                _compStructTypes[compName] = existingType;
+                _compIds[compName] = _compIds[cleanName];
+                _compSizes[compName] = _compSizes[cleanName];
+                continue;
+            }
+
             var fieldTypes = compSym.Fields.Select(f => MapType(f.Type.Name)).ToArray();
-            var structType = _context.CreateNamedStruct($"struct.{compName}");
+            var structType = _context.CreateNamedStruct($"struct.{cleanName}");
             structType.StructSetBody(fieldTypes, false);
             _compStructTypes[compName] = structType;
-            _compIds[compName] = compIndex++;
+            _compStructTypes[cleanName] = structType;
+            _compIds[compName] = compIndex;
+            _compIds[cleanName] = compIndex;
 
             ulong sizeInBytes = LlvmApi.ABISizeOfType(dataLayout, structType);
             _compSizes[compName] = Math.Max(1, sizeInBytes);
+            _compSizes[cleanName] = Math.Max(1, sizeInBytes);
+            _orderedCompNames.Add(cleanName);
+            compIndex++;
         }
 
         // 2. Struct types for all resources
@@ -143,12 +159,14 @@ public sealed partial class EcsRuntimeEmitter
         // 2.1 Struct types for all user structs
         foreach (var (stName, stSym) in _typeChecker.Structs)
         {
+            var cleanName = TypeSymbol.ToMonomorphizedIdentifier(stName);
             if (!_compStructTypes.ContainsKey(stName))
             {
                 var fieldTypes = stSym.Fields.Select(f => MapType(f.Type.Name)).ToArray();
-                var structType = _context.CreateNamedStruct($"struct.user.{stName}");
+                var structType = _context.CreateNamedStruct($"struct.user.{cleanName}");
                 structType.StructSetBody(fieldTypes, false);
                 _compStructTypes[stName] = structType;
+                _compStructTypes[cleanName] = structType;
             }
         }
 
@@ -164,7 +182,7 @@ public sealed partial class EcsRuntimeEmitter
         }
 
         // 3. Define %struct.Archetype: { i64 mask, i32 count, i32 cap, ptr entities, [N x ptr] columns }
-        uint compCount = (uint)Math.Max(1, _typeChecker.Components.Count);
+        uint compCount = (uint)Math.Max(1, _orderedCompNames.Count);
         _colArrayType = LLVMTypeRef.CreateArray(i8PtrType, compCount);
 
         _archStructType = _context.CreateNamedStruct("struct.Archetype");

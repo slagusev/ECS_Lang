@@ -10,12 +10,28 @@ public abstract record DeclarationNode(SourceSpan Span) : AstNode(Span);
 
 public sealed record ImportDirective(string ModulePath, SourceSpan Span) : DeclarationNode(Span);
 
+public sealed record TypeParameter(string Name, string? ConstraintTrait = null, SourceSpan Span = default) : AstNode(Span);
+
+public sealed record TraitMethodDeclaration(
+    string Name,
+    IReadOnlyList<FunctionParameter> Parameters,
+    string? ReturnType,
+    SourceSpan Span
+) : AstNode(Span);
+
+public sealed record TraitDeclaration(
+    string Name,
+    IReadOnlyList<TraitMethodDeclaration> Methods,
+    SourceSpan Span
+) : DeclarationNode(Span);
+
 public sealed record FieldDefinition(string Name, string TypeName, SourceSpan Span) : AstNode(Span);
 
 public sealed record ComponentDeclaration(
     string Name,
     IReadOnlyList<FieldDefinition> Fields,
-    SourceSpan Span
+    SourceSpan Span,
+    IReadOnlyList<TypeParameter>? TypeParameters = null
 ) : DeclarationNode(Span);
 
 public sealed record ResourceDeclaration(
@@ -27,7 +43,8 @@ public sealed record ResourceDeclaration(
 public sealed record StructDeclaration(
     string Name,
     IReadOnlyList<FieldDefinition> Fields,
-    SourceSpan Span
+    SourceSpan Span,
+    IReadOnlyList<TypeParameter>? TypeParameters = null
 ) : DeclarationNode(Span);
 
 public sealed record EventDeclaration(
@@ -73,7 +90,8 @@ public sealed record SystemDeclaration(
     IReadOnlyList<QueryParameter> ReadParams,
     IReadOnlyList<QueryFilter> Filters,
     BlockStatement Body,
-    SourceSpan Span
+    SourceSpan Span,
+    IReadOnlyList<TypeParameter>? TypeParameters = null
 ) : DeclarationNode(Span)
 {
     public bool IsEventSystem => ReadParams.Count > 0;
@@ -84,7 +102,7 @@ public sealed record SystemDeclaration(
         IReadOnlyList<QueryParameter> readParams,
         BlockStatement body,
         SourceSpan span)
-        : this(name, queryParams, readParams, Array.Empty<QueryFilter>(), body, span)
+        : this(name, queryParams, readParams, Array.Empty<QueryFilter>(), body, span, null)
     {
     }
 }
@@ -94,7 +112,8 @@ public sealed record FunctionDeclaration(
     IReadOnlyList<FunctionParameter> Parameters,
     string? ReturnType,
     BlockStatement Body,
-    SourceSpan Span
+    SourceSpan Span,
+    IReadOnlyList<TypeParameter>? TypeParameters = null
 ) : DeclarationNode(Span);
 
 public sealed record FunctionParameter(string Name, string TypeName, SourceSpan Span, bool IsMutable = false) : AstNode(Span);
@@ -102,7 +121,9 @@ public sealed record FunctionParameter(string Name, string TypeName, SourceSpan 
 public sealed record ImplDeclaration(
     string StructName,
     IReadOnlyList<FunctionDeclaration> Methods,
-    SourceSpan Span
+    SourceSpan Span,
+    string? TraitName = null,
+    IReadOnlyList<TypeParameter>? TypeParameters = null
 ) : DeclarationNode(Span);
 
 public abstract record StageAction(SourceSpan Span) : AstNode(Span);

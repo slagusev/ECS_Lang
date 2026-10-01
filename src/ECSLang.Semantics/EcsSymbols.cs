@@ -9,25 +9,37 @@ public sealed record ComponentSymbol(
     string Name,
     IReadOnlyList<ComponentFieldSymbol> Fields,
     SourceSpan Span
-);
+)
+{
+    public TypeSymbol Type => TypeSymbol.FromName(Name);
+}
 
 public sealed record ResourceSymbol(
     string Name,
     IReadOnlyList<ComponentFieldSymbol> Fields,
     SourceSpan Span
-);
+)
+{
+    public TypeSymbol Type => TypeSymbol.FromName(Name);
+}
 
 public sealed record StructSymbol(
     string Name,
     IReadOnlyList<ComponentFieldSymbol> Fields,
     SourceSpan Span
-);
+)
+{
+    public TypeSymbol Type => TypeSymbol.FromName(Name);
+}
 
 public sealed record EventSymbol(
     string Name,
     IReadOnlyList<ComponentFieldSymbol> Fields,
     SourceSpan Span
-);
+)
+{
+    public TypeSymbol Type => TypeSymbol.FromName(Name);
+}
 
 public sealed record EnumMemberSymbol(string Name, int Value, SourceSpan Span);
 

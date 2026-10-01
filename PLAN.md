@@ -456,10 +456,27 @@ fn main(): i32 {
   - `Parser.Expressions.cs` (выражения с приоритетами, лямбды, вызовы).
 - [x] Регрессионная валидация: полное прохождение тестов (closures, dynamic arrays, hashmap, raylib_game) и фиксация в git (коммит `d85a2bf`).
 
-### [ ] Этап 30: Обобщенные компоненты и системы (Generics + Traits)
-- [ ] Обобщенные пользовательские структуры: `struct Node<T> { value: T }`.
-- [ ] Обобщенные системы: `system Movement<T: PositionComponent> { ... }`.
-- [ ] Механизм Traits / Interfaces для полиморфизма данных без оверхеда виртуальных таблиц (мономорфизация в LLVM IR).
+### [x] Этап 30: Обобщенные компоненты и системы (Generics + Traits)
+- [x] Обобщенные параметры типов `<T>`, `<T, U>` для:
+  - Структур: `struct Pair<T, U> { first: T, second: U }`.
+  - Блоков реализации методов: `impl<T, U> Pair<T, U> { fn get_first(self): T { return self.first; } }`.
+  - Функций: `fn identity<T>(x: T): T { return x; }`.
+  - Компонентов ECS: `component Node<T> { value: T }`.
+  - Систем ECS: `system NodePrinter<T> { query(n: Node<T>) { println(n.value); } }`.
+  - Действий конвейеров: `pipeline TestPipeline { stage S { NodePrinter<i32>; NodePrinter<string>; } }`.
+- [x] Интерфейсы / Трейты (`trait`) и ограничения параметров типов (`<T: Trait>`):
+  - Декларации трейтов: `trait Printable { fn print(self); }`.
+  - Реализация трейта для типа: `impl Printable for Point { fn print(self) { ... } }`.
+  - Ограничение параметров типов в обобщенных функциях: `fn show<T: Printable>(item: T) { item.print(); }`.
+  - Статическая проверка соответствия сигнатур методов трейтов при компиляции.
+- [x] Статическая компиляторная мономорфизация (Zero-Cost Monomorphization):
+  - Выделенный семантический анализатор `TypeChecker.Monomorphization.cs`.
+  - Полная подстановка типов и выражений с генерацией конкретных мономорфных типов (`Node_i32_`, `Pair_i32_string_`).
+  - Разрешение коллизий и канонический порядок регистрации компонентов `_orderedCompNames` в `EcsRuntimeEmitter`, исключающий дублирование и рассинхронизацию битовых масок и столбцов SoA-архетипов.
+- [x] Надежное удержание окна консоли на Windows:
+  - Использование прямого консольного ввода `_getch()` вместо потокового `getchar()`, предотвращающее мгновенное закрытие консольного окна из-за остаточных переводов строк `\n` в `stdin`.
+  - Поддержка явного вызова `wait_key()`, а также автоматической паузы перед выходом из `main` при отсутствии интерактивных Raylib-окон.
+- [x] Сквозной тест обобщений и трейтов: [`examples/generics_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/generics_test.ecs), успешно пройден с кодом возврата 0.
 
 ### [ ] Этап 31: Кроссплатформенность компилятора и тулчейна (Linux, macOS, Windows)
 - [ ] Целевые тройки LLVM: `x86_64-unknown-linux-gnu`, `x86_64-apple-darwin`, `aarch64-apple-darwin`, `x86_64-pc-windows-msvc`.

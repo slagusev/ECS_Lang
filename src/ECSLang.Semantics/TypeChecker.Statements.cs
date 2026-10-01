@@ -79,7 +79,7 @@ public sealed partial class TypeChecker
         var initType = CheckExpression(varDecl.Initializer);
 
         TypeSymbol explicitType = varDecl.TypeName != null
-            ? TypeSymbol.FromName(varDecl.TypeName)
+            ? EnsureMonomorphizedType(varDecl.TypeName, varDecl.Span)
             : initType;
 
         if (explicitType.IsDynamicArray && varDecl.Initializer is ArrayLiteralExpression arrLit)

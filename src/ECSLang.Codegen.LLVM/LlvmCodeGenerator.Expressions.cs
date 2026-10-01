@@ -49,8 +49,8 @@ public sealed partial class LlvmCodeGenerator
             case IdentifierExpression ident:
                 if (locals.TryGetValue(ident.Name, out var varPtr))
                 {
-                    var varType = _typeChecker.GetNodeType(ident);
-                    var llvmType = MapType(context, varType.Name, ecs);
+                    string typeName = varTypes.TryGetValue(ident.Name, out var vt) ? vt : _typeChecker.GetNodeType(ident).Name;
+                    var llvmType = MapType(context, typeName, ecs);
                     return builder.BuildLoad2(llvmType, varPtr, ident.Name);
                 }
                 if (ident.Name == "None" || (ident.Name.StartsWith("Option<") && ident.Name.EndsWith("::None")))
@@ -130,14 +130,45 @@ public sealed partial class LlvmCodeGenerator
                 {
                     if (varTypes.TryGetValue(targetId.Name, out var structTypeName) &&
                         (_typeChecker.Structs.ContainsKey(structTypeName) ||
+                         _typeChecker.Structs.ContainsKey(TypeSymbol.ToMonomorphizedIdentifier(structTypeName)) ||
                          _typeChecker.Components.ContainsKey(structTypeName) ||
+                         _typeChecker.Components.ContainsKey(TypeSymbol.ToMonomorphizedIdentifier(structTypeName)) ||
                          _typeChecker.Resources.ContainsKey(structTypeName) ||
                          _typeChecker.Events.ContainsKey(structTypeName)))
                     {
                         var structType = ecs.GetComponentStructType(structTypeName);
                         int offset = ecs.GetFieldOffset(structTypeName, mem.MemberName);
                         var fieldGEP = builder.BuildStructGEP2(structType, structPtr, (uint)offset, $"{targetId.Name}_{mem.MemberName}");
-                        var fieldType = MapType(context, _typeChecker.GetNodeType(mem).Name, ecs);
+
+                        string? fieldTypeName = null;
+                        if (_typeChecker.Structs.TryGetValue(structTypeName, out var sSym) ||
+                            _typeChecker.Structs.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(structTypeName), out sSym))
+                        {
+                            var f = sSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
+                            if (f != null) fieldTypeName = f.Type.Name;
+                        }
+                        if (fieldTypeName == null && (_typeChecker.Components.TryGetValue(structTypeName, out var cSym) ||
+                            _typeChecker.Components.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(structTypeName), out cSym)))
+                        {
+                            var f = cSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
+                            if (f != null) fieldTypeName = f.Type.Name;
+                        }
+                        if (fieldTypeName == null && _typeChecker.Resources.TryGetValue(structTypeName, out var rSym))
+                        {
+                            var f = rSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
+                            if (f != null) fieldTypeName = f.Type.Name;
+                        }
+                        if (fieldTypeName == null && _typeChecker.Events.TryGetValue(structTypeName, out var evSym))
+                        {
+                            var f = evSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
+                            if (f != null) fieldTypeName = f.Type.Name;
+                        }
+                        if (fieldTypeName == null)
+                        {
+                            fieldTypeName = _typeChecker.GetNodeType(mem).Name;
+                        }
+
+                        var fieldType = MapType(context, fieldTypeName, ecs);
                         return builder.BuildLoad2(fieldType, fieldGEP, $"{mem.MemberName}_val");
                     }
                 }
@@ -1034,6 +1065,11 @@ public sealed partial class LlvmCodeGenerator
                 // Check if target is a struct/component with implemented method
                 var structMethodName = $"{targetType.Name}_{methodCall.MethodName}";
                 var structMethodFunc = module.GetNamedFunction(structMethodName);
+                if (structMethodFunc.Handle == IntPtr.Zero && targetType.Name.Contains("<"))
+                {
+                    var cleanTargetName = TypeSymbol.ToMonomorphizedIdentifier(targetType.Name);
+                    structMethodFunc = module.GetNamedFunction($"{cleanTargetName}_{methodCall.MethodName}");
+                }
                 if (structMethodFunc.Handle != IntPtr.Zero)
                 {
                     var smArgs = new List<LLVMValueRef>();
@@ -1207,7 +1243,35 @@ public sealed partial class LlvmCodeGenerator
                 }
                 else
                 {
-                    if (methodCall.MethodName == "emit" && methodCall.Arguments.Count == 1)
+                    if ((methodCall.MethodName == "add" || methodCall.MethodName == "set") &&
+                        methodCall.Arguments.Count == 2 &&
+                        methodCall.Arguments[1] is CallExpression wCtorCall)
+                    {
+                        var cleanCallee = TypeSymbol.ToMonomorphizedIdentifier(wCtorCall.Callee);
+                        var ctorFunc = module.GetNamedFunction($"world_set_{cleanCallee}");
+                        if (ctorFunc.Handle == IntPtr.Zero)
+                            ctorFunc = module.GetNamedFunction($"world_set_{wCtorCall.Callee}");
+                        if (ctorFunc.Handle == IntPtr.Zero)
+                            ctorFunc = module.GetNamedFunction($"world_add_{cleanCallee}");
+                        if (ctorFunc.Handle == IntPtr.Zero)
+                            ctorFunc = module.GetNamedFunction($"world_add_{wCtorCall.Callee}");
+
+                        if (ctorFunc.Handle != IntPtr.Zero)
+                        {
+                            var ctorArgs = new List<LLVMValueRef>
+                            {
+                                targetVal,
+                                CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc)
+                            };
+                            foreach (var arg in wCtorCall.Arguments)
+                            {
+                                ctorArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                            }
+                            var ctorFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(ctorFunc);
+                            return builder.BuildCall2(ctorFuncType, ctorFunc, ctorArgs.ToArray(), "");
+                        }
+                    }
+                    else if (methodCall.MethodName == "emit" && methodCall.Arguments.Count == 1)
                     {
                         if (methodCall.Arguments[0] is CallExpression ctorCall)
                         {
@@ -1669,7 +1733,10 @@ public sealed partial class LlvmCodeGenerator
                         var argType = _typeChecker.GetNodeType(arg);
                         var val = CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
 
-                        if (argType == TypeSymbol.String)
+                        bool isValPointer = val.TypeOf.Kind == LLVMTypeKind.LLVMPointerTypeKind;
+                        bool isValFloat = val.TypeOf.Kind == LLVMTypeKind.LLVMFloatTypeKind || val.TypeOf.Kind == LLVMTypeKind.LLVMDoubleTypeKind;
+
+                        if (isValPointer && (argType == TypeSymbol.String || argType == TypeSymbol.Unknown))
                         {
                             if (call.Arguments.Count > 1)
                             {
@@ -1679,9 +1746,9 @@ public sealed partial class LlvmCodeGenerator
                                     var pArg = call.Arguments[i];
                                     var pArgType = _typeChecker.GetNodeType(pArg);
                                     var pVal = CompileExpression(context, module, builder, function, pArg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
-                                    if (pArgType.IsFloatingPoint)
+                                    if (pArgType.IsFloatingPoint || pVal.TypeOf.Kind == LLVMTypeKind.LLVMFloatTypeKind || pVal.TypeOf.Kind == LLVMTypeKind.LLVMDoubleTypeKind)
                                     {
-                                        pVal = builder.BuildFPExt(pVal, context.DoubleType, "f_to_d");
+                                        pVal = pVal.TypeOf == context.DoubleType ? pVal : builder.BuildFPExt(pVal, context.DoubleType, "f_to_d");
                                     }
                                     else if (pVal.TypeOf == context.Int1Type || pArgType == TypeSymbol.Bool)
                                     {
@@ -1711,17 +1778,29 @@ public sealed partial class LlvmCodeGenerator
                                 return builder.BuildCall2(printfType, printfFunc, new[] { fmt, val }, "printf_call");
                             }
                         }
-                        else if (argType.IsFloatingPoint)
+                        else if (isValFloat || argType.IsFloatingPoint)
                         {
                             var fmt = builder.BuildGlobalStringPtr(addNewline ? "%f\n" : "%f", "fmt_f");
-                            var doubleVal = builder.BuildFPExt(val, context.DoubleType, "f_to_d");
+                            var doubleVal = val.TypeOf == context.DoubleType ? val : builder.BuildFPExt(val, context.DoubleType, "f_to_d");
                             return builder.BuildCall2(printfType, printfFunc, new[] { fmt, doubleVal }, "printf_call");
                         }
-                        else if (argType == TypeSymbol.Bool)
+                        else if (val.TypeOf == context.Int1Type || argType == TypeSymbol.Bool)
                         {
                             var fmt = builder.BuildGlobalStringPtr(addNewline ? "%d\n" : "%d", "fmt_b");
                             var i32Val = builder.BuildZExt(val, context.Int32Type, "b_to_i32");
                             return builder.BuildCall2(printfType, printfFunc, new[] { fmt, i32Val }, "printf_call");
+                        }
+                        else if (isValPointer)
+                        {
+                            if (addNewline)
+                            {
+                                return builder.BuildCall2(putsType, putsFunc, new[] { val }, "puts_call");
+                            }
+                            else
+                            {
+                                var fmt = builder.BuildGlobalStringPtr("%s", "fmt_s");
+                                return builder.BuildCall2(printfType, printfFunc, new[] { fmt, val }, "printf_call");
+                            }
                         }
                         else
                         {
@@ -1736,11 +1815,17 @@ public sealed partial class LlvmCodeGenerator
                     }
                     return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
                 }
-                else if (call.Callee is "wait_key" or "readln")
+                else if (call.Callee == "wait_key")
+                {
+                    var getchFunc = module.GetNamedFunction("_getch");
+                    var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                    return builder.BuildCall2(getchType, getchFunc, Array.Empty<LLVMValueRef>(), "key_input");
+                }
+                else if (call.Callee == "readln")
                 {
                     var getcharFunc = module.GetNamedFunction("getchar");
                     var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
-                    return builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), "key_input");
+                    return builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), "read_input");
                 }
                 else if (call.Callee is "get_tick_count" or "time_ms")
                 {
@@ -2412,17 +2497,33 @@ public sealed partial class LlvmCodeGenerator
                     var ft = LLVMTypeRef.CreateFunction(context.VoidType, Array.Empty<LLVMTypeRef>(), false);
                     return builder.BuildCall2(ft, f, Array.Empty<LLVMValueRef>(), "");
                 }
-                else if (_typeChecker.Structs.TryGetValue(call.Callee, out var stSym))
+                else if (_typeChecker.Structs.TryGetValue(call.Callee, out var stSym) ||
+                         _typeChecker.Structs.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(call.Callee), out stSym))
                 {
-                    var stType = ecs.GetComponentStructType(call.Callee);
-                    var tmpAlloca = CreateEntryBlockAlloca(context, function, stType, $"tmp_{call.Callee}");
+                    var cleanCallee = TypeSymbol.ToMonomorphizedIdentifier(stSym.Name);
+                    var stType = ecs.GetComponentStructType(stSym.Name);
+                    var tmpAlloca = CreateEntryBlockAlloca(context, function, stType, $"tmp_{cleanCallee}");
                     for (int i = 0; i < call.Arguments.Count; i++)
                     {
                         var argVal = CompileExpression(context, module, builder, function, call.Arguments[i], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
-                        var fieldGEP = builder.BuildStructGEP2(stType, tmpAlloca, (uint)i, $"tmp_{call.Callee}_{stSym.Fields[i].Name}");
+                        var fieldGEP = builder.BuildStructGEP2(stType, tmpAlloca, (uint)i, $"tmp_{cleanCallee}_{stSym.Fields[i].Name}");
                         builder.BuildStore(argVal, fieldGEP);
                     }
-                    return builder.BuildLoad2(stType, tmpAlloca, $"st_val_{call.Callee}");
+                    return builder.BuildLoad2(stType, tmpAlloca, $"st_val_{cleanCallee}");
+                }
+                else if (_typeChecker.Components.TryGetValue(call.Callee, out var compSym) ||
+                         _typeChecker.Components.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(call.Callee), out compSym))
+                {
+                    var cleanCallee = TypeSymbol.ToMonomorphizedIdentifier(compSym.Name);
+                    var stType = ecs.GetComponentStructType(compSym.Name);
+                    var tmpAlloca = CreateEntryBlockAlloca(context, function, stType, $"tmp_{cleanCallee}");
+                    for (int i = 0; i < call.Arguments.Count; i++)
+                    {
+                        var argVal = CompileExpression(context, module, builder, function, call.Arguments[i], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var fieldGEP = builder.BuildStructGEP2(stType, tmpAlloca, (uint)i, $"tmp_{cleanCallee}_{compSym.Fields[i].Name}");
+                        builder.BuildStore(argVal, fieldGEP);
+                    }
+                    return builder.BuildLoad2(stType, tmpAlloca, $"st_val_{cleanCallee}");
                 }
                 else
                 {
@@ -2441,7 +2542,25 @@ public sealed partial class LlvmCodeGenerator
                         funcName = $"system_{call.Callee}";
                     }
 
+                    if (funcName.Contains("<"))
+                    {
+                        funcName = TypeSymbol.ToMonomorphizedIdentifier(funcName);
+                    }
+
                     var targetFunc = module.GetNamedFunction(funcName);
+                    if (targetFunc.Handle == IntPtr.Zero)
+                    {
+                        // Check if registered in _typeChecker.Functions with an alias or monomorphized name
+                        if (_typeChecker.Functions.TryGetValue(call.Callee, out var fnDecl))
+                        {
+                            targetFunc = module.GetNamedFunction(fnDecl.Name);
+                            if (targetFunc.Handle == IntPtr.Zero)
+                            {
+                                targetFunc = module.GetNamedFunction(TypeSymbol.ToMonomorphizedIdentifier(fnDecl.Name));
+                            }
+                        }
+                    }
+
                     if (targetFunc.Handle == IntPtr.Zero)
                     {
                         _diagnostics.ReportError($"Undefined function or system '{funcName}'.", call.Span);

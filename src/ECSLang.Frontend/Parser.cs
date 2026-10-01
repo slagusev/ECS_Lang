@@ -86,6 +86,10 @@ public sealed partial class Parser
             {
                 declarations.Add(ParseImplDeclaration());
             }
+            else if (Check(TokenType.Trait))
+            {
+                declarations.Add(ParseTraitDeclaration());
+            }
             else
             {
                 _diagnostics.ReportError($"Unexpected token '{Current.Text}' at file root.", Current.Span);

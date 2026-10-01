@@ -269,11 +269,11 @@ public sealed partial class LlvmCodeGenerator
                 case ReturnStatement retStmt:
                     if (isMain && !hasWaitKey && !_options.NoWaitOnExit && !_options.IsRelease)
                     {
-                        var msg = builder.BuildGlobalStringPtr("Press Enter to exit...", "prompt_exit");
+                        var msg = builder.BuildGlobalStringPtr("Press any key to exit...", "prompt_exit");
                         builder.BuildCall2(putsType, putsFunc, new[] { msg }, "puts_exit");
-                        var getcharFunc = module.GetNamedFunction("getchar");
-                        var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
-                        builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
+                        var getchFunc = module.GetNamedFunction("_getch");
+                        var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                        builder.BuildCall2(getchType, getchFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
                     }
                     if (retStmt.Value != null)
                     {

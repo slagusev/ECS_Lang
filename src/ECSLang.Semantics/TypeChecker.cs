@@ -44,9 +44,18 @@ public sealed partial class TypeChecker
     private readonly Dictionary<string, SystemSymbol> _systems = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FunctionDeclaration> _functions = new(StringComparer.Ordinal);
     private readonly Dictionary<string, Dictionary<string, FunctionDeclaration>> _methods = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, TraitDeclaration> _traits = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HashSet<string>> _traitImpls = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, StructDeclaration> _genericStructs = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ComponentDeclaration> _genericComponents = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, FunctionDeclaration> _genericFunctions = new(StringComparer.Ordinal);
+    private readonly List<ImplDeclaration> _genericImpls = new();
+    private readonly Dictionary<string, SystemDeclaration> _genericSystems = new(StringComparer.Ordinal);
     private readonly List<PipelineDeclaration> _pipelines = new();
     private Scope _currentScope = new();
     private TypeSymbol? _currentExpectedReturnType;
+
+    public List<DeclarationNode> MonomorphizedDeclarations { get; } = new();
 
     public IReadOnlyDictionary<string, ComponentSymbol> Components => _components;
     public IReadOnlyDictionary<string, ResourceSymbol> Resources => _resources;
@@ -56,6 +65,8 @@ public sealed partial class TypeChecker
     public IReadOnlyDictionary<string, SystemSymbol> Systems => _systems;
     public IReadOnlyDictionary<string, FunctionDeclaration> Functions => _functions;
     public IReadOnlyDictionary<string, Dictionary<string, FunctionDeclaration>> Methods => _methods;
+    public IReadOnlyDictionary<string, TraitDeclaration> Traits => _traits;
+    public IReadOnlyDictionary<string, HashSet<string>> TraitImpls => _traitImpls;
     public IReadOnlyList<PipelineDeclaration> Pipelines => _pipelines;
 
     public TypeChecker(DiagnosticsBag diagnostics)
@@ -70,12 +81,24 @@ public sealed partial class TypeChecker
     {
         RegisterBuiltinComponents();
 
+        // Pass 0: Register Traits
+        foreach (var decl in program.Declarations)
+        {
+            if (decl is TraitDeclaration trait)
+            {
+                RegisterTrait(trait);
+            }
+        }
+
         // Pass 1: Register all Components, Resources, Structs, Events, Enums, and Functions
         foreach (var decl in program.Declarations)
         {
             if (decl is ComponentDeclaration comp)
             {
-                RegisterComponent(comp);
+                if (comp.TypeParameters != null && comp.TypeParameters.Count > 0)
+                    _genericComponents[comp.Name] = comp;
+                else
+                    RegisterComponent(comp);
             }
             else if (decl is ResourceDeclaration res)
             {
@@ -83,7 +106,10 @@ public sealed partial class TypeChecker
             }
             else if (decl is StructDeclaration st)
             {
-                RegisterStruct(st);
+                if (st.TypeParameters != null && st.TypeParameters.Count > 0)
+                    _genericStructs[st.Name] = st;
+                else
+                    RegisterStruct(st);
             }
             else if (decl is EventDeclaration ev)
             {
@@ -95,26 +121,37 @@ public sealed partial class TypeChecker
             }
             else if (decl is FunctionDeclaration fn)
             {
-                _functions[fn.Name] = fn;
+                if (fn.TypeParameters != null && fn.TypeParameters.Count > 0)
+                    _genericFunctions[fn.Name] = fn;
+                else
+                    _functions[fn.Name] = fn;
             }
             else if (decl is ImplDeclaration impl)
             {
-                RegisterImpl(impl);
+                if ((impl.TypeParameters != null && impl.TypeParameters.Count > 0) || impl.StructName.Contains("<"))
+                    _genericImpls.Add(impl);
+                else
+                    RegisterImpl(impl);
+            }
+            else if (decl is SystemDeclaration sys)
+            {
+                if (sys.TypeParameters != null && sys.TypeParameters.Count > 0)
+                    _genericSystems[sys.Name] = sys;
             }
         }
 
         // Pass 2: Register & Check Systems, Functions, Methods and Pipelines
         foreach (var decl in program.Declarations)
         {
-            if (decl is SystemDeclaration sys)
+            if (decl is SystemDeclaration sys && (sys.TypeParameters == null || sys.TypeParameters.Count == 0))
             {
                 CheckSystem(sys);
             }
-            else if (decl is FunctionDeclaration fn)
+            else if (decl is FunctionDeclaration fn && (fn.TypeParameters == null || fn.TypeParameters.Count == 0))
             {
                 CheckFunction(fn);
             }
-            else if (decl is ImplDeclaration impl)
+            else if (decl is ImplDeclaration impl && (impl.TypeParameters == null || impl.TypeParameters.Count == 0) && !impl.StructName.Contains("<"))
             {
                 CheckImpl(impl);
             }
@@ -161,7 +198,12 @@ public sealed partial class TypeChecker
 
     private TypeSymbol GetMemberType(TypeSymbol targetType, string memberName, SourceSpan span)
     {
-        if (_components.TryGetValue(targetType.Name, out var comp))
+        if (targetType.IsGenericInstantiation)
+        {
+            EnsureMonomorphizedType(targetType.Name, span);
+        }
+
+        if (_components.TryGetValue(targetType.Name, out var comp) || _components.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(targetType.Name), out comp))
         {
             var field = comp.Fields.FirstOrDefault(f => f.Name == memberName);
             if (field != null)
@@ -179,7 +221,7 @@ public sealed partial class TypeChecker
             return TypeSymbol.Unknown;
         }
 
-        if (_structs.TryGetValue(targetType.Name, out var st))
+        if (_structs.TryGetValue(targetType.Name, out var st) || _structs.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(targetType.Name), out st))
         {
             var field = st.Fields.FirstOrDefault(f => f.Name == memberName);
             if (field != null)

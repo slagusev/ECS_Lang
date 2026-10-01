@@ -556,13 +556,36 @@ public sealed partial class TypeChecker
             return TypeSymbol.Void;
         }
 
-        if (_structs.TryGetValue(call.Callee, out var stSym))
+        if (call.Callee.Contains("<"))
+        {
+            EnsureMonomorphizedType(call.Callee, call.Span);
+        }
+
+        var argTypesList = call.Arguments.Select(GetNodeType).ToList();
+        var monomorphizedFn = EnsureMonomorphizedFunction(call.Callee, null, argTypesList, call.Span);
+        if (monomorphizedFn != null)
+        {
+            return TypeSymbol.FromName(monomorphizedFn.ReturnType);
+        }
+
+        if (_structs.TryGetValue(call.Callee, out var stSym) ||
+            _structs.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(call.Callee), out stSym))
         {
             if (call.Arguments.Count != stSym.Fields.Count)
             {
                 _diagnostics.ReportError($"Struct '{call.Callee}' constructor expects {stSym.Fields.Count} arguments, but got {call.Arguments.Count}.", call.Span);
             }
             return TypeSymbol.FromName(stSym.Name);
+        }
+
+        if (_components.TryGetValue(call.Callee, out var compSym) ||
+            _components.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(call.Callee), out compSym))
+        {
+            if (call.Arguments.Count != compSym.Fields.Count)
+            {
+                _diagnostics.ReportError($"Component '{call.Callee}' constructor expects {compSym.Fields.Count} arguments, but got {call.Arguments.Count}.", call.Span);
+            }
+            return TypeSymbol.FromName(compSym.Name);
         }
 
         var localSym = _currentScope.Lookup(call.Callee);
@@ -589,7 +612,8 @@ public sealed partial class TypeChecker
             }
         }
 
-        if (_functions.TryGetValue(call.Callee, out var fnDecl))
+        if (_functions.TryGetValue(call.Callee, out var fnDecl) ||
+            _functions.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(call.Callee), out fnDecl))
         {
             if (call.Arguments.Count != fnDecl.Parameters.Count)
             {
@@ -610,7 +634,13 @@ public sealed partial class TypeChecker
             CheckExpression(arg);
         }
 
-        if (_methods.TryGetValue(targetType.Name, out var methodMap) &&
+        if (targetType.IsGenericInstantiation)
+        {
+            EnsureMonomorphizedType(targetType.Name, methodCall.Span);
+        }
+
+        if ((_methods.TryGetValue(targetType.Name, out var methodMap) ||
+             _methods.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(targetType.Name), out methodMap)) &&
             methodMap.TryGetValue(methodCall.MethodName, out var methodDecl))
         {
             int expectedArgCount = methodDecl.Parameters.Count;

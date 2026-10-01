@@ -33,7 +33,7 @@ public sealed partial class EcsRuntimeEmitter
         ulong worldStructSize = Math.Max(64, LlvmApi.ABISizeOfType(dataLayout, _worldStructType));
         var worldStructSizeVal = LLVMValueRef.CreateConstInt(_context.Int64Type, worldStructSize);
 
-        var compNames = _typeChecker.Components.Keys.ToList();
+        var compNames = _orderedCompNames;
         int totalComps = compNames.Count;
 
         // =========================================================================

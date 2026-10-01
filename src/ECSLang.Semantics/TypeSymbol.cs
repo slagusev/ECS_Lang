@@ -26,6 +26,55 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
     public bool IsOption => Name.StartsWith("Option<") && Name.EndsWith(">");
     public bool IsResult => Name.StartsWith("Result<") && Name.EndsWith(">");
     public bool IsFunction => Name.StartsWith("fn(") || Name.StartsWith("closure(");
+    public bool IsGenericInstantiation => Name.Contains("<") && Name.EndsWith(">");
+
+    public bool TryGetGenericInfo(out string baseName, out IReadOnlyList<TypeSymbol> typeArguments)
+    {
+        if (IsGenericInstantiation)
+        {
+            int openBracket = Name.IndexOf('<');
+            baseName = Name.Substring(0, openBracket).Trim();
+            var inner = Name.Substring(openBracket + 1, Name.Length - openBracket - 2);
+            var args = new List<TypeSymbol>();
+            int depth = 0;
+            int lastStart = 0;
+            for (int i = 0; i < inner.Length; i++)
+            {
+                if (inner[i] == '<' || inner[i] == '[') depth++;
+                else if (inner[i] == '>' || inner[i] == ']') depth--;
+                else if (inner[i] == ',' && depth == 0)
+                {
+                    args.Add(FromName(inner.Substring(lastStart, i - lastStart).Trim()));
+                    lastStart = i + 1;
+                }
+            }
+            if (lastStart < inner.Length)
+            {
+                args.Add(FromName(inner.Substring(lastStart).Trim()));
+            }
+            typeArguments = args;
+            return true;
+        }
+        baseName = Name;
+        typeArguments = Array.Empty<TypeSymbol>();
+        return false;
+    }
+
+    public static string ToMonomorphizedIdentifier(string typeName)
+    {
+        var sb = new System.Text.StringBuilder();
+        foreach (var ch in typeName)
+        {
+            if (char.IsLetterOrDigit(ch) || ch == '_')
+                sb.Append(ch);
+            else if (ch == '<' || ch == '>' || ch == ',' || ch == '[' || ch == ']' || ch == ' ')
+                sb.Append('_');
+        }
+        var result = sb.ToString();
+        while (result.Contains("__"))
+            result = result.Replace("__", "_");
+        return result.Trim('_');
+    }
 
     public bool TryGetOptionInfo(out TypeSymbol valueType)
     {

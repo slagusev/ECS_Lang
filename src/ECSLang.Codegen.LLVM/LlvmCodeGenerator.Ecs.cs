@@ -376,6 +376,10 @@ public sealed partial class LlvmCodeGenerator
                 if (action is SystemCallAction call)
                 {
                     var sysFunc = module.GetNamedFunction($"system_{call.SystemName}");
+                    if (sysFunc.Handle == IntPtr.Zero && call.SystemName.Contains("<"))
+                    {
+                        sysFunc = module.GetNamedFunction($"system_{TypeSymbol.ToMonomorphizedIdentifier(call.SystemName)}");
+                    }
                     if (sysFunc.Handle != IntPtr.Zero)
                     {
                         var voidFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);
@@ -386,7 +390,12 @@ public sealed partial class LlvmCodeGenerator
                 {
                     if (par.Systems.Count == 1)
                     {
-                        var sysFunc = module.GetNamedFunction($"system_{par.Systems[0].SystemName}");
+                        var sName = par.Systems[0].SystemName;
+                        var sysFunc = module.GetNamedFunction($"system_{sName}");
+                        if (sysFunc.Handle == IntPtr.Zero && sName.Contains("<"))
+                        {
+                            sysFunc = module.GetNamedFunction($"system_{TypeSymbol.ToMonomorphizedIdentifier(sName)}");
+                        }
                         if (sysFunc.Handle != IntPtr.Zero)
                         {
                             var voidFuncType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { worldPtrType }, false);

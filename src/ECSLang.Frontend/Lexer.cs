@@ -43,6 +43,7 @@ public sealed class Lexer
         ["with"] = TokenType.With,
         ["without"] = TokenType.Without,
         ["impl"] = TokenType.Impl,
+        ["trait"] = TokenType.Trait,
         ["true"] = TokenType.True,
         ["false"] = TokenType.False,
     };

@@ -100,13 +100,49 @@ public sealed partial class Parser
             Match(TokenType.Greater, "Expected '>' to close generic type.");
             return $"Map<{keyType}, {valType}>";
         }
+        if (Check(TokenType.Less))
+        {
+            Advance(); // <
+            var typeArgs = new List<string>();
+            do
+            {
+                typeArgs.Add(ParseTypeAnnotation());
+            } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+            Match(TokenType.Greater, "Expected '>' to close generic type.");
+            return $"{idTok.Text}<{string.Join(", ", typeArgs)}>";
+        }
         return idTok.Text;
+    }
+
+    private IReadOnlyList<TypeParameter>? ParseOptionalTypeParameters()
+    {
+        if (!Check(TokenType.Less))
+            return null;
+
+        Advance(); // <
+        var typeParams = new List<TypeParameter>();
+        do
+        {
+            var nameTok = Match(TokenType.Identifier, "Expected type parameter name.");
+            string? constraint = null;
+            if (Check(TokenType.Colon))
+            {
+                Advance(); // :
+                var traitTok = Match(TokenType.Identifier, "Expected trait name after ':'.");
+                constraint = traitTok.Text;
+            }
+            typeParams.Add(new TypeParameter(nameTok.Text, constraint, nameTok.Span));
+        } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+
+        Match(TokenType.Greater, "Expected '>' after type parameters.");
+        return typeParams;
     }
 
     private ComponentDeclaration ParseComponentDeclaration()
     {
         var compTok = Match(TokenType.Component);
         var nameTok = Match(TokenType.Identifier, "Expected component name after 'component'.");
+        var typeParams = ParseOptionalTypeParameters();
         Match(TokenType.OpenBrace, "Expected '{' to start component body.");
 
         var fields = new List<FieldDefinition>();
@@ -122,13 +158,14 @@ public sealed partial class Parser
         }
 
         Match(TokenType.CloseBrace, "Expected '}' to close component body.");
-        return new ComponentDeclaration(nameTok.Text, fields, compTok.Span);
+        return new ComponentDeclaration(nameTok.Text, fields, compTok.Span, typeParams);
     }
 
     private StructDeclaration ParseStructDeclaration()
     {
         var structTok = Match(TokenType.Struct);
         var nameTok = Match(TokenType.Identifier, "Expected struct name after 'struct'.");
+        var typeParams = ParseOptionalTypeParameters();
         Match(TokenType.OpenBrace, "Expected '{' to start struct body.");
 
         var fields = new List<FieldDefinition>();
@@ -144,7 +181,7 @@ public sealed partial class Parser
         }
 
         Match(TokenType.CloseBrace, "Expected '}' to close struct body.");
-        return new StructDeclaration(nameTok.Text, fields, structTok.Span);
+        return new StructDeclaration(nameTok.Text, fields, structTok.Span, typeParams);
     }
 
     private ResourceDeclaration ParseResourceDeclaration()
@@ -236,6 +273,7 @@ public sealed partial class Parser
     {
         var sysTok = Match(TokenType.System);
         var nameTok = Match(TokenType.Identifier, "Expected system name after 'system'.");
+        var typeParams = ParseOptionalTypeParameters();
         Match(TokenType.OpenBrace, "Expected '{' to start system body.");
 
         var queryParams = new List<QueryParameter>();
@@ -275,9 +313,9 @@ public sealed partial class Parser
 
                         var paramName = Match(TokenType.Identifier, "Expected query parameter name.");
                         Match(TokenType.Colon, "Expected ':' after query parameter name.");
-                        var paramType = Match(TokenType.Identifier, "Expected component or resource type name.");
+                        var paramType = ParseTypeAnnotation();
 
-                        queryParams.Add(new QueryParameter(isMut, paramName.Text, paramType.Text, paramName.Span));
+                        queryParams.Add(new QueryParameter(isMut, paramName.Text, paramType, paramName.Span));
                     }
                 } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
             }
@@ -300,9 +338,9 @@ public sealed partial class Parser
 
                     var paramName = Match(TokenType.Identifier, "Expected read parameter name.");
                     Match(TokenType.Colon, "Expected ':' after read parameter name.");
-                    var paramType = Match(TokenType.Identifier, "Expected event or resource type name.");
+                    var paramType = ParseTypeAnnotation();
 
-                    readParams.Add(new QueryParameter(isMut, paramName.Text, paramType.Text, paramName.Span));
+                    readParams.Add(new QueryParameter(isMut, paramName.Text, paramType, paramName.Span));
                 } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
             }
             Match(TokenType.CloseParen, "Expected ')' after read parameters.");
@@ -315,7 +353,7 @@ public sealed partial class Parser
         var body = ParseBlockStatement();
         Match(TokenType.CloseBrace, "Expected '}' to close system.");
 
-        return new SystemDeclaration(nameTok.Text, queryParams, readParams, filters, body, sysTok.Span);
+        return new SystemDeclaration(nameTok.Text, queryParams, readParams, filters, body, sysTok.Span, typeParams);
     }
 
     private PipelineDeclaration ParsePipelineDeclaration()
@@ -343,9 +381,21 @@ public sealed partial class Parser
                         var parallelSystems = new List<SystemCallAction>();
                         while (!Check(TokenType.CloseBrace) && !Check(TokenType.EndOfFile))
                         {
-                            var sName = Match(TokenType.Identifier, "Expected system name in parallel block.");
+                            var sNameTok = Match(TokenType.Identifier, "Expected system name in parallel block.");
+                            var sFullName = sNameTok.Text;
+                            if (Check(TokenType.Less))
+                            {
+                                Advance(); // <
+                                var typeArgs = new List<string>();
+                                do
+                                {
+                                    typeArgs.Add(ParseTypeAnnotation());
+                                } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                                Match(TokenType.Greater, "Expected '>' to close generic system type.");
+                                sFullName = $"{sFullName}<{string.Join(", ", typeArgs)}>";
+                            }
                             Match(TokenType.Semicolon, "Expected ';' after system name.");
-                            parallelSystems.Add(new SystemCallAction(sName.Text, sName.Span));
+                            parallelSystems.Add(new SystemCallAction(sFullName, sNameTok.Span));
                         }
                         Match(TokenType.CloseBrace, "Expected '}' after parallel block.");
                         actions.Add(new ParallelAction(parallelSystems, parTok.Span));
@@ -376,9 +426,21 @@ public sealed partial class Parser
                     }
                     else if (Check(TokenType.Identifier))
                     {
-                        var sName = Advance();
+                        var sNameTok = Advance();
+                        var sFullName = sNameTok.Text;
+                        if (Check(TokenType.Less))
+                        {
+                            Advance(); // <
+                            var typeArgs = new List<string>();
+                            do
+                            {
+                                typeArgs.Add(ParseTypeAnnotation());
+                            } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                            Match(TokenType.Greater, "Expected '>' to close generic system type.");
+                            sFullName = $"{sFullName}<{string.Join(", ", typeArgs)}>";
+                        }
                         Match(TokenType.Semicolon, "Expected ';' after system name.");
-                        actions.Add(new SystemCallAction(sName.Text, sName.Span));
+                        actions.Add(new SystemCallAction(sFullName, sNameTok.Span));
                     }
                     else
                     {
@@ -404,6 +466,7 @@ public sealed partial class Parser
     {
         var fnKeyword = Match(TokenType.Fn);
         var nameToken = Match(TokenType.Identifier, "Expected function name after 'fn'.");
+        var typeParams = ParseOptionalTypeParameters();
 
         Match(TokenType.OpenParen, "Expected '(' after function name.");
         var parameters = new List<FunctionParameter>();
@@ -443,13 +506,52 @@ public sealed partial class Parser
         }
 
         var body = ParseBlockStatement();
-        return new FunctionDeclaration(nameToken.Text, parameters, returnType, body, fnKeyword.Span);
+        return new FunctionDeclaration(nameToken.Text, parameters, returnType, body, fnKeyword.Span, typeParams);
     }
 
     private ImplDeclaration ParseImplDeclaration()
     {
         var implKeyword = Match(TokenType.Impl);
-        var structNameToken = Match(TokenType.Identifier, "Expected struct name after 'impl'.");
+        var typeParams = ParseOptionalTypeParameters();
+        var firstIdent = Match(TokenType.Identifier, "Expected identifier after 'impl'.");
+
+        string? traitName = null;
+        string structName;
+
+        if (Check(TokenType.For))
+        {
+            Advance(); // for
+            traitName = firstIdent.Text;
+            var structNameTok = Match(TokenType.Identifier, "Expected struct name after 'for'.");
+            structName = structNameTok.Text;
+            if (Check(TokenType.Less))
+            {
+                Advance(); // <
+                var args = new List<string>();
+                do
+                {
+                    args.Add(ParseTypeAnnotation());
+                } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                Match(TokenType.Greater, "Expected '>' to close struct type parameters.");
+                structName = $"{structName}<{string.Join(", ", args)}>";
+            }
+        }
+        else
+        {
+            structName = firstIdent.Text;
+            if (Check(TokenType.Less))
+            {
+                Advance(); // <
+                var args = new List<string>();
+                do
+                {
+                    args.Add(ParseTypeAnnotation());
+                } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                Match(TokenType.Greater, "Expected '>' to close struct type parameters.");
+                structName = $"{structName}<{string.Join(", ", args)}>";
+            }
+        }
+
         Match(TokenType.OpenBrace, "Expected '{' to start 'impl' block.");
 
         var methods = new List<FunctionDeclaration>();
@@ -457,7 +559,7 @@ public sealed partial class Parser
         {
             if (Check(TokenType.Fn))
             {
-                methods.Add(ParseFunctionDeclaration(structNameToken.Text));
+                methods.Add(ParseFunctionDeclaration(structName));
             }
             else
             {
@@ -467,6 +569,70 @@ public sealed partial class Parser
         }
 
         Match(TokenType.CloseBrace, "Expected '}' to close 'impl' block.");
-        return new ImplDeclaration(structNameToken.Text, methods, implKeyword.Span);
+        return new ImplDeclaration(structName, methods, implKeyword.Span, traitName, typeParams);
+    }
+
+    private TraitDeclaration ParseTraitDeclaration()
+    {
+        var traitKeyword = Match(TokenType.Trait);
+        var nameToken = Match(TokenType.Identifier, "Expected trait name after 'trait'.");
+        Match(TokenType.OpenBrace, "Expected '{' to start 'trait' body.");
+
+        var methods = new List<TraitMethodDeclaration>();
+        while (!Check(TokenType.CloseBrace) && !Check(TokenType.EndOfFile))
+        {
+            if (Check(TokenType.Fn))
+            {
+                var fnKeyword = Advance(); // fn
+                var methodName = Match(TokenType.Identifier, "Expected method name after 'fn'.");
+                Match(TokenType.OpenParen, "Expected '(' after method name.");
+                var parameters = new List<FunctionParameter>();
+                if (!Check(TokenType.CloseParen))
+                {
+                    do
+                    {
+                        bool isMut = false;
+                        if (Check(TokenType.Mut))
+                        {
+                            Advance();
+                            isMut = true;
+                        }
+
+                        var paramName = Match(TokenType.Identifier, "Expected parameter name.");
+                        string paramType;
+                        if (paramName.Text == "self" && !Check(TokenType.Colon))
+                        {
+                            paramType = "Self";
+                        }
+                        else
+                        {
+                            Match(TokenType.Colon, "Expected ':' after parameter name.");
+                            paramType = ParseTypeAnnotation();
+                        }
+
+                        parameters.Add(new FunctionParameter(paramName.Text, paramType, paramName.Span, isMut));
+                    } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                }
+                Match(TokenType.CloseParen, "Expected ')' after parameters.");
+
+                string? returnType = null;
+                if (Check(TokenType.Colon))
+                {
+                    Advance();
+                    returnType = ParseTypeAnnotation();
+                }
+
+                Match(TokenType.Semicolon, "Expected ';' after trait method declaration.");
+                methods.Add(new TraitMethodDeclaration(methodName.Text, parameters, returnType, fnKeyword.Span));
+            }
+            else
+            {
+                _diagnostics.ReportError($"Unexpected token '{Current.Text}' in trait declaration.", Current.Span);
+                Advance();
+            }
+        }
+
+        Match(TokenType.CloseBrace, "Expected '}' to close 'trait' body.");
+        return new TraitDeclaration(nameToken.Text, methods, traitKeyword.Span);
     }
 }

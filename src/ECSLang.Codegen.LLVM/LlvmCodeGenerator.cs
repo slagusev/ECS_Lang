@@ -136,6 +136,10 @@ public sealed partial class LlvmCodeGenerator
         var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
         var getcharFunc = module.AddFunction("getchar", getcharType);
 
+        // int _getch()
+        var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+        var getchFunc = module.AddFunction("_getch", getchType);
+
         // void* memcpy(void* dest, const void* src, size_t count)
         var memcpyType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i8PtrType, context.Int64Type }, false);
         var memcpyFunc = module.AddFunction("memcpy", memcpyType);
@@ -248,21 +252,44 @@ public sealed partial class LlvmCodeGenerator
         ecsEmitter.EmitMultiArchetypeRuntime(dataLayout, reallocType, reallocFunc, memcpyType, memcpyFunc, memsetType, memsetFunc, mallocType, mallocFunc, freeType, freeFunc);
         ecsEmitter.EmitProfilerRuntime(dataLayout);
 
+        var allDeclarations = program.Declarations
+            .Concat(_typeChecker.MonomorphizedDeclarations)
+            .ToList();
+
         // Forward-declare regular functions and impl methods so any function or system can call them
-        foreach (var decl in program.Declarations)
+        foreach (var decl in allDeclarations)
         {
             if (decl is FunctionDeclaration fnDecl)
             {
-                var returnType = MapType(context, fnDecl.ReturnType, ecsEmitter);
-                var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName, ecsEmitter)).ToArray();
-                var funcType = LLVMTypeRef.CreateFunction(returnType, paramTypes, false);
-                module.AddFunction(fnDecl.Name, funcType);
+                if (fnDecl.TypeParameters != null && fnDecl.TypeParameters.Count > 0)
+                    continue;
+
+                string fnName = fnDecl.Name;
+                if (module.GetNamedFunction(fnName).Handle == IntPtr.Zero)
+                {
+                    var returnType = MapType(context, fnDecl.ReturnType, ecsEmitter);
+                    var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName, ecsEmitter)).ToArray();
+                    var funcType = LLVMTypeRef.CreateFunction(returnType, paramTypes, false);
+                    module.AddFunction(fnName, funcType);
+                    var cleanName = TypeSymbol.ToMonomorphizedIdentifier(fnName);
+                    if (cleanName != fnName && module.GetNamedFunction(cleanName).Handle == IntPtr.Zero)
+                    {
+                        module.AddFunction(cleanName, funcType);
+                    }
+                }
             }
             else if (decl is ImplDeclaration impl)
             {
+                if (impl.TypeParameters != null && impl.TypeParameters.Count > 0)
+                    continue;
+
                 foreach (var method in impl.Methods)
                 {
                     var mangledName = $"{impl.StructName}_{method.Name}";
+                    var cleanMangledName = $"{TypeSymbol.ToMonomorphizedIdentifier(impl.StructName)}_{method.Name}";
+                    if (module.GetNamedFunction(cleanMangledName).Handle != IntPtr.Zero)
+                        continue;
+
                     var returnType = MapType(context, method.ReturnType, ecsEmitter);
                     var paramTypes = new List<LLVMTypeRef>();
                     for (int i = 0; i < method.Parameters.Count; i++)
@@ -279,22 +306,33 @@ public sealed partial class LlvmCodeGenerator
                         }
                     }
                     var funcType = LLVMTypeRef.CreateFunction(returnType, paramTypes.ToArray(), false);
-                    module.AddFunction(mangledName, funcType);
+                    module.AddFunction(cleanMangledName, funcType);
+                    if (mangledName != cleanMangledName && module.GetNamedFunction(mangledName).Handle == IntPtr.Zero)
+                    {
+                        module.AddFunction(mangledName, funcType);
+                    }
                 }
             }
         }
 
         // Compile ECS Systems
-        foreach (var decl in program.Declarations)
+        var compiledSystems = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var decl in allDeclarations)
         {
             if (decl is SystemDeclaration sys)
             {
-                CompileSystem(context, module, builder, sys, ecsEmitter, putsType, putsFunc, printfType, printfFunc);
+                if (sys.TypeParameters != null && sys.TypeParameters.Count > 0)
+                    continue;
+
+                if (compiledSystems.Add(sys.Name))
+                {
+                    CompileSystem(context, module, builder, sys, ecsEmitter, putsType, putsFunc, printfType, printfFunc);
+                }
             }
         }
 
         // Compile ECS Pipelines
-        foreach (var decl in program.Declarations)
+        foreach (var decl in allDeclarations)
         {
             if (decl is PipelineDeclaration pipe)
             {
@@ -303,17 +341,31 @@ public sealed partial class LlvmCodeGenerator
         }
 
         // Compile regular functions
-        foreach (var decl in program.Declarations)
+        var compiledFunctions = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var decl in allDeclarations)
         {
             if (decl is FunctionDeclaration fnDecl)
             {
-                CompileFunction(context, module, builder, fnDecl, ecsEmitter, putsType, putsFunc, printfType, printfFunc);
+                if (fnDecl.TypeParameters != null && fnDecl.TypeParameters.Count > 0)
+                    continue;
+
+                if (compiledFunctions.Add(fnDecl.Name))
+                {
+                    CompileFunction(context, module, builder, fnDecl, ecsEmitter, putsType, putsFunc, printfType, printfFunc);
+                }
             }
             else if (decl is ImplDeclaration impl)
             {
+                if (impl.TypeParameters != null && impl.TypeParameters.Count > 0)
+                    continue;
+
                 foreach (var method in impl.Methods)
                 {
-                    CompileMethod(context, module, builder, impl.StructName, method, ecsEmitter, putsType, putsFunc, printfType, printfFunc);
+                    var cleanMangledName = $"{TypeSymbol.ToMonomorphizedIdentifier(impl.StructName)}_{method.Name}";
+                    if (compiledFunctions.Add(cleanMangledName))
+                    {
+                        CompileMethod(context, module, builder, impl.StructName, method, ecsEmitter, putsType, putsFunc, printfType, printfFunc);
+                    }
                 }
             }
         }
@@ -390,6 +442,10 @@ public sealed partial class LlvmCodeGenerator
         var returnType = MapType(context, fnDecl.ReturnType, ecs);
         var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName, ecs)).ToArray();
         var function = module.GetNamedFunction(fnDecl.Name);
+        if (function.Handle == IntPtr.Zero)
+        {
+            function = module.GetNamedFunction(TypeSymbol.ToMonomorphizedIdentifier(fnDecl.Name));
+        }
 
         if (_diBuilder.HasValue)
         {
@@ -441,11 +497,11 @@ public sealed partial class LlvmCodeGenerator
         {
             if (isMain && !hasWaitKey && !_options.NoWaitOnExit && !_options.IsRelease)
             {
-                var msg = builder.BuildGlobalStringPtr("Press Enter to exit...", "prompt_exit");
+                var msg = builder.BuildGlobalStringPtr("Press any key to exit...", "prompt_exit");
                 builder.BuildCall2(putsType, putsFunc, new[] { msg }, "puts_exit");
-                var getcharFunc = module.GetNamedFunction("getchar");
-                var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
-                builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
+                var getchFunc = module.GetNamedFunction("_getch");
+                var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                builder.BuildCall2(getchType, getchFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
             }
             if (returnType == context.VoidType)
                 builder.BuildRetVoid();
@@ -472,6 +528,11 @@ public sealed partial class LlvmCodeGenerator
         builder.CurrentDebugLocation = default;
         var mangledName = $"{structName}_{methodDecl.Name}";
         var function = module.GetNamedFunction(mangledName);
+        if (function.Handle == IntPtr.Zero)
+        {
+            mangledName = $"{TypeSymbol.ToMonomorphizedIdentifier(structName)}_{methodDecl.Name}";
+            function = module.GetNamedFunction(mangledName);
+        }
         var returnType = MapType(context, methodDecl.ReturnType, ecs);
 
         var entryBlock = function.AppendBasicBlock("entry");

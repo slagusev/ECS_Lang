@@ -38,7 +38,12 @@ public sealed partial class TypeChecker
 
     private void CheckImpl(ImplDeclaration impl)
     {
-        if (!_structs.ContainsKey(impl.StructName) && !_components.ContainsKey(impl.StructName))
+        if (impl.TraitName != null)
+        {
+            VerifyTraitImplementation(impl);
+        }
+
+        if (!_structs.ContainsKey(impl.StructName) && !_components.ContainsKey(impl.StructName) && !_genericStructs.ContainsKey(impl.StructName) && !_genericComponents.ContainsKey(impl.StructName))
         {
             _diagnostics.ReportError($"Cannot implement methods for unknown struct or component '{impl.StructName}'.", impl.Span);
         }
@@ -173,7 +178,8 @@ public sealed partial class TypeChecker
 
         foreach (var p in sys.QueryParams)
         {
-            bool isComp = _components.ContainsKey(p.TypeName);
+            var pType = EnsureMonomorphizedType(p.TypeName, p.Span);
+            bool isComp = _components.ContainsKey(p.TypeName) || _components.ContainsKey(pType.Name) || _components.ContainsKey(TypeSymbol.ToMonomorphizedIdentifier(p.TypeName));
             bool isRes = _resources.ContainsKey(p.TypeName);
             bool isEntity = p.TypeName == "Entity";
             bool isCommands = p.TypeName == "Commands";
@@ -297,7 +303,12 @@ public sealed partial class TypeChecker
             {
                 if (action is SystemCallAction call)
                 {
-                    if (!_systems.ContainsKey(call.SystemName))
+                    if (call.SystemName.Contains("<"))
+                    {
+                        EnsureMonomorphizedSystem(call.SystemName, null, call.Span);
+                    }
+
+                    if (!_systems.ContainsKey(call.SystemName) && !_systems.ContainsKey(TypeSymbol.ToMonomorphizedIdentifier(call.SystemName)))
                     {
                         _diagnostics.ReportError($"Undefined system '{call.SystemName}' in stage '{stage.Name}'.", call.Span);
                     }
@@ -307,7 +318,12 @@ public sealed partial class TypeChecker
                     var resolvedSystems = new List<SystemSymbol>();
                     foreach (var sCall in par.Systems)
                     {
-                        if (!_systems.TryGetValue(sCall.SystemName, out var sSym))
+                        if (sCall.SystemName.Contains("<"))
+                        {
+                            EnsureMonomorphizedSystem(sCall.SystemName, null, sCall.Span);
+                        }
+
+                        if (!_systems.TryGetValue(sCall.SystemName, out var sSym) && !_systems.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(sCall.SystemName), out sSym))
                         {
                             _diagnostics.ReportError($"Undefined system '{sCall.SystemName}' in parallel stage.", sCall.Span);
                         }
@@ -344,7 +360,7 @@ public sealed partial class TypeChecker
 
         foreach (var param in fn.Parameters)
         {
-            var paramType = TypeSymbol.FromName(param.TypeName);
+            var paramType = EnsureMonomorphizedType(param.TypeName, param.Span);
             var varSym = new VariableSymbol(param.Name, paramType, IsMutable: param.IsMutable, param.Span);
             if (!_currentScope.TryDeclare(varSym))
             {
@@ -353,7 +369,7 @@ public sealed partial class TypeChecker
         }
 
         var oldRet = _currentExpectedReturnType;
-        _currentExpectedReturnType = fn.ReturnType != null ? TypeSymbol.FromName(fn.ReturnType) : TypeSymbol.Void;
+        _currentExpectedReturnType = fn.ReturnType != null ? EnsureMonomorphizedType(fn.ReturnType, fn.Span) : TypeSymbol.Void;
 
         CheckBlock(fn.Body);
 

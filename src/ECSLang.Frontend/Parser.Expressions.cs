@@ -233,53 +233,23 @@ public sealed partial class Parser
             Advance();
             string identName = token.Text;
 
-            if ((identName == "Vec" || identName == "List") && Check(TokenType.Less))
+            if (Check(TokenType.Less) && IsGenericInstantiationLookahead())
             {
                 Advance(); // <
-                var elemType = ParseTypeAnnotation();
-                Match(TokenType.Greater, "Expected '>' to close generic type.");
-                Match(TokenType.OpenParen, "Expected '(' after generic type.");
-                var genArgs = new List<ExpressionNode>();
-                if (!Check(TokenType.CloseParen))
+                var typeArgs = new List<string>();
+                do
                 {
-                    do
-                    {
-                        genArgs.Add(ParseExpression());
-                    } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
-                }
-                Match(TokenType.CloseParen, "Expected ')' after constructor argument list.");
-                return new CallExpression($"Vec<{elemType}>", genArgs, token.Span);
-            }
+                    typeArgs.Add(ParseTypeAnnotation());
+                } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                Match(TokenType.Greater, "Expected '>' to close generic type arguments.");
 
-            if ((identName == "HashMap" || identName == "Map") && Check(TokenType.Less))
-            {
-                Advance(); // <
-                var keyType = ParseTypeAnnotation();
-                Match(TokenType.Comma, "Expected ',' between Map key and value types.");
-                var valType = ParseTypeAnnotation();
-                Match(TokenType.Greater, "Expected '>' to close generic type.");
-                Match(TokenType.OpenParen, "Expected '(' after generic type.");
-                var genArgs = new List<ExpressionNode>();
-                if (!Check(TokenType.CloseParen))
-                {
-                    do
-                    {
-                        genArgs.Add(ParseExpression());
-                    } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
-                }
-                Match(TokenType.CloseParen, "Expected ')' after constructor argument list.");
-                return new CallExpression($"Map<{keyType}, {valType}>", genArgs, token.Span);
-            }
+                string genTypeName = $"{identName}<{string.Join(", ", typeArgs)}>";
 
-            if (identName == "Option" && Check(TokenType.Less))
-            {
-                Advance(); // <
-                var innerType = ParseTypeAnnotation();
-                Match(TokenType.Greater, "Expected '>' to close Option generic type.");
                 if (Check(TokenType.ColonColon))
                 {
                     Advance(); // ::
-                    var variantTok = Match(TokenType.Identifier, "Expected variant name after '::'.");
+                    var variantTok = Match(TokenType.Identifier, "Expected identifier after '::'.");
+                    string qualified = $"{genTypeName}::{variantTok.Text}";
                     if (Check(TokenType.OpenParen))
                     {
                         Advance(); // (
@@ -292,39 +262,27 @@ public sealed partial class Parser
                             } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
                         }
                         Match(TokenType.CloseParen, "Expected ')' after argument list.");
-                        return new CallExpression($"Option<{innerType}>::{variantTok.Text}", genArgs, token.Span);
+                        return new CallExpression(qualified, genArgs, token.Span);
                     }
-                    return new IdentifierExpression($"Option<{innerType}>::{variantTok.Text}", token.Span);
+                    return new IdentifierExpression(qualified, token.Span);
                 }
-            }
 
-            if (identName == "Result" && Check(TokenType.Less))
-            {
-                Advance(); // <
-                var okType = ParseTypeAnnotation();
-                Match(TokenType.Comma, "Expected ',' between Result Ok and Err types.");
-                var errType = ParseTypeAnnotation();
-                Match(TokenType.Greater, "Expected '>' to close Result generic type.");
-                if (Check(TokenType.ColonColon))
+                if (Check(TokenType.OpenParen))
                 {
-                    Advance(); // ::
-                    var variantTok = Match(TokenType.Identifier, "Expected variant name after '::'.");
-                    if (Check(TokenType.OpenParen))
+                    Advance(); // (
+                    var genArgs = new List<ExpressionNode>();
+                    if (!Check(TokenType.CloseParen))
                     {
-                        Advance(); // (
-                        var genArgs = new List<ExpressionNode>();
-                        if (!Check(TokenType.CloseParen))
+                        do
                         {
-                            do
-                            {
-                                genArgs.Add(ParseExpression());
-                            } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
-                        }
-                        Match(TokenType.CloseParen, "Expected ')' after argument list.");
-                        return new CallExpression($"Result<{okType}, {errType}>::{variantTok.Text}", genArgs, token.Span);
+                            genArgs.Add(ParseExpression());
+                        } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
                     }
-                    return new IdentifierExpression($"Result<{okType}, {errType}>::{variantTok.Text}", token.Span);
+                    Match(TokenType.CloseParen, "Expected ')' after argument list.");
+                    return new CallExpression(genTypeName, genArgs, token.Span);
                 }
+
+                return new IdentifierExpression(genTypeName, token.Span);
             }
 
             while (Check(TokenType.ColonColon))
@@ -440,4 +398,47 @@ public sealed partial class Parser
         TokenType.PipePipe => BinaryOperator.LogicalOr,
         _ => throw new ArgumentOutOfRangeException(nameof(type), $"Unexpected binary token {type}")
     };
+
+    private bool IsGenericInstantiationLookahead()
+    {
+        if (!Check(TokenType.Less))
+            return false;
+
+        int offset = 1;
+        int depth = 1;
+
+        while (true)
+        {
+            var tok = Peek(offset);
+            if (tok.Type == TokenType.EndOfFile || tok.Type == TokenType.Semicolon)
+                return false;
+
+            if (tok.Type == TokenType.Less)
+            {
+                depth++;
+            }
+            else if (tok.Type == TokenType.Greater)
+            {
+                depth--;
+                if (depth == 0)
+                {
+                    var nextTok = Peek(offset + 1);
+                    return nextTok.Type == TokenType.OpenParen || 
+                           nextTok.Type == TokenType.ColonColon ||
+                           nextTok.Type == TokenType.OpenBrace;
+                }
+            }
+            else if (tok.Type != TokenType.Identifier &&
+                     tok.Type != TokenType.Comma &&
+                     tok.Type != TokenType.OpenBracket &&
+                     tok.Type != TokenType.CloseBracket &&
+                     tok.Type != TokenType.Colon &&
+                     tok.Type != TokenType.Arrow)
+            {
+                return false;
+            }
+
+            offset++;
+        }
+    }
 }
