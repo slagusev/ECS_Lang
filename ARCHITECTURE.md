@@ -44,12 +44,12 @@
 
 | Проект | Пространство имен | Назначение |
 |---|---|---|
-| **`ECSLang.Core`** | `ECSLang.Core.*` | Базовые абстракции, модели токенов, узлы AST (`AstNodes.cs`), структуры диагностик ошибок и исходных интервалов (`SourceSpan`). |
+| **`ECSLang.Core`** | `ECSLang.Core.*` | Базовые абстракции, модели токенов, узлы AST (`AstNodes.cs`), структуры диагностик ошибок и исходных интервалов (`SourceSpan`), абстракция целевой платформы (`TargetPlatform.cs`). |
 | **`ECSLang.Frontend`** | `ECSLang.Frontend` | Лексический анализатор (`Lexer.cs`), модульный парсер рекурсивного спуска (`Parser.cs`, `Parser.Declarations.cs`, `Parser.Statements.cs`, `Parser.Expressions.cs`). Преобразует исходный текст `.ecs` в AST. |
 | **`ECSLang.Semantics`** | `ECSLang.Semantics` | Таблицы символов (`SymbolTable`), система типов (`TypeSymbol`), модульная проверка семантики (`TypeChecker.cs`, `TypeChecker.Declarations.cs`, `TypeChecker.Statements.cs`, `TypeChecker.Expressions.cs`). |
 | **`ECSLang.Codegen.LLVM`** | `ECSLang.Codegen.LLVM` | Модульный генератор LLVM IR (`LlvmCodeGenerator.cs`, `.Expressions.cs`, `.Statements.cs`, `.Ecs.cs`, `.Raylib.cs`) и эмиттер низкоуровневого рантайма SoA-архетипов (`EcsRuntimeEmitter.cs`, `.Archetypes.cs`, `.Profiler.cs`). Работает через `LLVMSharp 20.1.2`. |
-| **`ECSLang.Toolchain`** | `ECSLang.Toolchain` | Интеграция с хост-инструментами: автопоиск MSVC `link.exe` и Windows SDK через `vswhere.exe`, генерация `.obj` и сборка финального `.exe`. |
-| **`ECSLang.CLI`** | `ECSLang.CLI` | Точка входа командной строки: аргументы `build`, `run`, флаги `--emit-llvm`, `--emit-ir`, вывод диагностик компиляции. |
+| **`ECSLang.Toolchain`** | `ECSLang.Toolchain` | Инфраструктура компоновщиков: кроссплатформенный интерфейс `ILinker`, реализации `MsvcLinker` (Windows MSVC SDK), `ClangGccLinker` (Linux, macOS, Clang/GCC/LLD) и фабрика `LinkerFactory`. |
+| **`ECSLang.CLI`** | `ECSLang.CLI` | Точка входа командной строки: аргументы `build`, `run`, флаги кросс-таргетинга `--target`, `--os`, компиляции объекта `-c, --emit-obj`, IR `--emit-ir`, уровни оптимизации `-O0`..`-O3`. |
 
 ---
 
@@ -893,11 +893,52 @@ flowchart TD
 
 ---
 
-## 25. Правила поддержания архитектурной чистоты
+## 25. Кроссплатформенная архитектура компилятора и тулчейна
+
+Начиная с Этапа 31, компилятор ECSLang полностью отвязан от специфики единственной ОС и поддерживает полноценную сборку и кросс-компиляцию под Windows, Linux и macOS.
+
+### 25.1. Модель целевых платформ (`TargetPlatform.cs`)
+В ядре `ECSLang.Core` введены понятия:
+- `PlatformKind`: `Windows`, `Linux`, `MacOS`.
+- `CpuArchitecture`: `X64`, `Arm64`, `X86`, `Arm`.
+- `TargetProfile`: инкапсулирует целевую тройку LLVM (`Triple`), расширения объектных файлов (`.obj` / `.o`) и исполняемых файлов (`.exe` / без расширения), а также вспомогательные свойства (`IsWindows`, `IsLinux`, `IsMacOS`, `IsArm64`, `IsX64`).
+- Пресеты: `WindowsX64` (`x86_64-pc-windows-msvc`), `WindowsArm64` (`aarch64-pc-windows-msvc`), `LinuxX64` (`x86_64-unknown-linux-gnu`), `LinuxArm64` (`aarch64-unknown-linux-gnu`), `MacosArm64` (`arm64-apple-darwin`), `MacosX64` (`x86_64-apple-darwin`), а также автодетект хоста `HostDefault`.
+
+### 25.2. Абстракция компоновщика (`ILinker`, `LinkerFactory`)
+Подсистема линковки вынесена в интерфейс:
+```csharp
+public interface ILinker
+{
+    bool Link(string objFilePath, string outputExePath, CompilerOptions? options = null);
+}
+```
+1. **`MsvcLinker`**: используется для сборки под Windows при наличии MSVC тулчейна (находит `link.exe`, `ucrt.lib`, `kernel32.lib` через `vswhere`).
+2. **`ClangGccLinker`**: кроссплатформенный компоновщик на базе `clang`, `gcc` или `lld`. Автоматически передает флаги целевой платформы:
+   - Linux: `-lm -lpthread -ldl -lrt`, `-Wl,--gc-sections`.
+   - macOS: `-lm -lpthread`, `-Wl,-dead_strip`, системные фреймворки Cocoa, OpenGL, IOKit, CoreVideo.
+   - Передает `--target=<triple>` в `clang`.
+   - **Грациозный кросс-компиляционный фоллбэк**: если на хосте отсутствует кросс-компилятор для целевой архитектуры, объектный файл `.o` сохраняется в директорию сборки, а пользователю выводится готовая инструкция по линковке на целевой системе.
+
+### 25.3. Кроссплатформенная генерация LLVM IR
+1. **Целевая тройка и DataLayout**: `LlvmCodeGenerator` конфигурирует модуль с точным DataLayout и Target Triple для выбранного таргета (ELF на Linux, Mach-O на Darwin, COFF на Windows).
+2. **Отладочная информация**:
+   - На Windows генерируется CodeView (`"CodeView", 1`, `"Debug Info Version", 3`).
+   - На Linux и macOS генерируется DWARF (`"Dwarf Version", 4`, `"Debug Info Version", 3`).
+3. **Кроссплатформенная синхронизация архетипов**:
+   - На Windows используются Win32 SRW-блокировки (`AcquireSRWLockExclusive`/`ReleaseSRWLockExclusive`).
+   - На POSIX-системах и в кросс-режиме генерируется переносимый спинлок на атомарных инструкциях LLVM: `cmpxchg` (acquire-monotonic) для захвата и `atomicrmw sub` (release) для освобождения.
+4. **Консольный ввод**:
+   - На Windows используется `_getch` из MSVCRT.
+   - На POSIX-системах используется стандартный `getchar`.
+
+---
+
+## 26. Правила поддержания архитектурной чистоты
 
 При добавлении новых функций в язык следует соблюдать правила:
 1. **Изоляция состояния**: не добавлять глобальных статических переменных в сгенерированный LLVM-код. Любое новое состояние должно принадлежать контексту `World` либо локальному стеку.
 2. **Zero-overhead loop bodies**: циклы запросов систем (`query(...)`) не должны содержать ветвлений по типам компонентов или поисков в рантайме. Все смещения колонок должны разрешаться до входа во внутренний цикл по сущностям.
 3. **Чистота AST**: семантическая проверка не должна зависеть от генератора кода. AST и таблицы символов должны быть полностью самодостаточными.
-4. **Актуализация документации**: при изменении структуры рантайма или добавлении новых узлов AST данный документ и `REFERENCE.md` должны обновляться одновременно с реализацией.
+4. **Кроссплатформенность по умолчанию**: не завязывать генерируемый рантайм на Win32 API напрямую без кроссплатформенной альтернативы (POSIX/LLVM primitives).
+5. **Актуализация документации**: при изменении структуры рантайма или добавлении новых узлов AST данный документ и `REFERENCE.md` должны обновляться одновременно с реализацией.
 

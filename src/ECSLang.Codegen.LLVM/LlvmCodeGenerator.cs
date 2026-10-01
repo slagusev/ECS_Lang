@@ -51,7 +51,7 @@ public sealed partial class LlvmCodeGenerator
         using var module = context.CreateModuleWithName("ecs_module");
         using var builder = context.CreateBuilder();
 
-        string targetTriple = "x86_64-pc-windows-msvc";
+        string targetTriple = _options.Target.Triple;
         if (!LLVMTargetRef.TryGetTargetFromTriple(targetTriple, out var target, out var errorMessage))
         {
             _diagnostics.ReportError($"Failed to get LLVM target for '{targetTriple}': {errorMessage}", SourceSpan.None);
@@ -86,10 +86,17 @@ public sealed partial class LlvmCodeGenerator
         _mapEmitter = new HashMapEmitter(context, module, _dataLayout);
         _arenaEmitter = new StringArenaEmitter(context, module);
 
-        // Debug Info Setup (CodeView / PDB on Windows)
+        // Debug Info Setup (CodeView on Windows, DWARF on Linux/macOS)
         if (_options.GenerateDebugInfo)
         {
-            module.AddModuleFlag("CodeView", LLVMModuleFlagBehavior.LLVMModuleFlagBehaviorWarning, 1);
+            if (_options.Target.IsWindows)
+            {
+                module.AddModuleFlag("CodeView", LLVMModuleFlagBehavior.LLVMModuleFlagBehaviorWarning, 1);
+            }
+            else
+            {
+                module.AddModuleFlag("Dwarf Version", LLVMModuleFlagBehavior.LLVMModuleFlagBehaviorWarning, 4);
+            }
             module.AddModuleFlag("Debug Info Version", LLVMModuleFlagBehavior.LLVMModuleFlagBehaviorWarning, 3);
 
             var diBuilder = module.CreateDIBuilder();
@@ -136,9 +143,12 @@ public sealed partial class LlvmCodeGenerator
         var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
         var getcharFunc = module.AddFunction("getchar", getcharType);
 
-        // int _getch()
-        var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
-        var getchFunc = module.AddFunction("_getch", getchType);
+        if (_options.Target.IsWindows)
+        {
+            // int _getch()
+            var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+            module.AddFunction("_getch", getchType);
+        }
 
         // void* memcpy(void* dest, const void* src, size_t count)
         var memcpyType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i8PtrType, context.Int64Type }, false);
@@ -245,7 +255,7 @@ public sealed partial class LlvmCodeGenerator
         }
 
         // Initialize ECS Multi-Archetype Runtime declarations
-        var ecsEmitter = new EcsRuntimeEmitter(context, module, builder, _typeChecker, _diagnostics);
+        var ecsEmitter = new EcsRuntimeEmitter(context, module, builder, _typeChecker, _diagnostics, _options);
         ecsEmitter.EmitEcsDeclarations(dataLayout);
 
         // Emit Multi-Archetype Runtime (spawn, add, remove, has, setters, sort)
@@ -499,9 +509,18 @@ public sealed partial class LlvmCodeGenerator
             {
                 var msg = builder.BuildGlobalStringPtr("Press any key to exit...", "prompt_exit");
                 builder.BuildCall2(putsType, putsFunc, new[] { msg }, "puts_exit");
-                var getchFunc = module.GetNamedFunction("_getch");
-                var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
-                builder.BuildCall2(getchType, getchFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
+                if (_options.Target.IsWindows)
+                {
+                    var getchFunc = module.GetNamedFunction("_getch");
+                    var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                    builder.BuildCall2(getchType, getchFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
+                }
+                else
+                {
+                    var getcharFunc = module.GetNamedFunction("getchar");
+                    var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                    builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
+                }
             }
             if (returnType == context.VoidType)
                 builder.BuildRetVoid();

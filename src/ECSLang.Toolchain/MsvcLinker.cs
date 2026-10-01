@@ -3,7 +3,7 @@ using ECSLang.Core;
 
 namespace ECSLang.Toolchain;
 
-public sealed class MsvcLinker
+public sealed class MsvcLinker : ILinker
 {
     private readonly DiagnosticsBag _diagnostics;
 

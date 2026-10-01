@@ -14,6 +14,7 @@ public sealed partial class EcsRuntimeEmitter
     private readonly LLVMBuilderRef _builder;
     private readonly TypeChecker _typeChecker;
     private readonly DiagnosticsBag _diagnostics;
+    private readonly CompilerOptions _options;
 
     private readonly Dictionary<string, LLVMTypeRef> _compStructTypes = new(StringComparer.Ordinal);
     private readonly Dictionary<string, int> _compIds = new(StringComparer.Ordinal);
@@ -40,13 +41,15 @@ public sealed partial class EcsRuntimeEmitter
         LLVMModuleRef module,
         LLVMBuilderRef builder,
         TypeChecker typeChecker,
-        DiagnosticsBag diagnostics)
+        DiagnosticsBag diagnostics,
+        CompilerOptions? options = null)
     {
         _context = context;
         _module = module;
         _builder = builder;
         _typeChecker = typeChecker;
         _diagnostics = diagnostics;
+        _options = options ?? new CompilerOptions();
     }
 
     public LLVMTypeRef GetComponentStructType(string compName) =>

@@ -271,9 +271,18 @@ public sealed partial class LlvmCodeGenerator
                     {
                         var msg = builder.BuildGlobalStringPtr("Press any key to exit...", "prompt_exit");
                         builder.BuildCall2(putsType, putsFunc, new[] { msg }, "puts_exit");
-                        var getchFunc = module.GetNamedFunction("_getch");
-                        var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
-                        builder.BuildCall2(getchType, getchFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
+                        if (_options.Target.IsWindows)
+                        {
+                            var getchFunc = module.GetNamedFunction("_getch");
+                            var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                            builder.BuildCall2(getchType, getchFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
+                        }
+                        else
+                        {
+                            var getcharFunc = module.GetNamedFunction("getchar");
+                            var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
+                            builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
+                        }
                     }
                     if (retStmt.Value != null)
                     {

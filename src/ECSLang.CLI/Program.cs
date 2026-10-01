@@ -47,17 +47,33 @@ public static class Program
 
         string baseName = Path.GetFileNameWithoutExtension(inputPath);
         string outputDir = Path.GetDirectoryName(inputPath) ?? Directory.GetCurrentDirectory();
-        string outputExe = Path.Combine(outputDir, $"{baseName}.exe");
+        string? customOutputExe = null;
         string? emitIrPath = null;
         var options = new CompilerOptions();
         bool explicitWait = false;
+        bool emitObjOnly = false;
 
         for (int i = 2; i < args.Length; i++)
         {
             string arg = args[i];
             if (arg == "-o" && i + 1 < args.Length)
             {
-                outputExe = Path.GetFullPath(args[++i]);
+                customOutputExe = Path.GetFullPath(args[++i]);
+            }
+            else if (arg is "--target" or "-t" && i + 1 < args.Length)
+            {
+                options.Target = TargetProfile.Parse(args[++i]);
+            }
+            else if (arg == "--os" && i + 1 < args.Length)
+            {
+                string osStr = args[++i].ToLowerInvariant();
+                if (osStr is "win" or "windows") options.Target = TargetProfile.WindowsX64;
+                else if (osStr is "linux") options.Target = TargetProfile.LinuxX64;
+                else if (osStr is "macos" or "darwin" or "osx") options.Target = TargetProfile.MacosArm64;
+            }
+            else if (arg is "-c" or "--emit-obj")
+            {
+                emitObjOnly = true;
             }
             else if (arg is "--emit-ir" or "--emit-llvm")
             {
@@ -90,6 +106,8 @@ public static class Program
             }
         }
 
+        string outputExe = customOutputExe ?? Path.Combine(outputDir, $"{baseName}{options.Target.ExecutableExtension}");
+
         // When running via 'ecs run', do not block waiting for Enter unless explicitly requested
         if (command == "run" && !explicitWait)
         {
@@ -98,7 +116,7 @@ public static class Program
 
         var diagnostics = new DiagnosticsBag();
 
-        string modeTag = options.IsRelease ? "Release, -O3" : $"{options.OptimizationLevel}";
+        string modeTag = $"{options.Target.Triple}, " + (options.IsRelease ? "Release, -O3" : $"{options.OptimizationLevel}");
         if (options.GenerateDebugInfo) modeTag += ", DebugInfo";
 
         Console.ForegroundColor = ConsoleColor.Cyan;
@@ -120,7 +138,10 @@ public static class Program
         }
 
         // 4. LLVM Codegen
-        string tempObj = Path.Combine(Path.GetTempPath(), $"{baseName}_{Guid.NewGuid():N}.obj");
+        string finalObj = customOutputExe != null && emitObjOnly
+            ? customOutputExe
+            : Path.Combine(outputDir, $"{baseName}{options.Target.ObjectExtension}");
+        string tempObj = emitObjOnly ? finalObj : Path.Combine(Path.GetTempPath(), $"{baseName}_{Guid.NewGuid():N}{options.Target.ObjectExtension}");
         var codegen = new LlvmCodeGenerator(diagnostics);
         bool codegenSuccess = codegen.Compile(programAst, tempObj, emitIrPath, options);
         if (!codegenSuccess || diagnostics.HasErrors)
@@ -134,13 +155,21 @@ public static class Program
             Console.WriteLine($"[ECS-Lang] Emitted LLVM IR to {emitIrPath}");
         }
 
+        if (emitObjOnly)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"[ECS-Lang] Successfully compiled object file to {finalObj}");
+            Console.ResetColor();
+            return 0;
+        }
+
         // 5. Linker
         var outDir = Path.GetDirectoryName(Path.GetFullPath(outputExe));
         if (!string.IsNullOrEmpty(outDir) && !Directory.Exists(outDir))
         {
             Directory.CreateDirectory(outDir);
         }
-        var linker = new MsvcLinker(diagnostics);
+        var linker = LinkerFactory.Create(options.Target, diagnostics);
         bool linkSuccess = linker.Link(tempObj, outputExe, options);
 
         // Cleanup temp obj file
@@ -192,13 +221,15 @@ public static class Program
         Console.WriteLine("  ecs run   <file.ecs> [options]");
         Console.WriteLine();
         Console.WriteLine("Options:");
-        Console.WriteLine("  -o <path>       Specify output executable path");
+        Console.WriteLine("  --target, -t    Specify target triple (e.g. x86_64-unknown-linux-gnu, arm64-apple-darwin)");
+        Console.WriteLine("  --os <platform> Target operating system (win, linux, macos)");
         Console.WriteLine("  --release, -r   Build in Release mode (-O3, linker optimizations, no wait-key)");
         Console.WriteLine("  -O0 .. -O3      LLVM optimization level (default: -O0)");
         Console.WriteLine("  -Os, -Oz        Optimize for code size");
         Console.WriteLine("  -g, --debug     Generate debug information (CodeView PDB / DWARF)");
         Console.WriteLine("  --no-wait       Do not wait for Enter key on exit");
         Console.WriteLine("  --wait-key      Wait for Enter key before exiting console");
+        Console.WriteLine("  -c, --emit-obj  Emit object file (.obj / .o) without linking");
         Console.WriteLine("  --emit-ir       Emit LLVM IR (.ll) file");
     }
 }

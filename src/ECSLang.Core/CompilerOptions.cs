@@ -16,6 +16,7 @@ public sealed class CompilerOptions
     public bool IsRelease { get; set; } = false;
     public bool GenerateDebugInfo { get; set; } = false;
     public bool NoWaitOnExit { get; set; } = false;
+    public TargetProfile Target { get; set; } = TargetProfile.HostDefault;
 
     public string GetPassPipelineString() => OptimizationLevel switch
     {

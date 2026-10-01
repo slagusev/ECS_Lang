@@ -478,10 +478,29 @@ fn main(): i32 {
   - Поддержка явного вызова `wait_key()`, а также автоматической паузы перед выходом из `main` при отсутствии интерактивных Raylib-окон.
 - [x] Сквозной тест обобщений и трейтов: [`examples/generics_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/generics_test.ecs), успешно пройден с кодом возврата 0.
 
-### [ ] Этап 31: Кроссплатформенность компилятора и тулчейна (Linux, macOS, Windows)
-- [ ] Целевые тройки LLVM: `x86_64-unknown-linux-gnu`, `x86_64-apple-darwin`, `aarch64-apple-darwin`, `x86_64-pc-windows-msvc`.
-- [ ] Кроссплатформенная абстракция компоновщика (`MsvcLinker`, `LldLinker`, `ClangLinker`, `GccLinker`).
-- [ ] Кроссплатформенный ThreadPool и рантайм Raylib / libc.
+### [x] Этап 31: Кроссплатформенность компилятора и тулчейна (Linux, macOS, Windows)
+- [x] Модель целевых платформ в `ECSLang.Core/TargetPlatform.cs`:
+  - Перечисления `PlatformKind` (`Windows`, `Linux`, `MacOS`) и `CpuArchitecture` (`X64`, `Arm64`, `X86`, `Arm`).
+  - Класс `TargetProfile` с тройками LLVM (Target Triples), расширениями файлов исполняемых модулей (`.exe` vs пустое) и объектных файлов (`.obj` vs `.o`), предопределенными профилями (`WindowsX64`, `WindowsArm64`, `LinuxX64`, `LinuxArm64`, `MacosArm64`, `MacosX64`) и автоопределением хост-платформы `TargetProfile.HostDefault`.
+  - Парсинг троек и алиасов `--target <triple>` и `--os <platform>` (`win`, `linux`, `macos`).
+- [x] Архитектура компоновщиков в `ECSLang.Toolchain`:
+  - Интерфейс `ILinker` с методом `Link(objFilePath, outputExePath, options)`.
+  - Реализация `MsvcLinker`: поиск MSVC `link.exe`, Windows SDK через `vswhere.exe`, компоновка PE/COFF `.exe` под Windows.
+  - Реализация `ClangGccLinker`: поддержка `clang`, `gcc`, `lld` с автоматической передачей флагов POSIX (`-lm`, `-lpthread`, `-ldl`, `-lrt`), оптимизаций компоновщика (`--gc-sections` на Linux, `-dead_strip` на macOS) и фреймворков macOS (`-framework OpenGL -framework Cocoa -framework IOKit -framework CoreVideo`).
+  - Фабрика `LinkerFactory`: динамическое создание подходящего линковщика в зависимости от целевой платформы и хост-окружения.
+  - Грациозный кросс-компиляционный фоллбэк: сохранение объектных файлов `.o` при отсутствии установленного кросс-линковщика с выводом готовой команды сборки для целевой ОС.
+- [x] Кроссплатформенная генерация LLVM IR:
+  - Корректная установка целевой тройки `target triple = "..."` и DataLayout для ELF (Linux), Mach-O (macOS) и COFF (Windows).
+  - Генерация отладочной информации по целевым стандартам: DWARF (`Dwarf Version`, `Debug Info Version`) для POSIX vs CodeView (`CodeView`, `Debug Info Version`) для Windows MSVC.
+  - Кроссплатформенная синхронизация архетипов: Win32 SRWLock (`AcquireSRWLockExclusive`/`ReleaseSRWLockExclusive`) на Windows и переносимый безигольчатый спинлок на атомиках LLVM (`cmpxchg` acquire-monotonic / `atomicrmw sub` release) для систем без Win32 API.
+  - Платформо-зависимый консольный ввод: прямой ввод `_getch` из `msvcrt` на Windows и стандартный `getchar` на POSIX.
+- [x] CLI-флаги компилятора:
+  - `--target, -t <triple>`: компиляция под любую целевую платформу LLVM.
+  - `--os <platform>`: быстрый выбор целевой ОС (`win`, `linux`, `macos`).
+  - `-c, --emit-obj`: генерация целевого объектного файла без линковки.
+- [x] Верификация кросс-компиляции:
+  - Успешный запуск тестов на Windows (`generics_test.ecs`, `closures_test.ecs` с кодом 0).
+  - Успешная сборка LLVM IR и объектных файлов для Linux ELF (`x86_64-unknown-linux-gnu`) и macOS Mach-O ARM64 (`arm64-apple-darwin`).
 
 ### [ ] Этап 32: Сетевые компоненты и протоколы (TCP/UDP через ECS) [после кроссплатформенности]
 - [ ] Сетевой стек на базе ECS: сетевые подключения и пакеты моделируются как компоненты и сущности.

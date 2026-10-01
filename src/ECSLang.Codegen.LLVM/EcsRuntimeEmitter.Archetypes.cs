@@ -233,15 +233,72 @@ public sealed partial class EcsRuntimeEmitter
         _builder.BuildRet(typedWorld);
 
         // =========================================================================
-        // Win32 SRWLock (kernel32.lib)
+        // Synchronization: Win32 SRWLock or Portable Atomic Spinlock
         // =========================================================================
         var srwFuncType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { i8PtrType }, false);
-        var srwAcquireFunc = _module.GetNamedFunction("AcquireSRWLockExclusive");
-        if (srwAcquireFunc.Handle == IntPtr.Zero)
-            srwAcquireFunc = _module.AddFunction("AcquireSRWLockExclusive", srwFuncType);
-        var srwReleaseFunc = _module.GetNamedFunction("ReleaseSRWLockExclusive");
-        if (srwReleaseFunc.Handle == IntPtr.Zero)
-            srwReleaseFunc = _module.AddFunction("ReleaseSRWLockExclusive", srwFuncType);
+        LLVMValueRef srwAcquireFunc;
+        LLVMValueRef srwReleaseFunc;
+
+        if (_options.Target.IsWindows)
+        {
+            srwAcquireFunc = _module.GetNamedFunction("AcquireSRWLockExclusive");
+            if (srwAcquireFunc.Handle == IntPtr.Zero)
+                srwAcquireFunc = _module.AddFunction("AcquireSRWLockExclusive", srwFuncType);
+            srwReleaseFunc = _module.GetNamedFunction("ReleaseSRWLockExclusive");
+            if (srwReleaseFunc.Handle == IntPtr.Zero)
+                srwReleaseFunc = _module.AddFunction("ReleaseSRWLockExclusive", srwFuncType);
+        }
+        else
+        {
+            srwAcquireFunc = _module.GetNamedFunction("ecs_spin_acquire");
+            if (srwAcquireFunc.Handle == IntPtr.Zero)
+            {
+                srwAcquireFunc = _module.AddFunction("ecs_spin_acquire", srwFuncType);
+                var entryBB = srwAcquireFunc.AppendBasicBlock("entry");
+                var spinLoopBB = srwAcquireFunc.AppendBasicBlock("spin_loop");
+                var lockAcqBB = srwAcquireFunc.AppendBasicBlock("lock_acq");
+
+                var spinBuilder = _context.CreateBuilder();
+                spinBuilder.PositionAtEnd(entryBB);
+                var lockPtrParam = srwAcquireFunc.GetParam(0);
+                var lockI32Ptr = spinBuilder.BuildBitCast(lockPtrParam, LLVMTypeRef.CreatePointer(_context.Int32Type, 0), "lock_i32");
+                spinBuilder.BuildBr(spinLoopBB);
+
+                spinBuilder.PositionAtEnd(spinLoopBB);
+                var cmpxchg = LlvmApi.BuildAtomicCmpXchg(
+                    spinBuilder,
+                    lockI32Ptr,
+                    LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                    LLVMValueRef.CreateConstInt(_context.Int32Type, 1),
+                    LLVMAtomicOrdering.LLVMAtomicOrderingAcquire,
+                    LLVMAtomicOrdering.LLVMAtomicOrderingMonotonic,
+                    0);
+                var success = spinBuilder.BuildExtractValue(cmpxchg, 1, "is_locked");
+                spinBuilder.BuildCondBr(success, lockAcqBB, spinLoopBB);
+
+                spinBuilder.PositionAtEnd(lockAcqBB);
+                spinBuilder.BuildRetVoid();
+            }
+
+            srwReleaseFunc = _module.GetNamedFunction("ecs_spin_release");
+            if (srwReleaseFunc.Handle == IntPtr.Zero)
+            {
+                srwReleaseFunc = _module.AddFunction("ecs_spin_release", srwFuncType);
+                var entryBB = srwReleaseFunc.AppendBasicBlock("entry");
+                var relBuilder = _context.CreateBuilder();
+                relBuilder.PositionAtEnd(entryBB);
+                var lockPtrParam = srwReleaseFunc.GetParam(0);
+                var lockI32Ptr = relBuilder.BuildBitCast(lockPtrParam, LLVMTypeRef.CreatePointer(_context.Int32Type, 0), "lock_i32");
+                LlvmApi.BuildAtomicRMW(
+                    relBuilder,
+                    LLVMAtomicRMWBinOp.LLVMAtomicRMWBinOpSub,
+                    lockI32Ptr,
+                    LLVMValueRef.CreateConstInt(_context.Int32Type, 1),
+                    LLVMAtomicOrdering.LLVMAtomicOrderingRelease,
+                    0);
+                relBuilder.BuildRetVoid();
+            }
+        }
 
         // =========================================================================
         // Helper: world_alloc_entity(ptr world) -> i32 entity_id
