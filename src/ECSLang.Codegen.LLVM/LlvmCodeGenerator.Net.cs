@@ -576,5 +576,35 @@ public sealed partial class LlvmCodeGenerator
         {
             netBuilder.BuildRet(LLVMValueRef.CreateConstInt(i32Type, 0, false));
         }
+
+        // 13. ecs_net_poll_wait(timeout_ms: i32) -> void
+        var netPollWaitType = LLVMTypeRef.CreateFunction(voidType, new[] { i32Type }, false);
+        var netPollWaitFunc = module.AddFunction("ecs_net_poll_wait", netPollWaitType);
+        var pollWaitBB = netPollWaitFunc.AppendBasicBlock("entry");
+        netBuilder.PositionAtEnd(pollWaitBB);
+        var msParam = netPollWaitFunc.GetParam(0);
+        if (isWindows)
+        {
+            var sleepType = LLVMTypeRef.CreateFunction(voidType, new[] { i32Type }, false);
+            var sleepFunc = module.GetNamedFunction("Sleep");
+            if (sleepFunc.Handle == IntPtr.Zero)
+            {
+                sleepFunc = module.AddFunction("Sleep", sleepType);
+            }
+            netBuilder.BuildCall2(sleepType, sleepFunc, new[] { msParam }, "");
+        }
+        else
+        {
+            var usleepType = LLVMTypeRef.CreateFunction(i32Type, new[] { i32Type }, false);
+            var usleepFunc = module.GetNamedFunction("usleep");
+            if (usleepFunc.Handle == IntPtr.Zero)
+            {
+                usleepFunc = module.AddFunction("usleep", usleepType);
+            }
+            var usec = netBuilder.BuildMul(msParam, LLVMValueRef.CreateConstInt(i32Type, 1000, false), "usec");
+            netBuilder.BuildCall2(usleepType, usleepFunc, new[] { usec }, "");
+        }
+        netBuilder.BuildRetVoid();
     }
 }
+

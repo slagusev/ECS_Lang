@@ -1,6 +1,7 @@
 // =========================================================================
 // ECSLang Stage 32: Pure Data-Oriented Network Test (TCP & UDP)
-// Pure ECS Architecture with Reactive Events, Type-Safe Results and Pipeline
+// Pure ECS Architecture with Reactive Events, Type-Safe Results,
+// Option<T> entity lookup, Non-blocking Polling with Throttle, and ECS Destructors
 // =========================================================================
 
 import "std/net.ecs";
@@ -21,6 +22,28 @@ system ClientSenderSystem {
     query(mut tag: ClientTag, conn: TcpConnection) {
         if !tag.sent {
             tag.sent = true;
+
+            // Option<T> Verification: Lookup connection entity by socket fd
+            let opt_ent = net_find_entity_by_fd(world, conn.fd);
+            match opt_ent {
+                Some(e) => {
+                    println($"[Option<T> Lookup] SUCCESS: Found entity {e} for TCP fd={conn.fd}");
+                }
+                None => {
+                    println($"[Option<T> Lookup] FAILED: Could not find entity for TCP fd={conn.fd}");
+                }
+            }
+
+            // Option<T> Verification: Lookup non-existent fd (must return None)
+            match net_find_entity_by_fd(world, 99999) {
+                Some(e) => {
+                    println("[Option<T> Lookup] FAILED: Unexpected entity returned for fd=99999");
+                }
+                None => {
+                    println("[Option<T> Lookup] SUCCESS: None returned for non-existent fd=99999");
+                }
+            }
+
             world.emit_NetPacketSend(conn.fd, "Hello ECSLang Network!");
             println($"[Client System] Queued TCP send on fd={conn.fd}");
         }
@@ -52,15 +75,25 @@ system ClientEchoVerifierSystem {
     read(packet: NetPacketReceived) {
         if packet.payload == "ECHO: Hello ECSLang Network!" {
             println($"[Client System] Received verified TCP response: '{packet.payload}' from fd={packet.fd}");
+            world.set_name(world.spawn(), "tcp_verified");
         }
         if packet.payload == "ECHO: UDP Datagram to ECS!" {
             println($"[Client System] Received verified UDP response: '{packet.payload}' from fd={packet.fd}");
+            world.set_name(world.spawn(), "udp_verified");
         }
+    }
+}
+
+// System 5: Monitor network send errors
+system NetErrorHandlerSystem {
+    read(err: NetEventSendFailed) {
+        println($"[NetErrorHandler] Outbound packet send failed on fd={err.fd} (error={err.error_code})");
     }
 }
 
 pipeline NetEchoServerPipeline {
     stage NetPoll {
+        NetPollThrottleSystem;
         TcpListenerSystem;
         TcpReceiverSystem;
         UdpReceiverSystem;
@@ -71,10 +104,18 @@ pipeline NetEchoServerPipeline {
         UdpClientSenderSystem;
         EchoHandlerSystem;
         ClientEchoVerifierSystem;
+        NetErrorHandlerSystem;
     }
     stage NetFlush {
         swap_events;
         OutboundSendSystem;
+    }
+    stage NetCleanup {
+        apply_commands;
+        TcpConnectionDestructorSystem;
+        TcpListenerDestructorSystem;
+        UdpSocketDestructorSystem;
+        apply_commands;
     }
 }
 
@@ -85,16 +126,18 @@ fn main(): i32 {
     let init_res = net_start();
     println($"1. Net initialization result: {init_res}");
 
-    // 2. Setup Server and Client Sockets with Result<T, E> and safe match
+    let mut world = ecs::create_world();
+
     let tcp_port = 39871;
     let udp_server_port = 39872;
     let udp_client_port = 39873;
 
-    let mut server_tcp_fd = 0;
-    match net_tcp_listen(tcp_port) {
-        Ok(fd) => {
-            server_tcp_fd = fd;
-            println($"2. TCP Server listening on port {tcp_port} (fd={fd})");
+    // 2. Factory Functions: Spawn TCP Server Entity (Result<entity, string>)
+    let mut tcp_srv_ent = 0;
+    match net_spawn_tcp_listener(world, tcp_port) {
+        Ok(ent) => {
+            tcp_srv_ent = ent;
+            println($"2. TCP Server entity spawned: {ent} (port {tcp_port})");
         }
         Err(e) => {
             println($"ERROR: {e}");
@@ -102,52 +145,12 @@ fn main(): i32 {
         }
     }
 
-    let mut server_udp_fd = 0;
-    match net_udp_bind(udp_server_port) {
-        Ok(fd) => {
-            server_udp_fd = fd;
-            println($"3. UDP Server bound on port {udp_server_port} (fd={fd})");
-        }
-        Err(e) => {
-            println($"ERROR: {e}");
-            net_close(server_tcp_fd);
-            return 1;
-        }
-    }
-
-    let mut client_tcp_fd = 0;
-    match net_tcp_connect("127.0.0.1", tcp_port) {
-        Ok(fd) => {
-            client_tcp_fd = fd;
-            println($"4. TCP Client connected (fd={fd})");
-        }
-        Err(e) => {
-            println($"ERROR: {e}");
-            net_close(server_tcp_fd);
-            net_close(server_udp_fd);
-            return 1;
-        }
-    }
-
-    let mut client_udp_fd = 0;
-    match net_udp_bind(udp_client_port) {
-        Ok(fd) => {
-            client_udp_fd = fd;
-            println($"5. UDP Client bound on port {udp_client_port} (fd={fd})");
-        }
-        Err(e) => {
-            println($"ERROR: {e}");
-            net_close(client_tcp_fd);
-            net_close(server_tcp_fd);
-            net_close(server_udp_fd);
-            return 1;
-        }
-    }
-
-    // Connect UDP endpoints to establish peer destinations
-    match net_udp_connect(client_udp_fd, "127.0.0.1", udp_server_port) {
-        Ok(fd) => {
-            println($"6. UDP Client connected to server {udp_server_port}");
+    // 3. Factory Functions: Spawn UDP Server Entity
+    let mut udp_srv_ent = 0;
+    match net_spawn_udp_connected_socket(world, udp_server_port, "127.0.0.1", udp_client_port) {
+        Ok(ent) => {
+            udp_srv_ent = ent;
+            println($"3. UDP Server entity spawned: {ent} (port {udp_server_port} -> peer {udp_client_port})");
         }
         Err(e) => {
             println($"ERROR: {e}");
@@ -155,9 +158,13 @@ fn main(): i32 {
         }
     }
 
-    match net_udp_connect(server_udp_fd, "127.0.0.1", udp_client_port) {
-        Ok(fd) => {
-            println($"7. UDP Server connected to client {udp_client_port}");
+    // 4. Factory Functions: Spawn TCP Client Entity
+    let mut tcp_cl_ent = 0;
+    match net_spawn_tcp_client(world, "127.0.0.1", tcp_port) {
+        Ok(ent) => {
+            tcp_cl_ent = ent;
+            world.set_ClientTag(ent, false, false, false);
+            println($"4. TCP Client entity spawned: {ent}");
         }
         Err(e) => {
             println($"ERROR: {e}");
@@ -165,36 +172,49 @@ fn main(): i32 {
         }
     }
 
-    // 3. Set up Pure ECS World and Spawn Entities for Server and Client
-    let mut world = ecs::create_world();
+    // 5. Factory Functions: Spawn UDP Client Entity
+    let mut udp_cl_ent = 0;
+    match net_spawn_udp_connected_socket(world, udp_client_port, "127.0.0.1", udp_server_port) {
+        Ok(ent) => {
+            udp_cl_ent = ent;
+            world.set_UdpClientTag(ent, false, false);
+            println($"5. UDP Client entity spawned: {ent} (port {udp_client_port} -> peer {udp_server_port})");
+        }
+        Err(e) => {
+            println($"ERROR: {e}");
+            return 1;
+        }
+    }
 
-    // Server entities
-    let tcp_srv_ent = world.spawn();
-    world.set_TcpListener(tcp_srv_ent, tcp_port, server_tcp_fd, true);
-
-    let udp_srv_ent = world.spawn();
-    world.set_UdpSocket(udp_srv_ent, udp_server_port, server_udp_fd);
-
-    // Client entities
-    let tcp_cl_ent = world.spawn();
-    world.set_TcpConnection(tcp_cl_ent, client_tcp_fd, "127.0.0.1", tcp_port, true);
-    world.set_ClientTag(tcp_cl_ent, false, false, false);
-
-    let udp_cl_ent = world.spawn();
-    world.set_UdpSocket(udp_cl_ent, udp_client_port, client_udp_fd);
-    world.set_UdpClientTag(udp_cl_ent, false, false);
-
-    // 4. Execute pipeline across frames (non-blocking, zero busy-wait CPU load)
-    println("8. Running ECS network pipeline ticks...");
-    for tick in 0..5 {
+    // 6. Execution Loop: Dynamic while !server_should_stop with Micro-Sleep
+    println("6. Running ECS network pipeline with non-blocking poll & micro-sleep...");
+    let mut server_should_stop = false;
+    let mut ticks = 0;
+    while !server_should_stop && ticks < 200 {
         NetEchoServerPipeline(world);
+        ticks += 1;
+
+        if world.has_name("tcp_verified") && world.has_name("udp_verified") {
+            server_should_stop = true;
+        }
     }
 
-    // 5. Clean up
-    net_close(client_tcp_fd);
-    net_close(client_udp_fd);
-    net_close(server_tcp_fd);
-    net_close(server_udp_fd);
+    if !server_should_stop {
+        println("ERROR: Timeout waiting for echo verification!");
+        return 1;
+    }
+    println($"   Echo verification completed deterministically after {ticks} pipeline ticks.");
+
+    // 7. ECS Destructor System: Gracefully close all sockets and despawn entities
+    println("7. Triggering ECS Socket Destructors...");
+    net_close_entity(world, tcp_srv_ent);
+    net_close_entity(world, tcp_cl_ent);
+    net_close_entity(world, udp_srv_ent);
+    net_close_entity(world, udp_cl_ent);
+
+    // Ticking pipeline executes the NetCleanup stage
+    NetEchoServerPipeline(world);
+
     net_stop();
 
     println("=== Stage 32 Network Subsystem Verification SUCCESS ===");

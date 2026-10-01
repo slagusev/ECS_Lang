@@ -494,6 +494,10 @@ public sealed partial class TypeChecker
         // Built-in string functions
         if (call.Callee is "to_string" or "str_concat")
         {
+            foreach (var arg in call.Arguments)
+            {
+                CheckExpression(arg);
+            }
             return TypeSymbol.String;
         }
 
@@ -540,7 +544,7 @@ public sealed partial class TypeChecker
                 return TypeSymbol.String;
             }
 
-            if (call.Callee is "net_cleanup" or "raw_net_cleanup" or "net_close" or "raw_net_close")
+            if (call.Callee is "net_cleanup" or "raw_net_cleanup" or "net_close" or "raw_net_close" or "net_poll_wait" or "raw_net_poll_wait")
             {
                 return TypeSymbol.Void;
             }

@@ -47,3 +47,97 @@ fn net_udp_connect(fd: i32, ip: string, port: i32): Result<i32, string> {
     }
     return Err($"Failed to connect UDP socket to {ip}:{port}");
 }
+
+fn net_poll_wait(ms: i32) {
+    raw_net_poll_wait(ms);
+}
+
+// -------------------------------------------------------------------------
+// Pure ECS Factory Functions
+// -------------------------------------------------------------------------
+
+fn net_spawn_tcp_listener(world: World, port: i32): Result<entity, string> {
+    let res = net_tcp_listen(port);
+    match res {
+        Ok(fd) => {
+            let ent = world.spawn();
+            world.set_TcpListener(ent, port, fd, true);
+            world.set_name(ent, $"net_fd_{fd}");
+            return Ok(ent);
+        }
+        Err(err) => {
+            return Err(err);
+        }
+    }
+}
+
+fn net_spawn_tcp_client(world: World, ip: string, port: i32): Result<entity, string> {
+    let res = net_tcp_connect(ip, port);
+    match res {
+        Ok(fd) => {
+            let ent = world.spawn();
+            world.set_TcpConnection(ent, fd, ip, port, true);
+            world.set_name(ent, $"net_fd_{fd}");
+            return Ok(ent);
+        }
+        Err(err) => {
+            return Err(err);
+        }
+    }
+}
+
+fn net_spawn_udp_socket(world: World, port: i32): Result<entity, string> {
+    let res = net_udp_bind(port);
+    match res {
+        Ok(fd) => {
+            let ent = world.spawn();
+            world.set_UdpSocket(ent, port, fd, true);
+            world.set_name(ent, $"net_fd_{fd}");
+            return Ok(ent);
+        }
+        Err(err) => {
+            return Err(err);
+        }
+    }
+}
+
+fn net_spawn_udp_connected_socket(world: World, local_port: i32, remote_ip: string, remote_port: i32): Result<entity, string> {
+    let res = net_udp_bind(local_port);
+    match res {
+        Ok(fd) => {
+            let conn_res = net_udp_connect(fd, remote_ip, remote_port);
+            match conn_res {
+                Ok(ok_fd) => {
+                    let ent = world.spawn();
+                    world.set_UdpSocket(ent, local_port, fd, true);
+                    world.set_name(ent, $"net_fd_{fd}");
+                    return Ok(ent);
+                }
+                Err(err) => {
+                    net_close(fd);
+                    return Err(err);
+                }
+            }
+        }
+        Err(err) => {
+            return Err(err);
+        }
+    }
+}
+
+// -------------------------------------------------------------------------
+// Option<T> Integration: Entity Lookup by Socket fd
+// -------------------------------------------------------------------------
+
+fn net_find_entity_by_fd(world: World, fd: i32): Option<entity> {
+    return world.find($"net_fd_{fd}");
+}
+
+// -------------------------------------------------------------------------
+// Pure ECS Destructor Helper
+// -------------------------------------------------------------------------
+
+fn net_close_entity(world: World, ent: entity) {
+    world.add_SocketClosing(ent);
+}
+

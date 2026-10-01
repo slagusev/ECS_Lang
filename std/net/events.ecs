@@ -22,3 +22,9 @@ event NetPacketSend {
     fd: i32,
     payload: string,
 }
+
+event NetEventSendFailed {
+    fd: i32,
+    error_code: i32,
+}
+

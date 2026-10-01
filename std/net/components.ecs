@@ -18,6 +18,10 @@ component TcpConnection {
 component UdpSocket {
     port: i32,
     fd: i32,
+    is_active: bool,
+}
+
+component SocketClosing {
 }
 
 component NetAddress {

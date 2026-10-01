@@ -2,6 +2,13 @@
 // ECSLang Standard Network Systems
 // =========================================================================
 
+// System 0: Micro-sleep throttle to prevent 100% CPU spinning during polling
+system NetPollThrottleSystem {
+    query(cmd: Commands) {
+        net_poll_wait(1);
+    }
+}
+
 // System 1: Poll server sockets for incoming client connections
 system TcpListenerSystem {
     query(cmd: Commands, mut listener: TcpListener) {
@@ -10,6 +17,7 @@ system TcpListenerSystem {
             if client_fd > 0 {
                 let client_ent = cmd.spawn();
                 cmd.set_TcpConnection(client_ent, client_fd, "127.0.0.1", listener.port, true);
+                world.set_name(client_ent, $"net_fd_{client_fd}");
                 world.emit_NetEventConnected(client_fd, "127.0.0.1", listener.port);
             }
         }
@@ -31,7 +39,7 @@ system TcpReceiverSystem {
 // System 3: Poll UDP sockets for incoming non-blocking datagrams
 system UdpReceiverSystem {
     query(mut u: UdpSocket) {
-        if u.fd > 0 {
+        if u.is_active && u.fd > 0 {
             let data = net_udp_recv_from(u.fd, 4096);
             if data.len() > 0 {
                 world.emit_NetPacketReceived(u.fd, data);
@@ -40,11 +48,43 @@ system UdpReceiverSystem {
     }
 }
 
-// System 4: Flush outbound messages via NetPacketSend reactive event
+// System 4: Flush outbound messages via NetPacketSend reactive event with error handling
 system OutboundSendSystem {
     read(packet: NetPacketSend) {
         if packet.fd > 0 && packet.payload.len() > 0 {
-            net_tcp_send(packet.fd, packet.payload);
+            let sent = net_tcp_send(packet.fd, packet.payload);
+            if sent < 0 {
+                world.emit_NetEventSendFailed(packet.fd, sent);
+                println($"[OutboundSendSystem] ERROR: Send failed on fd={packet.fd} with code={sent}");
+            }
         }
     }
 }
+
+// System 5: Destructor system for TCP connections tagged with SocketClosing
+system TcpConnectionDestructorSystem {
+    query(cmd: Commands, e: Entity, conn: TcpConnection, with: SocketClosing) {
+        net_close(conn.fd);
+        cmd.despawn(e);
+        println($"[SocketDestructorSystem] Closed and despawned TcpConnection fd={conn.fd}");
+    }
+}
+
+// System 6: Destructor system for TCP listeners tagged with SocketClosing
+system TcpListenerDestructorSystem {
+    query(cmd: Commands, e: Entity, listener: TcpListener, with: SocketClosing) {
+        net_close(listener.fd);
+        cmd.despawn(e);
+        println($"[SocketDestructorSystem] Closed and despawned TcpListener fd={listener.fd}");
+    }
+}
+
+// System 7: Destructor system for UDP sockets tagged with SocketClosing
+system UdpSocketDestructorSystem {
+    query(cmd: Commands, e: Entity, udp: UdpSocket, with: SocketClosing) {
+        net_close(udp.fd);
+        cmd.despawn(e);
+        println($"[SocketDestructorSystem] Closed and despawned UdpSocket fd={udp.fd}");
+    }
+}
+

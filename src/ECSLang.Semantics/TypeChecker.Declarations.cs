@@ -181,7 +181,7 @@ public sealed partial class TypeChecker
             var pType = EnsureMonomorphizedType(p.TypeName, p.Span);
             bool isComp = _components.ContainsKey(p.TypeName) || _components.ContainsKey(pType.Name) || _components.ContainsKey(TypeSymbol.ToMonomorphizedIdentifier(p.TypeName));
             bool isRes = _resources.ContainsKey(p.TypeName);
-            bool isEntity = p.TypeName == "Entity";
+            bool isEntity = p.TypeName is "Entity" or "entity";
             bool isCommands = p.TypeName == "Commands";
 
             if (!isComp && !isRes && !isEntity && !isCommands)

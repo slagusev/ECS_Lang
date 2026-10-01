@@ -4,6 +4,7 @@
 
 pipeline NetPipeline {
     stage NetPoll {
+        NetPollThrottleSystem;
         TcpListenerSystem;
         TcpReceiverSystem;
         UdpReceiverSystem;
@@ -12,4 +13,12 @@ pipeline NetPipeline {
         swap_events;
         OutboundSendSystem;
     }
+    stage NetCleanup {
+        apply_commands;
+        TcpConnectionDestructorSystem;
+        TcpListenerDestructorSystem;
+        UdpSocketDestructorSystem;
+        apply_commands;
+    }
 }
+

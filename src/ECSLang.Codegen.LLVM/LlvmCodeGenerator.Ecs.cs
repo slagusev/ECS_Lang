@@ -266,7 +266,7 @@ public sealed partial class LlvmCodeGenerator
                 var resSlot = builder.BuildStructGEP2(ecs.GetWorldStructType(), worldParam, (uint)resOffset, $"{qp.Name}_res_slot");
                 locals[qp.Name] = resSlot;
             }
-            else if (qp.TypeName == "Entity")
+            else if (qp.TypeName is "Entity" or "entity")
             {
                 var i32PtrType = LLVMTypeRef.CreatePointer(context.Int32Type, 0);
                 var entArrSlot = builder.BuildStructGEP2(ecs.GetArchetypeStructType(), curArchPtr, 3, $"{qp.Name}_arr_slot");

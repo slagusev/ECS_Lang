@@ -526,7 +526,7 @@ public sealed partial class LlvmCodeGenerator
             if (returnType == context.VoidType)
                 builder.BuildRetVoid();
             else
-                builder.BuildRet(LLVMValueRef.CreateConstInt(context.Int32Type, 0, false));
+                builder.BuildRet(LLVMValueRef.CreateConstNull(returnType));
         }
 
         builder.CurrentDebugLocation = default;
@@ -591,7 +591,7 @@ public sealed partial class LlvmCodeGenerator
             if (returnType == context.VoidType)
                 builder.BuildRetVoid();
             else
-                builder.BuildRet(LLVMValueRef.CreateConstInt(context.Int32Type, 0, false));
+                builder.BuildRet(LLVMValueRef.CreateConstNull(returnType));
         }
 
         builder.CurrentDebugLocation = default;
@@ -979,49 +979,29 @@ public sealed partial class LlvmCodeGenerator
         EcsRuntimeEmitter? ecs,
         LLVMValueRef worldPtr)
     {
-        if (type == TypeSymbol.String)
+        if (val.TypeOf.Kind == LLVMTypeKind.LLVMIntegerTypeKind)
+        {
+            if (val.TypeOf == context.Int1Type)
+            {
+                var fnBool = GetOrCreateToStringBool(context, module, i8PtrType);
+                var fnBoolType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fnBool);
+                return builder.BuildCall2(fnBoolType, fnBool, new[] { val }, "str_bool");
+            }
+            var fn = GetOrCreateToStringI32(context, module, i8PtrType, ecs);
+            var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
+            return builder.BuildCall2(fnType, fn, new[] { worldPtr, val }, "str_i32");
+        }
+
+        if (val.TypeOf == context.FloatType || val.TypeOf == context.DoubleType)
+        {
+            var fn = GetOrCreateToStringF32(context, module, i8PtrType, ecs);
+            var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
+            return builder.BuildCall2(fnType, fn, new[] { worldPtr, val }, "str_f32");
+        }
+
+        if (type == TypeSymbol.String || val.TypeOf.Kind == LLVMTypeKind.LLVMPointerTypeKind)
         {
             return val;
-        }
-
-        if (type == TypeSymbol.I32 || type == TypeSymbol.Entity)
-        {
-            var fn = GetOrCreateToStringI32(context, module, i8PtrType, ecs);
-            var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
-            return builder.BuildCall2(fnType, fn, new[] { worldPtr, val }, "str_i32");
-        }
-
-        if (type == TypeSymbol.F32)
-        {
-            var fn = GetOrCreateToStringF32(context, module, i8PtrType, ecs);
-            var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
-            return builder.BuildCall2(fnType, fn, new[] { worldPtr, val }, "str_f32");
-        }
-
-        if (type == TypeSymbol.Bool)
-        {
-            var fn = GetOrCreateToStringBool(context, module, i8PtrType);
-            var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
-            return builder.BuildCall2(fnType, fn, new[] { val }, "str_bool");
-        }
-
-        if (val.TypeOf == context.Int32Type)
-        {
-            var fn = GetOrCreateToStringI32(context, module, i8PtrType, ecs);
-            var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
-            return builder.BuildCall2(fnType, fn, new[] { worldPtr, val }, "str_i32");
-        }
-        if (val.TypeOf == context.FloatType)
-        {
-            var fn = GetOrCreateToStringF32(context, module, i8PtrType, ecs);
-            var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
-            return builder.BuildCall2(fnType, fn, new[] { worldPtr, val }, "str_f32");
-        }
-        if (val.TypeOf == context.Int1Type)
-        {
-            var fn = GetOrCreateToStringBool(context, module, i8PtrType);
-            var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
-            return builder.BuildCall2(fnType, fn, new[] { val }, "str_bool");
         }
 
         return val;
