@@ -137,6 +137,27 @@ public sealed class Parser
             Match(TokenType.CloseBracket, "Expected ']' to close dynamic array type.");
             return $"[{elemType}]";
         }
+        if (Check(TokenType.Fn) || (Check(TokenType.Identifier) && Current.Text == "fn"))
+        {
+            Advance();
+            Match(TokenType.OpenParen, "Expected '(' after 'fn' in function type.");
+            var pTypes = new List<string>();
+            if (!Check(TokenType.CloseParen))
+            {
+                do
+                {
+                    pTypes.Add(ParseTypeAnnotation());
+                } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+            }
+            Match(TokenType.CloseParen, "Expected ')' after parameter types in function type.");
+            string retType = "void";
+            if (Check(TokenType.Colon) || Check(TokenType.Arrow))
+            {
+                Advance();
+                retType = ParseTypeAnnotation();
+            }
+            return $"fn({string.Join(", ", pTypes)}): {retType}";
+        }
         var idTok = Match(TokenType.Identifier, "Expected type name.");
         if ((idTok.Text == "Vec" || idTok.Text == "List") && Check(TokenType.Less))
         {
@@ -830,6 +851,20 @@ public sealed class Parser
                 Match(TokenType.CloseBracket, "Expected ']' after array index.");
                 expr = new IndexExpression(expr, indexExpr, expr.Span);
             }
+            else if (Check(TokenType.OpenParen) && !(expr is CallExpression))
+            {
+                Advance(); // (
+                var args = new List<ExpressionNode>();
+                if (!Check(TokenType.CloseParen))
+                {
+                    do
+                    {
+                        args.Add(ParseExpression());
+                    } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+                }
+                Match(TokenType.CloseParen, "Expected ')' after argument list.");
+                expr = new IndirectCallExpression(expr, args, expr.Span);
+            }
             else
             {
                 break;
@@ -839,9 +874,65 @@ public sealed class Parser
         return expr;
     }
 
+    private ExpressionNode ParseLambdaExpression()
+    {
+        var startSpan = Current.Span;
+        var parameters = new List<LambdaParameter>();
+
+        if (Check(TokenType.PipePipe))
+        {
+            Advance(); // ||
+        }
+        else if (Check(TokenType.Pipe))
+        {
+            Advance(); // |
+            if (!Check(TokenType.Pipe))
+            {
+                do
+                {
+                    var paramName = Match(TokenType.Identifier, "Expected parameter name in lambda.");
+                    string? paramType = null;
+                    if (Check(TokenType.Colon))
+                    {
+                        Advance(); // :
+                        paramType = ParseTypeAnnotation();
+                    }
+                    parameters.Add(new LambdaParameter(paramName.Text, paramType, paramName.Span));
+                } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
+            }
+            Match(TokenType.Pipe, "Expected '|' to close lambda parameters.");
+        }
+
+        string? returnType = null;
+        if (Check(TokenType.Arrow) || Check(TokenType.Colon))
+        {
+            Advance();
+            returnType = ParseTypeAnnotation();
+        }
+
+        BlockStatement body;
+        if (Check(TokenType.OpenBrace))
+        {
+            body = ParseBlockStatement();
+        }
+        else
+        {
+            var expr = ParseExpression();
+            var retStmt = new ReturnStatement(expr, expr.Span);
+            body = new BlockStatement(new[] { retStmt }, expr.Span);
+        }
+
+        return new LambdaExpression(parameters, returnType, body, startSpan);
+    }
+
     private ExpressionNode ParsePrimaryExpression()
     {
         var token = Current;
+
+        if (token.Type == TokenType.Pipe || token.Type == TokenType.PipePipe)
+        {
+            return ParseLambdaExpression();
+        }
 
         if (token.Type == TokenType.OpenBracket)
         {

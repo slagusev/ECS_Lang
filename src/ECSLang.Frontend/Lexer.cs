@@ -285,6 +285,7 @@ public sealed class Lexer
         if (ch == '<' && next == '=') { Advance(); Advance(); return new Token(TokenType.LessEqual, "<=", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == '>' && next == '=') { Advance(); Advance(); return new Token(TokenType.GreaterEqual, ">=", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == '+' && next == '=') { Advance(); Advance(); return new Token(TokenType.PlusEqual, "+=", new SourceSpan(_filePath, startLine, startCol, 2)); }
+        if (ch == '-' && next == '>') { Advance(); Advance(); return new Token(TokenType.Arrow, "->", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == '-' && next == '=') { Advance(); Advance(); return new Token(TokenType.MinusEqual, "-=", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == '*' && next == '=') { Advance(); Advance(); return new Token(TokenType.StarEqual, "*=", new SourceSpan(_filePath, startLine, startCol, 2)); }
         if (ch == '/' && next == '=') { Advance(); Advance(); return new Token(TokenType.SlashEqual, "/=", new SourceSpan(_filePath, startLine, startCol, 2)); }
@@ -316,6 +317,7 @@ public sealed class Lexer
             '<' => TokenType.Less,
             '>' => TokenType.Greater,
             '!' => TokenType.Bang,
+            '|' => TokenType.Pipe,
             _ => TokenType.BadToken
         };
 

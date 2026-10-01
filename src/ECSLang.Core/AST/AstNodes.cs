@@ -267,3 +267,29 @@ public sealed record IndexExpression(
 ) : ExpressionNode(Span);
 
 public sealed record WildcardExpression(SourceSpan Span) : ExpressionNode(Span);
+
+public sealed record LambdaParameter(string Name, string? TypeName, SourceSpan Span) : AstNode(Span);
+
+public sealed record LambdaExpression(
+    IReadOnlyList<LambdaParameter> Parameters,
+    string? ReturnType,
+    BlockStatement Body,
+    List<string> Captures,
+    SourceSpan Span
+) : ExpressionNode(Span)
+{
+    public LambdaExpression(
+        IReadOnlyList<LambdaParameter> parameters,
+        string? returnType,
+        BlockStatement body,
+        SourceSpan span)
+        : this(parameters, returnType, body, new List<string>(), span)
+    {
+    }
+}
+
+public sealed record IndirectCallExpression(
+    ExpressionNode Callee,
+    IReadOnlyList<ExpressionNode> Arguments,
+    SourceSpan Span
+) : ExpressionNode(Span);

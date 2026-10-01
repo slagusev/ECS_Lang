@@ -1,0 +1,120 @@
+fn apply(x: i32, f: fn(i32): i32): i32 {
+    return f(x);
+}
+
+fn main() {
+    println("--- Stage 29: Closures and Lambdas Verification ---");
+
+    // 1. Stateless lambda expression
+    let double_it = |x: i32| x * 2;
+    let res1 = double_it(21);
+    print("1. Stateless lambda double_it(21) = ");
+    println(res1);
+
+    // 2. Multi-argument block lambda with explicit return type
+    let add_two = |a: i32, b: i32| -> i32 {
+        return a + b;
+    };
+    let res2 = add_two(17, 25);
+    print("2. Multi-param lambda add_two(17, 25) = ");
+    println(res2);
+
+    // 3. Zero-argument lambda
+    let get_answer = || 42;
+    let res3 = get_answer();
+    print("3. Zero-param lambda get_answer() = ");
+    println(res3);
+
+    // 4. Capturing outer variable (immutable capture)
+    let factor = 100;
+    let scale = |val: i32| val * factor;
+    let res4 = scale(7);
+    print("4. Captured immutable 'factor' scale(7) = ");
+    println(res4);
+
+    // 5. Capturing and mutating outer variable
+    let mut total = 0;
+    let acc = |step: i32| {
+        total += step;
+    };
+    acc(10);
+    acc(25);
+    acc(5);
+    print("5. Captured mutable 'total' after acc(10), acc(25), acc(5) = ");
+    println(total);
+
+    // 6. Passing closure into higher-order function
+    let res6 = apply(15, |n: i32| n * 3);
+    print("6. Higher-order function apply(15, |n| n * 3) = ");
+    println(res6);
+
+    // 7. Dynamic array methods (Vec<i32>)
+    let mut nums = Vec<i32>();
+    nums.push(1);
+    nums.push(2);
+    nums.push(3);
+    nums.push(4);
+    nums.push(5);
+
+    // 7a. for_each
+    let mut sum_elements = 0;
+    nums.for_each(|n: i32| {
+        sum_elements += n;
+    });
+    print("7a. nums.for_each sum = ");
+    println(sum_elements);
+
+    // 7b. map
+    let doubled_nums = nums.map(|n: i32| n * 10);
+    print("7b. nums.map(|n| n * 10) len = ");
+    println(doubled_nums.len());
+    print("7b. doubled_nums[0] = ");
+    println(doubled_nums[0]);
+    print("7b. doubled_nums[4] = ");
+    println(doubled_nums[4]);
+
+    // 7c. filter
+    let evens = nums.filter(|n: i32| n % 2 == 0);
+    print("7c. nums.filter(even) len = ");
+    println(evens.len());
+    print("7c. evens[0] = ");
+    println(evens[0]);
+    print("7c. evens[1] = ");
+    println(evens[1]);
+
+    // 7d. any and all
+    let has_gt_3 = nums.any(|n: i32| n > 3);
+    let all_gt_0 = nums.all(|n: i32| n > 0);
+    let all_gt_3 = nums.all(|n: i32| n > 3);
+    print("7d. nums.any(n > 3) = ");
+    println(has_gt_3);
+    print("7d. nums.all(n > 0) = ");
+    println(all_gt_0);
+    print("7d. nums.all(n > 3) = ");
+    println(all_gt_3);
+
+    // 7e. find
+    let found = nums.find(|n: i32| n == 3);
+    match found {
+        Some(val) => {
+            print("7e. nums.find(3) found = ");
+            println(val);
+        },
+        None => {
+            println("7e. nums.find(3) not found");
+        }
+    }
+
+    let not_found = nums.find(|n: i32| n == 99);
+    match not_found {
+        Some(val) => {
+            print("7e. nums.find(99) found = ");
+            println(val);
+        },
+        None => {
+            println("7e. nums.find(99) correctly None");
+        }
+    }
+
+    println("--- All Stage 29 Closure Tests PASSED Successfully! ---");
+}

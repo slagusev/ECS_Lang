@@ -25,6 +25,7 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
     public bool IsMap => Name.StartsWith("Map<") && Name.EndsWith(">");
     public bool IsOption => Name.StartsWith("Option<") && Name.EndsWith(">");
     public bool IsResult => Name.StartsWith("Result<") && Name.EndsWith(">");
+    public bool IsFunction => Name.StartsWith("fn(") || Name.StartsWith("closure(");
 
     public bool TryGetOptionInfo(out TypeSymbol valueType)
     {
@@ -114,6 +115,68 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
         return false;
     }
 
+    public bool TryGetFunctionInfo(out List<TypeSymbol> paramTypes, out TypeSymbol returnType)
+    {
+        if (IsFunction)
+        {
+            int colonIdx = -1;
+            int depth = 0;
+            int parenClose = -1;
+            for (int i = 2; i < Name.Length; i++)
+            {
+                if (Name[i] == '(' || Name[i] == '<' || Name[i] == '[') depth++;
+                else if (Name[i] == ')' || Name[i] == '>' || Name[i] == ']')
+                {
+                    depth--;
+                    if (depth == 0 && Name[i] == ')' && parenClose == -1)
+                    {
+                        parenClose = i;
+                    }
+                }
+                else if (Name[i] == ':' && depth == 0 && parenClose != -1)
+                {
+                    colonIdx = i;
+                    break;
+                }
+            }
+
+            if (parenClose != -1)
+            {
+                var paramsStr = Name.Substring(3, parenClose - 3).Trim();
+                paramTypes = new List<TypeSymbol>();
+                if (!string.IsNullOrEmpty(paramsStr))
+                {
+                    depth = 0;
+                    int start = 0;
+                    for (int i = 0; i < paramsStr.Length; i++)
+                    {
+                        if (paramsStr[i] == '<' || paramsStr[i] == '[' || paramsStr[i] == '(') depth++;
+                        else if (paramsStr[i] == '>' || paramsStr[i] == ']' || paramsStr[i] == ')') depth--;
+                        else if (paramsStr[i] == ',' && depth == 0)
+                        {
+                            paramTypes.Add(FromName(paramsStr.Substring(start, i - start).Trim()));
+                            start = i + 1;
+                        }
+                    }
+                    paramTypes.Add(FromName(paramsStr.Substring(start).Trim()));
+                }
+
+                if (colonIdx != -1)
+                {
+                    returnType = FromName(Name.Substring(colonIdx + 1).Trim());
+                }
+                else
+                {
+                    returnType = Void;
+                }
+                return true;
+            }
+        }
+        paramTypes = new List<TypeSymbol>();
+        returnType = Unknown;
+        return false;
+    }
+
     public static TypeSymbol CreateArray(TypeSymbol elem, int length) => new($"[{elem.Name}; {length}]", IsPrimitive: false);
 
     public static TypeSymbol CreateDynamicArray(TypeSymbol elem) => new($"[{elem.Name}]", IsPrimitive: false);
@@ -124,9 +187,23 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
 
     public static TypeSymbol CreateResult(TypeSymbol ok, TypeSymbol err) => new($"Result<{ok.Name}, {err.Name}>", IsPrimitive: false);
 
+    public static TypeSymbol CreateFunction(IReadOnlyList<TypeSymbol> paramTypes, TypeSymbol returnType)
+    {
+        var pStr = string.Join(", ", paramTypes.Select(p => p.Name));
+        return new TypeSymbol($"fn({pStr}): {returnType.Name}", IsPrimitive: false);
+    }
+
     public static TypeSymbol FromName(string? name)
     {
         if (name == null) return Unknown;
+        if (name.StartsWith("fn("))
+        {
+            var dummy = new TypeSymbol(name);
+            if (dummy.TryGetFunctionInfo(out var pTypes, out var rType))
+            {
+                return CreateFunction(pTypes, rType);
+            }
+        }
         if (name.StartsWith("Vec<") && name.EndsWith(">"))
         {
             var inner = name.Substring(4, name.Length - 5).Trim();

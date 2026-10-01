@@ -42,6 +42,8 @@
 17. [Хэш-таблицы (HashMap<K, V>) и именованная индексация сущностей](#17-хэш-таблицы-hashmapk-v-и-именованная-индексация-сущностей)
 18. [Аренное управление памятью строк (World String Arena)](#18-аренное-управление-памятью-строк-world-string-arena)
 19. [Безопасные типы Option<T> и Result<T, E> с сопоставлением с образцом (Pattern Matching)](#19-безопасные-типы-optiont-и-resultt-e-с-сопоставлением-с-образцом-pattern-matching)
+20. [Стандартная библиотека GUI компонентов (Pure ECSLang GUI Standard Library)](#20-стандартная-библиотека-gui-компонентов-pure-ecslang-gui-standard-library)
+21. [Замыкания, лямбда-выражения и методы высшего порядка (Closures & Lambdas)](#21-замыкания-лямбда-выражения-и-методы-высшего-порядка-closures--lambdas)
 
 ---
 
@@ -1462,6 +1464,105 @@ let sep = gui_separator(world, 70.0, 330.0, 320.0, false);
 
 // Всплывающая подсказка
 gui_tooltip(world, btn, "Нажмите для сохранения изменений");
+```
+
+---
+
+## 21. Замыкания, лямбда-выражения и методы высшего порядка (Closures & Lambdas)
+
+ECSLang поддерживает первоклассные анонимные функции (лямбды) и замыкания с компактным синтаксисом параметров в вертикальных чертах `|e| ...` и `|| ...`.
+
+### 21.1. Синтаксис объявления
+
+#### 1. Однострочные лямбда-выражения (Expression Body):
+```rust
+let double_it = |x: i32| x * 2;
+let res = double_it(21); // 42
+```
+
+#### 2. Многопараметрические блочные лямбды (Block Body):
+```rust
+let add_two = |a: i32, b: i32| -> i32 {
+    return a + b;
+};
+let sum = add_two(17, 25); // 42
+```
+
+#### 3. Лямбды без параметров:
+```rust
+let get_answer = || 42;
+let ans = get_answer(); // 42
+```
+
+### 21.2. Функциональные типы и функции высшего порядка
+Тип замыкания или функции аннотируется как `fn(T1, T2): Ret` или `fn(T1, T2) -> Ret`:
+```rust
+fn apply(x: i32, f: fn(i32): i32): i32 {
+    return f(x);
+}
+
+fn main() {
+    let res = apply(10, |n: i32| n * 5); // 50
+}
+```
+
+### 21.3. Захват контекста (Environment Capturing)
+Замыкания в ECSLang используют унифицированный **Fat Pointer** (`{ ptr fn, ptr env }`) со стековым размещением фрейма окружения (Zero Heap Allocation):
+
+- **Неизменяемый захват (Immutable)**: чтение внешних локальных переменных.
+- **Изменяемый захват (Mutable)**: изменение внешних `mut` переменных напрямую на стеке вызывающей функции.
+
+```rust
+let factor = 10;
+let scale = |x: i32| x * factor; // Захват factor
+
+let mut total = 0;
+let acc = |step: i32| {
+    total += step; // Прямая мутация переменной total
+};
+acc(10);
+acc(25);
+// total теперь равен 35
+```
+
+### 21.4. Методы высшего порядка над динамическими массивами (`Vec<T>`)
+Коллекции `Vec<T>` / `[T]` предоставляют встроенные методы функциональной обработки элементов:
+
+| Метод | Сигнатура аргумента | Возвращает | Описание |
+|---|---|---|---|
+| `.for_each(c)` | `fn(T): void` | `void` | Итерируется по элементам и вызывает замыкание |
+| `.map(c)` | `fn(T): R` | `Vec<R>` | Преобразует каждый элемент в новый массив |
+| `.filter(c)` | `fn(T): bool` | `Vec<T>` | Фильтрует элементы по предикату |
+| `.any(c)` | `fn(T): bool` | `bool` | Возвращает `true`, если хотя бы один элемент удовлетворяет условию |
+| `.all(c)` | `fn(T): bool` | `bool` | Возвращает `true`, если все элементы удовлетворяют условию |
+| `.find(c)` | `fn(T): bool` | `Option<T>` | Возвращает `Some(val)` первого совпадения или `None` |
+
+```rust
+let mut nums = Vec<i32>();
+nums.push(1);
+nums.push(2);
+nums.push(3);
+nums.push(4);
+
+// for_each
+let mut sum = 0;
+nums.for_each(|n: i32| { sum += n; });
+
+// map
+let doubled = nums.map(|n: i32| n * 2);
+
+// filter
+let evens = nums.filter(|n: i32| n % 2 == 0);
+
+// any / all
+let has_gt_2 = nums.any(|n: i32| n > 2); // true
+let all_positive = nums.all(|n: i32| n > 0); // true
+
+// find
+match nums.find(|n: i32| n == 3) {
+    Some(val) => println("Found 3!"),
+    None => println("Not found")
+}
 ```
 
 

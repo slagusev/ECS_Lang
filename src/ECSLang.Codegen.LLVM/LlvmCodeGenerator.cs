@@ -19,6 +19,7 @@ public sealed class LlvmCodeGenerator
     private LLVMTargetDataRef _dataLayout;
     private HashMapEmitter? _mapEmitter;
     private StringArenaEmitter? _arenaEmitter;
+    private int _lambdaCounter = 0;
 
     static LlvmCodeGenerator()
     {
@@ -44,6 +45,7 @@ public sealed class LlvmCodeGenerator
         _options = options ?? new CompilerOptions();
         _diBuilder = null;
         _currentSubprogram = null;
+        _lambdaCounter = 0;
 
         using var context = LLVMContextRef.Create();
         using var module = context.CreateModuleWithName("ecs_module");
@@ -2059,6 +2061,313 @@ public sealed class LlvmCodeGenerator
                         builder.PositionAtEnd(mergeBB);
                         return builder.BuildLoad2(optStructType, retAlloca, "opt_arr_val");
                     }
+
+                    if (methodCall.MethodName == "for_each")
+                    {
+                        var closureVal = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var fnRaw = builder.BuildExtractValue(closureVal, 0, "fe_fn_raw");
+                        var envPtr = builder.BuildExtractValue(closureVal, 1, "fe_env_ptr");
+
+                        var feFnType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType, dynElemType }, false);
+                        var feTypedFn = builder.BuildBitCast(fnRaw, LLVMTypeRef.CreatePointer(feFnType, 0), "fe_typed_fn");
+
+                        var lenSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 1, "dyn_len_slot");
+                        var curLen = builder.BuildLoad2(context.Int32Type, lenSlot, "cur_len");
+                        var dataSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 0, "dyn_data_slot");
+                        var curData = builder.BuildLoad2(elemPtrType, dataSlot, "cur_data");
+
+                        var idxAlloca = CreateEntryBlockAlloca(context, function, context.Int32Type, "fe_idx");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), idxAlloca);
+
+                        var condBB = function.AppendBasicBlock("fe_cond");
+                        var bodyBB = function.AppendBasicBlock("fe_body");
+                        var exitBB = function.AppendBasicBlock("fe_exit");
+
+                        builder.BuildBr(condBB);
+
+                        builder.PositionAtEnd(condBB);
+                        var idxVal = builder.BuildLoad2(context.Int32Type, idxAlloca, "fe_i");
+                        var hasMore = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, idxVal, curLen, "fe_has_more");
+                        builder.BuildCondBr(hasMore, bodyBB, exitBB);
+
+                        builder.PositionAtEnd(bodyBB);
+                        var elemGEP = builder.BuildInBoundsGEP2(dynElemType, curData, new[] { idxVal }, "fe_elem_gep");
+                        var elemVal = builder.BuildLoad2(dynElemType, elemGEP, "fe_elem_val");
+                        builder.BuildCall2(feFnType, feTypedFn, new[] { envPtr, elemVal }, "");
+                        var nextIdx = builder.BuildAdd(idxVal, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "fe_next_i");
+                        builder.BuildStore(nextIdx, idxAlloca);
+                        builder.BuildBr(condBB);
+
+                        builder.PositionAtEnd(exitBB);
+                        return LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                    }
+
+                    if (methodCall.MethodName == "map")
+                    {
+                        var closureVal = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var fnRaw = builder.BuildExtractValue(closureVal, 0, "map_fn_raw");
+                        var envPtr = builder.BuildExtractValue(closureVal, 1, "map_env_ptr");
+
+                        var retTypeSym = _typeChecker.GetNodeType(methodCall);
+                        retTypeSym.TryGetDynamicArrayElement(out var resElemSym);
+                        var resElemType = MapType(context, resElemSym.Name, ecs);
+                        var resArrStructType = MapType(context, retTypeSym.Name, ecs);
+                        var resElemPtrType = LLVMTypeRef.CreatePointer(resElemType, 0);
+
+                        var mapFnType = LLVMTypeRef.CreateFunction(resElemType, new[] { i8PtrType, dynElemType }, false);
+                        var mapTypedFn = builder.BuildBitCast(fnRaw, LLVMTypeRef.CreatePointer(mapFnType, 0), "map_typed_fn");
+
+                        var lenSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 1, "dyn_len_slot");
+                        var curLen = builder.BuildLoad2(context.Int32Type, lenSlot, "cur_len");
+                        var dataSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 0, "dyn_data_slot");
+                        var curData = builder.BuildLoad2(elemPtrType, dataSlot, "cur_data");
+
+                        var resAlloca = CreateEntryBlockAlloca(context, function, resArrStructType, "map_res_arr");
+                        var rDataSlot = builder.BuildStructGEP2(resArrStructType, resAlloca, 0, "r_data");
+                        var rLenSlot = builder.BuildStructGEP2(resArrStructType, resAlloca, 1, "r_len");
+                        var rCapSlot = builder.BuildStructGEP2(resArrStructType, resAlloca, 2, "r_cap");
+
+                        ulong resElemSize = Math.Max(1, LlvmApi.ABISizeOfType(_dataLayout, resElemType));
+                        var curLen64 = builder.BuildZExt(curLen, context.Int64Type, "cur_len64");
+                        var sizeBytes = builder.BuildMul(curLen64, LLVMValueRef.CreateConstInt(context.Int64Type, resElemSize), "size_bytes");
+                        var isZero = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curLen, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "is_zero");
+                        var allocBytes = builder.BuildSelect(isZero, LLVMValueRef.CreateConstInt(context.Int64Type, 16), sizeBytes, "alloc_bytes");
+
+                        var mallocFunc = module.GetNamedFunction("malloc");
+                        var mallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int64Type }, false);
+                        var newMem = builder.BuildCall2(mallocType, mallocFunc, new[] { allocBytes }, "map_new_mem");
+                        var newTypedMem = builder.BuildBitCast(newMem, resElemPtrType, "new_typed_mem");
+
+                        builder.BuildStore(newTypedMem, rDataSlot);
+                        builder.BuildStore(curLen, rLenSlot);
+                        builder.BuildStore(curLen, rCapSlot);
+
+                        var idxAlloca = CreateEntryBlockAlloca(context, function, context.Int32Type, "map_idx");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), idxAlloca);
+
+                        var condBB = function.AppendBasicBlock("map_cond");
+                        var bodyBB = function.AppendBasicBlock("map_body");
+                        var exitBB = function.AppendBasicBlock("map_exit");
+
+                        builder.BuildBr(condBB);
+
+                        builder.PositionAtEnd(condBB);
+                        var idxVal = builder.BuildLoad2(context.Int32Type, idxAlloca, "map_i");
+                        var hasMore = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, idxVal, curLen, "map_has_more");
+                        builder.BuildCondBr(hasMore, bodyBB, exitBB);
+
+                        builder.PositionAtEnd(bodyBB);
+                        var inGEP = builder.BuildInBoundsGEP2(dynElemType, curData, new[] { idxVal }, "in_gep");
+                        var inVal = builder.BuildLoad2(dynElemType, inGEP, "in_val");
+                        var mappedVal = builder.BuildCall2(mapFnType, mapTypedFn, new[] { envPtr, inVal }, "mapped_val");
+
+                        var outGEP = builder.BuildInBoundsGEP2(resElemType, newTypedMem, new[] { idxVal }, "out_gep");
+                        builder.BuildStore(mappedVal, outGEP);
+
+                        var nextIdx = builder.BuildAdd(idxVal, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "map_next_i");
+                        builder.BuildStore(nextIdx, idxAlloca);
+                        builder.BuildBr(condBB);
+
+                        builder.PositionAtEnd(exitBB);
+                        return builder.BuildLoad2(resArrStructType, resAlloca, "map_res");
+                    }
+
+                    if (methodCall.MethodName == "filter")
+                    {
+                        var closureVal = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var fnRaw = builder.BuildExtractValue(closureVal, 0, "filter_fn_raw");
+                        var envPtr = builder.BuildExtractValue(closureVal, 1, "filter_env_ptr");
+
+                        var filterFnType = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { i8PtrType, dynElemType }, false);
+                        var filterTypedFn = builder.BuildBitCast(fnRaw, LLVMTypeRef.CreatePointer(filterFnType, 0), "filter_typed_fn");
+
+                        var lenSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 1, "dyn_len_slot");
+                        var curLen = builder.BuildLoad2(context.Int32Type, lenSlot, "cur_len");
+                        var dataSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 0, "dyn_data_slot");
+                        var curData = builder.BuildLoad2(elemPtrType, dataSlot, "cur_data");
+
+                        var resAlloca = CreateEntryBlockAlloca(context, function, dynArrStructType, "filter_res_arr");
+                        var rDataSlot = builder.BuildStructGEP2(dynArrStructType, resAlloca, 0, "r_data");
+                        var rLenSlot = builder.BuildStructGEP2(dynArrStructType, resAlloca, 1, "r_len");
+                        var rCapSlot = builder.BuildStructGEP2(dynArrStructType, resAlloca, 2, "r_cap");
+
+                        ulong elemSize = Math.Max(1, LlvmApi.ABISizeOfType(_dataLayout, dynElemType));
+                        var curLen64 = builder.BuildZExt(curLen, context.Int64Type, "cur_len64");
+                        var sizeBytes = builder.BuildMul(curLen64, LLVMValueRef.CreateConstInt(context.Int64Type, elemSize), "size_bytes");
+                        var isZero = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curLen, LLVMValueRef.CreateConstInt(context.Int32Type, 0), "is_zero");
+                        var allocBytes = builder.BuildSelect(isZero, LLVMValueRef.CreateConstInt(context.Int64Type, 16), sizeBytes, "alloc_bytes");
+
+                        var mallocFunc = module.GetNamedFunction("malloc");
+                        var mallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int64Type }, false);
+                        var newMem = builder.BuildCall2(mallocType, mallocFunc, new[] { allocBytes }, "filter_mem");
+                        var newTypedMem = builder.BuildBitCast(newMem, elemPtrType, "filter_typed_mem");
+
+                        builder.BuildStore(newTypedMem, rDataSlot);
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), rLenSlot);
+                        builder.BuildStore(curLen, rCapSlot);
+
+                        var idxAlloca = CreateEntryBlockAlloca(context, function, context.Int32Type, "filter_idx");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), idxAlloca);
+
+                        var condBB = function.AppendBasicBlock("filter_cond");
+                        var bodyBB = function.AppendBasicBlock("filter_body");
+                        var checkBB = function.AppendBasicBlock("filter_check");
+                        var nextBB = function.AppendBasicBlock("filter_next");
+                        var exitBB = function.AppendBasicBlock("filter_exit");
+
+                        builder.BuildBr(condBB);
+
+                        builder.PositionAtEnd(condBB);
+                        var idxVal = builder.BuildLoad2(context.Int32Type, idxAlloca, "filter_i");
+                        var hasMore = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, idxVal, curLen, "filter_has_more");
+                        builder.BuildCondBr(hasMore, bodyBB, exitBB);
+
+                        builder.PositionAtEnd(bodyBB);
+                        var inGEP = builder.BuildInBoundsGEP2(dynElemType, curData, new[] { idxVal }, "in_gep");
+                        var inVal = builder.BuildLoad2(dynElemType, inGEP, "in_val");
+                        var pass = builder.BuildCall2(filterFnType, filterTypedFn, new[] { envPtr, inVal }, "filter_pass");
+                        builder.BuildCondBr(pass, checkBB, nextBB);
+
+                        builder.PositionAtEnd(checkBB);
+                        var curOutLen = builder.BuildLoad2(context.Int32Type, rLenSlot, "out_len");
+                        var outGEP = builder.BuildInBoundsGEP2(dynElemType, newTypedMem, new[] { curOutLen }, "out_gep");
+                        builder.BuildStore(inVal, outGEP);
+                        var newOutLen = builder.BuildAdd(curOutLen, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "new_out_len");
+                        builder.BuildStore(newOutLen, rLenSlot);
+                        builder.BuildBr(nextBB);
+
+                        builder.PositionAtEnd(nextBB);
+                        var nextIdx = builder.BuildAdd(idxVal, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "filter_next_i");
+                        builder.BuildStore(nextIdx, idxAlloca);
+                        builder.BuildBr(condBB);
+
+                        builder.PositionAtEnd(exitBB);
+                        return builder.BuildLoad2(dynArrStructType, resAlloca, "filter_res");
+                    }
+
+                    if (methodCall.MethodName is "any" or "all")
+                    {
+                        bool isAny = methodCall.MethodName == "any";
+                        var closureVal = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var fnRaw = builder.BuildExtractValue(closureVal, 0, "pred_fn_raw");
+                        var envPtr = builder.BuildExtractValue(closureVal, 1, "pred_env_ptr");
+
+                        var predFnType = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { i8PtrType, dynElemType }, false);
+                        var predTypedFn = builder.BuildBitCast(fnRaw, LLVMTypeRef.CreatePointer(predFnType, 0), "pred_typed_fn");
+
+                        var lenSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 1, "dyn_len_slot");
+                        var curLen = builder.BuildLoad2(context.Int32Type, lenSlot, "cur_len");
+                        var dataSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 0, "dyn_data_slot");
+                        var curData = builder.BuildLoad2(elemPtrType, dataSlot, "cur_data");
+
+                        var retAlloca = CreateEntryBlockAlloca(context, function, context.Int1Type, "pred_res");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int1Type, isAny ? 0UL : 1UL), retAlloca);
+
+                        var idxAlloca = CreateEntryBlockAlloca(context, function, context.Int32Type, "pred_idx");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), idxAlloca);
+
+                        var condBB = function.AppendBasicBlock("pred_cond");
+                        var bodyBB = function.AppendBasicBlock("pred_body");
+                        var earlyBB = function.AppendBasicBlock("pred_early");
+                        var nextBB = function.AppendBasicBlock("pred_next");
+                        var exitBB = function.AppendBasicBlock("pred_exit");
+
+                        builder.BuildBr(condBB);
+
+                        builder.PositionAtEnd(condBB);
+                        var idxVal = builder.BuildLoad2(context.Int32Type, idxAlloca, "pred_i");
+                        var hasMore = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, idxVal, curLen, "pred_has_more");
+                        builder.BuildCondBr(hasMore, bodyBB, exitBB);
+
+                        builder.PositionAtEnd(bodyBB);
+                        var inGEP = builder.BuildInBoundsGEP2(dynElemType, curData, new[] { idxVal }, "in_gep");
+                        var inVal = builder.BuildLoad2(dynElemType, inGEP, "in_val");
+                        var pass = builder.BuildCall2(predFnType, predTypedFn, new[] { envPtr, inVal }, "pred_pass");
+
+                        if (isAny)
+                        {
+                            builder.BuildCondBr(pass, earlyBB, nextBB);
+                        }
+                        else
+                        {
+                            builder.BuildCondBr(pass, nextBB, earlyBB);
+                        }
+
+                        builder.PositionAtEnd(earlyBB);
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int1Type, isAny ? 1UL : 0UL), retAlloca);
+                        builder.BuildBr(exitBB);
+
+                        builder.PositionAtEnd(nextBB);
+                        var nextIdx = builder.BuildAdd(idxVal, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "pred_next_i");
+                        builder.BuildStore(nextIdx, idxAlloca);
+                        builder.BuildBr(condBB);
+
+                        builder.PositionAtEnd(exitBB);
+                        return builder.BuildLoad2(context.Int1Type, retAlloca, "pred_final");
+                    }
+
+                    if (methodCall.MethodName == "find")
+                    {
+                        var closureVal = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                        var fnRaw = builder.BuildExtractValue(closureVal, 0, "find_fn_raw");
+                        var envPtr = builder.BuildExtractValue(closureVal, 1, "find_env_ptr");
+
+                        var findFnType = LLVMTypeRef.CreateFunction(context.Int1Type, new[] { i8PtrType, dynElemType }, false);
+                        var findTypedFn = builder.BuildBitCast(fnRaw, LLVMTypeRef.CreatePointer(findFnType, 0), "find_typed_fn");
+
+                        var optStructType = LLVMTypeRef.CreateStruct(new[] { context.Int32Type, dynElemType }, false);
+                        var optAlloca = CreateEntryBlockAlloca(context, function, optStructType, "find_opt_res");
+
+                        var lenSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 1, "dyn_len_slot");
+                        var curLen = builder.BuildLoad2(context.Int32Type, lenSlot, "cur_len");
+                        var dataSlot = builder.BuildStructGEP2(dynArrStructType, dynStructPtr, 0, "dyn_data_slot");
+                        var curData = builder.BuildLoad2(elemPtrType, dataSlot, "cur_data");
+
+                        var idxAlloca = CreateEntryBlockAlloca(context, function, context.Int32Type, "find_idx");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), idxAlloca);
+
+                        var condBB = function.AppendBasicBlock("find_cond");
+                        var bodyBB = function.AppendBasicBlock("find_body");
+                        var foundBB = function.AppendBasicBlock("find_found");
+                        var nextBB = function.AppendBasicBlock("find_next");
+                        var notFoundBB = function.AppendBasicBlock("find_not_found");
+                        var exitBB = function.AppendBasicBlock("find_exit");
+
+                        builder.BuildBr(condBB);
+
+                        builder.PositionAtEnd(condBB);
+                        var idxVal = builder.BuildLoad2(context.Int32Type, idxAlloca, "find_i");
+                        var hasMore = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, idxVal, curLen, "find_has_more");
+                        builder.BuildCondBr(hasMore, bodyBB, notFoundBB);
+
+                        builder.PositionAtEnd(bodyBB);
+                        var inGEP = builder.BuildInBoundsGEP2(dynElemType, curData, new[] { idxVal }, "in_gep");
+                        var inVal = builder.BuildLoad2(dynElemType, inGEP, "in_val");
+                        var pass = builder.BuildCall2(findFnType, findTypedFn, new[] { envPtr, inVal }, "find_pass");
+                        builder.BuildCondBr(pass, foundBB, nextBB);
+
+                        builder.PositionAtEnd(foundBB);
+                        var tagSlot1 = builder.BuildStructGEP2(optStructType, optAlloca, 0, "tag1");
+                        var valSlot1 = builder.BuildStructGEP2(optStructType, optAlloca, 1, "val1");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 1), tagSlot1);
+                        builder.BuildStore(inVal, valSlot1);
+                        builder.BuildBr(exitBB);
+
+                        builder.PositionAtEnd(nextBB);
+                        var nextIdx = builder.BuildAdd(idxVal, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "find_next_i");
+                        builder.BuildStore(nextIdx, idxAlloca);
+                        builder.BuildBr(condBB);
+
+                        builder.PositionAtEnd(notFoundBB);
+                        var tagSlot0 = builder.BuildStructGEP2(optStructType, optAlloca, 0, "tag0");
+                        var valSlot0 = builder.BuildStructGEP2(optStructType, optAlloca, 1, "val0");
+                        builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int32Type, 0), tagSlot0);
+                        builder.BuildStore(LLVMValueRef.CreateConstNull(dynElemType), valSlot0);
+                        builder.BuildBr(exitBB);
+
+                        builder.PositionAtEnd(exitBB);
+                        return builder.BuildLoad2(optStructType, optAlloca, "find_opt_val");
+                    }
                 }
 
                 if (targetType.IsMap)
@@ -2676,7 +2985,184 @@ public sealed class LlvmCodeGenerator
                     _ => left
                 };
 
+            case LambdaExpression lambda:
+                var lambdaTypeSym = _typeChecker.GetNodeType(lambda);
+                lambdaTypeSym.TryGetFunctionInfo(out var lParams, out var lRet);
+
+                string lambdaName = $"__lambda_{_lambdaCounter++}";
+                var lambdaRetLlvmType = MapType(context, lRet?.Name ?? "void", ecs);
+
+                var lambdaFnParamTypes = new List<LLVMTypeRef> { i8PtrType }; // env pointer
+                foreach (var p in lambda.Parameters)
+                {
+                    var pTypeSym = p.TypeName != null ? TypeSymbol.FromName(p.TypeName) : TypeSymbol.I32;
+                    lambdaFnParamTypes.Add(MapType(context, pTypeSym.Name, ecs));
+                }
+
+                var lambdaFnType = LLVMTypeRef.CreateFunction(lambdaRetLlvmType, lambdaFnParamTypes.ToArray(), false);
+                var lambdaFunc = module.AddFunction(lambdaName, lambdaFnType);
+
+                // Build Lambda Body
+                var lambdaEntry = lambdaFunc.AppendBasicBlock("entry");
+                var lambdaBuilder = context.CreateBuilder();
+                lambdaBuilder.PositionAtEnd(lambdaEntry);
+
+                var lambdaLocals = new Dictionary<string, LLVMValueRef>();
+                var lambdaVarTypes = new Dictionary<string, string>();
+
+                // 1. Environment unpacking (if captures exist)
+                LLVMTypeRef envStructType = LLVMTypeRef.CreateStruct(Array.Empty<LLVMTypeRef>(), false);
+                if (lambda.Captures.Count > 0)
+                {
+                    var envFieldTypes = new List<LLVMTypeRef>();
+                    for (int i = 0; i < lambda.Captures.Count; i++)
+                    {
+                        var capName = lambda.Captures[i];
+                        string capTypeName = varTypes.TryGetValue(capName, out var ct) ? ct : "i32";
+                        var capLlvmType = MapType(context, capTypeName, ecs);
+                        envFieldTypes.Add(LLVMTypeRef.CreatePointer(capLlvmType, 0));
+                    }
+
+                    envStructType = LLVMTypeRef.CreateStruct(envFieldTypes.ToArray(), false);
+                    var envStructPtrType = LLVMTypeRef.CreatePointer(envStructType, 0);
+
+                    var envParam = lambdaFunc.GetParam(0);
+                    var typedEnv = lambdaBuilder.BuildBitCast(envParam, envStructPtrType, "env_typed");
+
+                    for (int i = 0; i < lambda.Captures.Count; i++)
+                    {
+                        var capName = lambda.Captures[i];
+                        string capTypeName = varTypes.TryGetValue(capName, out var ct) ? ct : "i32";
+                        var gep = lambdaBuilder.BuildStructGEP2(envStructType, typedEnv, (uint)i, $"{capName}_slot");
+                        var capPtr = lambdaBuilder.BuildLoad2(envFieldTypes[i], gep, $"{capName}_ptr");
+                        lambdaLocals[capName] = capPtr;
+                        lambdaVarTypes[capName] = capTypeName;
+                    }
+                }
+
+                // 2. Setup Lambda parameters
+                for (int i = 0; i < lambda.Parameters.Count; i++)
+                {
+                    var p = lambda.Parameters[i];
+                    var pVal = lambdaFunc.GetParam((uint)(1 + i));
+                    var pType = lambdaFnParamTypes[1 + i];
+                    var pAlloca = CreateEntryBlockAlloca(context, lambdaFunc, pType, p.Name);
+                    lambdaBuilder.BuildStore(pVal, pAlloca);
+                    lambdaLocals[p.Name] = pAlloca;
+                    lambdaVarTypes[p.Name] = p.TypeName ?? "i32";
+                }
+
+                // 3. Compile lambda body
+                CompileBlock(context, module, lambdaBuilder, lambdaFunc, lambda.Body, lambdaLocals, lambdaVarTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain: false, hasWaitKey: false);
+                if (lambdaBuilder.InsertBlock.Terminator.Handle == IntPtr.Zero)
+                {
+                    if (lambdaRetLlvmType == context.VoidType)
+                    {
+                        lambdaBuilder.BuildRetVoid();
+                    }
+                    else
+                    {
+                        lambdaBuilder.BuildRet(LLVMValueRef.CreateConstNull(lambdaRetLlvmType));
+                    }
+                }
+                lambdaBuilder.Dispose();
+
+                // 4. In caller function: instantiate closure fat pointer { ptr fn, ptr env }
+                var closureStructType = LLVMTypeRef.CreateStruct(new[] { i8PtrType, i8PtrType }, false);
+                var closureAlloca = CreateEntryBlockAlloca(context, function, closureStructType, "closure_tmp");
+                var fnSlot = builder.BuildStructGEP2(closureStructType, closureAlloca, 0, "fn_slot");
+                var envSlot = builder.BuildStructGEP2(closureStructType, closureAlloca, 1, "env_slot");
+
+                var rawFn = builder.BuildBitCast(lambdaFunc, i8PtrType, "raw_lambda_fn");
+                builder.BuildStore(rawFn, fnSlot);
+
+                if (lambda.Captures.Count > 0)
+                {
+                    var callerEnvAlloca = CreateEntryBlockAlloca(context, function, envStructType, "closure_env");
+                    for (int i = 0; i < lambda.Captures.Count; i++)
+                    {
+                        var capName = lambda.Captures[i];
+                        if (locals.TryGetValue(capName, out var capLocalPtr))
+                        {
+                            var gep = builder.BuildStructGEP2(envStructType, callerEnvAlloca, (uint)i, $"{capName}_env_gep");
+                            builder.BuildStore(capLocalPtr, gep);
+                        }
+                    }
+                    var rawEnv = builder.BuildBitCast(callerEnvAlloca, i8PtrType, "raw_env");
+                    builder.BuildStore(rawEnv, envSlot);
+                }
+                else
+                {
+                    builder.BuildStore(LLVMValueRef.CreateConstPointerNull(i8PtrType), envSlot);
+                }
+
+                return builder.BuildLoad2(closureStructType, closureAlloca, "closure_val");
+
+            case IndirectCallExpression ind:
+                var indTargetVal = CompileExpression(context, module, builder, function, ind.Callee, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                var indFnTypeSym = _typeChecker.GetNodeType(ind.Callee);
+                indFnTypeSym.TryGetFunctionInfo(out var indParamTypes, out var indRetTypeSym);
+
+                var indRetLlvm = MapType(context, indRetTypeSym?.Name ?? "void", ecs);
+                var indParamLlvm = new List<LLVMTypeRef> { i8PtrType };
+                if (indParamTypes != null)
+                {
+                    foreach (var pt in indParamTypes)
+                    {
+                        indParamLlvm.Add(MapType(context, pt.Name, ecs));
+                    }
+                }
+
+                var indSignature = LLVMTypeRef.CreateFunction(indRetLlvm, indParamLlvm.ToArray(), false);
+                var indSigPtr = LLVMTypeRef.CreatePointer(indSignature, 0);
+
+                var indFnRaw = builder.BuildExtractValue(indTargetVal, 0, "ind_fn_raw");
+                var indEnvPtr = builder.BuildExtractValue(indTargetVal, 1, "ind_env_ptr");
+                var indTypedFn = builder.BuildBitCast(indFnRaw, indSigPtr, "ind_typed_fn");
+
+                var indCallArgs = new List<LLVMValueRef> { indEnvPtr };
+                foreach (var arg in ind.Arguments)
+                {
+                    indCallArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                }
+
+                string indCallName = indRetLlvm == context.VoidType ? "" : "ind_call";
+                return builder.BuildCall2(indSignature, indTypedFn, indCallArgs.ToArray(), indCallName);
+
             case CallExpression call:
+                if (locals.TryGetValue(call.Callee, out var closureLocalPtr) && varTypes.TryGetValue(call.Callee, out var cTypeName) && (cTypeName.StartsWith("fn(") || cTypeName.StartsWith("closure(") || TypeSymbol.FromName(cTypeName).IsFunction))
+                {
+                    var cTypeSym = TypeSymbol.FromName(cTypeName);
+                    cTypeSym.TryGetFunctionInfo(out var cParamTypes, out var cRetTypeSym);
+
+                    var cRetLlvm = MapType(context, cRetTypeSym?.Name ?? "void", ecs);
+                    var cParamLlvm = new List<LLVMTypeRef> { i8PtrType };
+                    if (cParamTypes != null)
+                    {
+                        foreach (var pt in cParamTypes)
+                        {
+                            cParamLlvm.Add(MapType(context, pt.Name, ecs));
+                        }
+                    }
+
+                    var cSignature = LLVMTypeRef.CreateFunction(cRetLlvm, cParamLlvm.ToArray(), false);
+                    var cSigPtr = LLVMTypeRef.CreatePointer(cSignature, 0);
+
+                    var closureVal = builder.BuildLoad2(LLVMTypeRef.CreateStruct(new[] { i8PtrType, i8PtrType }, false), closureLocalPtr, $"{call.Callee}_val");
+                    var cFnRaw = builder.BuildExtractValue(closureVal, 0, "c_fn_raw");
+                    var cEnvPtr = builder.BuildExtractValue(closureVal, 1, "c_env_ptr");
+                    var cTypedFn = builder.BuildBitCast(cFnRaw, cSigPtr, "c_typed_fn");
+
+                    var cCallArgs = new List<LLVMValueRef> { cEnvPtr };
+                    foreach (var arg in call.Arguments)
+                    {
+                        cCallArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc));
+                    }
+
+                    string cCallName = cRetLlvm == context.VoidType ? "" : $"{call.Callee}_call";
+                    return builder.BuildCall2(cSignature, cTypedFn, cCallArgs.ToArray(), cCallName);
+                }
+
                 if (call.Callee == "Some" || (call.Callee.StartsWith("Option<") && call.Callee.EndsWith("::Some")))
                 {
                     var optType = _typeChecker.GetNodeType(call);
@@ -3641,6 +4127,12 @@ public sealed class LlvmCodeGenerator
             var okLlvmType = MapType(context, okSym.Name, ecs);
             var errLlvmType = MapType(context, errSym.Name, ecs);
             return LLVMTypeRef.CreateStruct(new[] { context.Int32Type, okLlvmType, errLlvmType }, false);
+        }
+
+        if (typeName != null && (typeName.StartsWith("fn(") || typeName.StartsWith("closure(") || TypeSymbol.FromName(typeName).IsFunction))
+        {
+            var i8Ptr = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
+            return LLVMTypeRef.CreateStruct(new[] { i8Ptr, i8Ptr }, false);
         }
 
         if (typeName != null && _typeChecker.Structs.ContainsKey(typeName) && ecs != null)

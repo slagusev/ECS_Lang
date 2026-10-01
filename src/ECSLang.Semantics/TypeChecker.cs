@@ -18,6 +18,12 @@ public sealed class Scope
     public bool TryDeclare(VariableSymbol symbol) =>
         _variables.TryAdd(symbol.Name, symbol);
 
+    public bool ContainsLocal(string name) =>
+        _variables.ContainsKey(name);
+
+    public VariableSymbol? LookupLocal(string name) =>
+        _variables.TryGetValue(name, out var sym) ? sym : null;
+
     public VariableSymbol? Lookup(string name)
     {
         if (_variables.TryGetValue(name, out var sym))
@@ -901,11 +907,182 @@ public sealed class TypeChecker
             ArrayLiteralExpression arrLit => CheckArrayLiteral(arrLit),
             IndexExpression idxExpr => CheckIndexExpression(idxExpr),
             WildcardExpression => TypeSymbol.Unknown,
+            LambdaExpression lambda => CheckLambdaExpression(lambda),
+            IndirectCallExpression indCall => CheckIndirectCallExpression(indCall),
             _ => TypeSymbol.Unknown
         };
 
         _nodeTypes[expr] = type;
         return type;
+    }
+
+    private TypeSymbol CheckLambdaExpression(LambdaExpression lambda)
+    {
+        var lambdaScope = new Scope(_currentScope);
+        var prevScope = _currentScope;
+        _currentScope = lambdaScope;
+
+        var paramTypes = new List<TypeSymbol>();
+        foreach (var p in lambda.Parameters)
+        {
+            var pType = p.TypeName != null ? TypeSymbol.FromName(p.TypeName) : TypeSymbol.I32;
+            paramTypes.Add(pType);
+            var varSym = new VariableSymbol(p.Name, pType, IsMutable: false, p.Span);
+            _currentScope.TryDeclare(varSym);
+        }
+
+        var prevRetType = _currentExpectedReturnType;
+        TypeSymbol expectedRet = lambda.ReturnType != null ? TypeSymbol.FromName(lambda.ReturnType) : TypeSymbol.Unknown;
+        _currentExpectedReturnType = expectedRet != TypeSymbol.Unknown ? expectedRet : null;
+
+        CheckBlock(lambda.Body);
+
+        TypeSymbol retType = expectedRet != TypeSymbol.Unknown ? expectedRet : TypeSymbol.Void;
+        foreach (var stmt in lambda.Body.Statements)
+        {
+            if (stmt is ReturnStatement ret && ret.Value != null)
+            {
+                if (_nodeTypes.TryGetValue(ret.Value, out var valType) && valType != TypeSymbol.Unknown)
+                {
+                    retType = valType;
+                    break;
+                }
+            }
+        }
+
+        _currentExpectedReturnType = prevRetType;
+
+        // Detect captured variables
+        var captures = new HashSet<string>();
+        FindCaptures(lambda.Body, lambdaScope, captures);
+        lambda.Captures.Clear();
+        lambda.Captures.AddRange(captures);
+
+        _currentScope = prevScope;
+
+        var funcType = TypeSymbol.CreateFunction(paramTypes, retType);
+        _nodeTypes[lambda] = funcType;
+        return funcType;
+    }
+
+    private TypeSymbol CheckIndirectCallExpression(IndirectCallExpression indCall)
+    {
+        var calleeType = CheckExpression(indCall.Callee);
+        var argTypes = indCall.Arguments.Select(CheckExpression).ToList();
+
+        if (calleeType.TryGetFunctionInfo(out var paramTypes, out var retType))
+        {
+            if (paramTypes.Count != argTypes.Count)
+            {
+                _diagnostics.ReportError($"Function/closure expects {paramTypes.Count} argument(s), got {argTypes.Count}.", indCall.Span);
+            }
+            else
+            {
+                for (int i = 0; i < paramTypes.Count; i++)
+                {
+                    if (!AreTypesCompatible(paramTypes[i], argTypes[i]))
+                    {
+                        _diagnostics.ReportError($"Argument {i + 1} expects '{paramTypes[i].Name}', got '{argTypes[i].Name}'.", indCall.Arguments[i].Span);
+                    }
+                }
+            }
+            return retType;
+        }
+
+        _diagnostics.ReportError($"Expression of type '{calleeType.Name}' is not callable.", indCall.Span);
+        return TypeSymbol.Unknown;
+    }
+
+    private void FindCaptures(AstNode node, Scope lambdaScope, HashSet<string> captures)
+    {
+        switch (node)
+        {
+            case BlockStatement block:
+                foreach (var stmt in block.Statements) FindCaptures(stmt, lambdaScope, captures);
+                break;
+            case VariableDeclarationStatement varDecl:
+                FindCaptures(varDecl.Initializer, lambdaScope, captures);
+                break;
+            case AssignmentStatement assign:
+                CheckCaptureCandidate(assign.TargetName, lambdaScope, captures);
+                if (assign.Index != null) FindCaptures(assign.Index, lambdaScope, captures);
+                FindCaptures(assign.Value, lambdaScope, captures);
+                break;
+            case ExpressionStatement exprStmt:
+                FindCaptures(exprStmt.Expression, lambdaScope, captures);
+                break;
+            case ReturnStatement ret:
+                if (ret.Value != null) FindCaptures(ret.Value, lambdaScope, captures);
+                break;
+            case IfStatement ifStmt:
+                FindCaptures(ifStmt.Condition, lambdaScope, captures);
+                FindCaptures(ifStmt.ThenBranch, lambdaScope, captures);
+                if (ifStmt.ElseBranch != null) FindCaptures(ifStmt.ElseBranch, lambdaScope, captures);
+                break;
+            case WhileStatement whileStmt:
+                FindCaptures(whileStmt.Condition, lambdaScope, captures);
+                FindCaptures(whileStmt.Body, lambdaScope, captures);
+                break;
+            case ForStatement forStmt:
+                FindCaptures(forStmt.Start, lambdaScope, captures);
+                FindCaptures(forStmt.End, lambdaScope, captures);
+                FindCaptures(forStmt.Body, lambdaScope, captures);
+                break;
+            case MatchStatement matchStmt:
+                FindCaptures(matchStmt.Scrutinee, lambdaScope, captures);
+                foreach (var arm in matchStmt.Arms)
+                {
+                    FindCaptures(arm.Body, lambdaScope, captures);
+                }
+                break;
+            case BinaryExpression bin:
+                FindCaptures(bin.Left, lambdaScope, captures);
+                FindCaptures(bin.Right, lambdaScope, captures);
+                break;
+            case UnaryExpression un:
+                FindCaptures(un.Operand, lambdaScope, captures);
+                break;
+            case CallExpression call:
+                CheckCaptureCandidate(call.Callee, lambdaScope, captures);
+                foreach (var arg in call.Arguments) FindCaptures(arg, lambdaScope, captures);
+                break;
+            case MethodCallExpression mCall:
+                FindCaptures(mCall.Target, lambdaScope, captures);
+                foreach (var arg in mCall.Arguments) FindCaptures(arg, lambdaScope, captures);
+                break;
+            case MemberAccessExpression mem:
+                FindCaptures(mem.Target, lambdaScope, captures);
+                break;
+            case IndexExpression idx:
+                FindCaptures(idx.Target, lambdaScope, captures);
+                FindCaptures(idx.Index, lambdaScope, captures);
+                break;
+            case ArrayLiteralExpression arrLit:
+                foreach (var el in arrLit.Elements) FindCaptures(el, lambdaScope, captures);
+                break;
+            case IdentifierExpression id:
+                CheckCaptureCandidate(id.Name, lambdaScope, captures);
+                break;
+            case IndirectCallExpression ind:
+                FindCaptures(ind.Callee, lambdaScope, captures);
+                foreach (var a in ind.Arguments) FindCaptures(a, lambdaScope, captures);
+                break;
+        }
+    }
+
+    private void CheckCaptureCandidate(string name, Scope lambdaScope, HashSet<string> captures)
+    {
+        if (string.IsNullOrEmpty(name)) return;
+        if (lambdaScope.ContainsLocal(name)) return;
+        if (_functions.ContainsKey(name) || _components.ContainsKey(name) || _resources.ContainsKey(name) ||
+            _structs.ContainsKey(name) || _enums.ContainsKey(name) || _systems.ContainsKey(name)) return;
+        if (name is "println" or "print" or "readln" or "wait_key" or "Some" or "None" or "Ok" or "Err") return;
+
+        var outerSym = lambdaScope.Parent?.Lookup(name);
+        if (outerSym != null)
+        {
+            captures.Add(name);
+        }
     }
 
     private TypeSymbol CheckArrayLiteral(ArrayLiteralExpression arrLit)
@@ -1274,6 +1451,30 @@ public sealed class TypeChecker
             return TypeSymbol.FromName(stSym.Name);
         }
 
+        var localSym = _currentScope.Lookup(call.Callee);
+        if (localSym != null && localSym.Type.IsFunction)
+        {
+            if (localSym.Type.TryGetFunctionInfo(out var paramTypes, out var retType))
+            {
+                if (call.Arguments.Count != paramTypes.Count)
+                {
+                    _diagnostics.ReportError($"Closure/Function '{call.Callee}' expects {paramTypes.Count} arguments, but got {call.Arguments.Count}.", call.Span);
+                }
+                else
+                {
+                    for (int i = 0; i < call.Arguments.Count; i++)
+                    {
+                        var argType = GetNodeType(call.Arguments[i]);
+                        if (!AreTypesCompatible(paramTypes[i], argType))
+                        {
+                            _diagnostics.ReportError($"Argument {i + 1} of '{call.Callee}' expects '{paramTypes[i].Name}', but got '{argType.Name}'.", call.Arguments[i].Span);
+                        }
+                    }
+                }
+                return retType;
+            }
+        }
+
         if (_functions.TryGetValue(call.Callee, out var fnDecl))
         {
             if (call.Arguments.Count != fnDecl.Parameters.Count)
@@ -1533,6 +1734,115 @@ public sealed class TypeChecker
                 }
                 _nodeTypes[methodCall] = TypeSymbol.Void;
                 return TypeSymbol.Void;
+            }
+
+            if (methodCall.MethodName == "for_each")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'for_each' expects 1 argument (closure/function).", methodCall.Span);
+                }
+                else
+                {
+                    var cType = GetNodeType(methodCall.Arguments[0]);
+                    if (cType.IsFunction && cType.TryGetFunctionInfo(out var pTypes, out _))
+                    {
+                        if (pTypes.Count != 1 || (elemType != TypeSymbol.Unknown && !AreTypesCompatible(pTypes[0], elemType)))
+                        {
+                            _diagnostics.ReportError($"Closure for 'for_each' must accept '{elemType.Name}'.", methodCall.Arguments[0].Span);
+                        }
+                    }
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Void;
+                return TypeSymbol.Void;
+            }
+
+            if (methodCall.MethodName == "map")
+            {
+                TypeSymbol mappedElem = TypeSymbol.Unknown;
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'map' expects 1 argument (closure/function).", methodCall.Span);
+                }
+                else
+                {
+                    var cType = GetNodeType(methodCall.Arguments[0]);
+                    if (cType.IsFunction && cType.TryGetFunctionInfo(out var pTypes, out var rType))
+                    {
+                        if (pTypes.Count != 1 || (elemType != TypeSymbol.Unknown && !AreTypesCompatible(pTypes[0], elemType)))
+                        {
+                            _diagnostics.ReportError($"Closure for 'map' must accept '{elemType.Name}'.", methodCall.Arguments[0].Span);
+                        }
+                        mappedElem = rType;
+                    }
+                }
+                var resType = TypeSymbol.CreateDynamicArray(mappedElem != TypeSymbol.Unknown ? mappedElem : elemType);
+                _nodeTypes[methodCall] = resType;
+                return resType;
+            }
+
+            if (methodCall.MethodName == "filter")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'filter' expects 1 argument (predicate closure).", methodCall.Span);
+                }
+                else
+                {
+                    var cType = GetNodeType(methodCall.Arguments[0]);
+                    if (cType.IsFunction && cType.TryGetFunctionInfo(out var pTypes, out var rType))
+                    {
+                        if (pTypes.Count != 1 || (elemType != TypeSymbol.Unknown && !AreTypesCompatible(pTypes[0], elemType)))
+                        {
+                            _diagnostics.ReportError($"Predicate closure for 'filter' must accept '{elemType.Name}'.", methodCall.Arguments[0].Span);
+                        }
+                    }
+                }
+                _nodeTypes[methodCall] = targetType;
+                return targetType;
+            }
+
+            if (methodCall.MethodName is "any" or "all")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError($"Method '{methodCall.MethodName}' expects 1 argument (predicate closure).", methodCall.Span);
+                }
+                else
+                {
+                    var cType = GetNodeType(methodCall.Arguments[0]);
+                    if (cType.IsFunction && cType.TryGetFunctionInfo(out var pTypes, out var rType))
+                    {
+                        if (pTypes.Count != 1 || (elemType != TypeSymbol.Unknown && !AreTypesCompatible(pTypes[0], elemType)))
+                        {
+                            _diagnostics.ReportError($"Predicate closure for '{methodCall.MethodName}' must accept '{elemType.Name}'.", methodCall.Arguments[0].Span);
+                        }
+                    }
+                }
+                _nodeTypes[methodCall] = TypeSymbol.Bool;
+                return TypeSymbol.Bool;
+            }
+
+            if (methodCall.MethodName == "find")
+            {
+                if (methodCall.Arguments.Count != 1)
+                {
+                    _diagnostics.ReportError("Method 'find' expects 1 argument (predicate closure).", methodCall.Span);
+                }
+                else
+                {
+                    var cType = GetNodeType(methodCall.Arguments[0]);
+                    if (cType.IsFunction && cType.TryGetFunctionInfo(out var pTypes, out var rType))
+                    {
+                        if (pTypes.Count != 1 || (elemType != TypeSymbol.Unknown && !AreTypesCompatible(pTypes[0], elemType)))
+                        {
+                            _diagnostics.ReportError($"Predicate closure for 'find' must accept '{elemType.Name}'.", methodCall.Arguments[0].Span);
+                        }
+                    }
+                }
+                var optRet = TypeSymbol.CreateOption(elemType);
+                _nodeTypes[methodCall] = optRet;
+                return optRet;
             }
         }
 

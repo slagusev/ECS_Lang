@@ -60,8 +60,10 @@ public enum TokenType
     Comma,        // ,
     Dot,          // .
     DotDot,       // ..
+    Arrow,        // ->
     FatArrow,     // =>
     Underscore,   // _
+    Pipe,         // |
 
     // Operators
     Plus,         // +
