@@ -45,9 +45,9 @@
 | Проект | Пространство имен | Назначение |
 |---|---|---|
 | **`ECSLang.Core`** | `ECSLang.Core.*` | Базовые абстракции, модели токенов, узлы AST (`AstNodes.cs`), структуры диагностик ошибок и исходных интервалов (`SourceSpan`). |
-| **`ECSLang.Frontend`** | `ECSLang.Frontend` | Лексический анализатор (`Lexer.cs`), парсер рекурсивного спуска (`Parser.cs`). Преобразует исходный текст `.ecs` в AST. |
-| **`ECSLang.Semantics`** | `ECSLang.Semantics` | Таблицы символов (`SymbolTable`), система типов (`TypeSymbol`), проверка семантики и конфликтов алиасинга в системах (`TypeChecker.cs`). |
-| **`ECSLang.Codegen.LLVM`** | `ECSLang.Codegen.LLVM` | Генератор LLVM IR (`LlvmCodeGenerator.cs`) и эмиттер низкоуровневого рантайма SoA-архетипов (`EcsRuntimeEmitter.cs`). Работает через `LLVMSharp 20.1.2`. |
+| **`ECSLang.Frontend`** | `ECSLang.Frontend` | Лексический анализатор (`Lexer.cs`), модульный парсер рекурсивного спуска (`Parser.cs`, `Parser.Declarations.cs`, `Parser.Statements.cs`, `Parser.Expressions.cs`). Преобразует исходный текст `.ecs` в AST. |
+| **`ECSLang.Semantics`** | `ECSLang.Semantics` | Таблицы символов (`SymbolTable`), система типов (`TypeSymbol`), модульная проверка семантики (`TypeChecker.cs`, `TypeChecker.Declarations.cs`, `TypeChecker.Statements.cs`, `TypeChecker.Expressions.cs`). |
+| **`ECSLang.Codegen.LLVM`** | `ECSLang.Codegen.LLVM` | Модульный генератор LLVM IR (`LlvmCodeGenerator.cs`, `.Expressions.cs`, `.Statements.cs`, `.Ecs.cs`, `.Raylib.cs`) и эмиттер низкоуровневого рантайма SoA-архетипов (`EcsRuntimeEmitter.cs`, `.Archetypes.cs`, `.Profiler.cs`). Работает через `LLVMSharp 20.1.2`. |
 | **`ECSLang.Toolchain`** | `ECSLang.Toolchain` | Интеграция с хост-инструментами: автопоиск MSVC `link.exe` и Windows SDK через `vswhere.exe`, генерация `.obj` и сборка финального `.exe`. |
 | **`ECSLang.CLI`** | `ECSLang.CLI` | Точка входа командной строки: аргументы `build`, `run`, флаги `--emit-llvm`, `--emit-ir`, вывод диагностик компиляции. |
 

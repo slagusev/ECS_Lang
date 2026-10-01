@@ -433,23 +433,28 @@ fn main(): i32 {
   - `.find(predicate)`: поиск элемента с возвратом `Option<T>` (`Some(val)` / `None`).
 - [x] Сквозной тест замыканий и лямбда-выражений: [`examples/closures_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/closures_test.ecs), успешно пройден как в Debug (`-O0`), так и в Release (`-O3`).
 
-### [ ] Рефакторинг компилятора: Модульное разделение сверхкрупных файлов (перед Этапом 30)
-- [ ] Разделение `LlvmCodeGenerator.cs` (3500+ строк) на логические модули:
+### [x] Рефакторинг компилятора: Модульное разделение сверхкрупных файлов (перед Этапом 30)
+- [x] Разделение `LlvmCodeGenerator.cs` на логические модули через `partial class`:
+  - `LlvmCodeGenerator.cs` (базовый конвейер, debug info, аллокации, строки, функции).
   - `LlvmCodeGenerator.Expressions.cs` (арифметика, вызовы функций, методы, замыкания).
   - `LlvmCodeGenerator.Statements.cs` (ветвления, циклы, сопоставление match, присваивания).
-  - `LlvmCodeGenerator.Declarations.cs` (структуры, перечисления, модули).
-  - `LlvmCodeGenerator.Raylib.cs` (маршалинг C ABI, OpenGL headless guards).
-- [ ] Разделение `EcsRuntimeEmitter.cs` (1800+ строк) на модули:
-  - `EcsRuntimeEmitter.Archetypes.cs` (SoA память, чанки, миграции архетипов).
-  - `EcsRuntimeEmitter.Systems.cs` (кодогенерация запросов query, фильтры with/without, параллельные джобы).
+  - `LlvmCodeGenerator.Ecs.cs` (системы, пайплайны, фазы).
+  - `LlvmCodeGenerator.Raylib.cs` (привязки Raylib C ABI, цвета).
+- [x] Разделение `EcsRuntimeEmitter.cs` на модули:
+  - `EcsRuntimeEmitter.cs` (метаданные компонентов, MapType, структура struct.EcsWorld).
+  - `EcsRuntimeEmitter.Archetypes.cs` (SoA память, чанки, миграции архетипов, буфер команд, события).
   - `EcsRuntimeEmitter.Profiler.cs` (F1 HUD оверлей, статистика мира).
-  - `EcsRuntimeEmitter.Commands.cs` (буфер отложенных команд).
-- [ ] Разделение `TypeChecker.cs` (1500+ строк) на модули:
-  - `TypeChecker.Expressions.cs`.
-  - `TypeChecker.Statements.cs`.
-  - `TypeChecker.Declarations.cs`.
-- [ ] Разделение `Parser.cs` (1000 строк) на модули парсинга деклараций, выражений и операторов.
-- [ ] Регрессионная валидация: полное прохождение всех существующих тестов и примеров (0 предупреждений, 0 ошибок).
+- [x] Разделение `TypeChecker.cs` на модули:
+  - `TypeChecker.cs` (символы, области видимости, таблицы, валидация программы).
+  - `TypeChecker.Expressions.cs` (проверка выражений, замыканий, методов).
+  - `TypeChecker.Statements.cs` (проверка инструкций и блоков).
+  - `TypeChecker.Declarations.cs` (проверка объявлений систем, пайплайнов, функций).
+- [x] Разделение `Parser.cs` на модули:
+  - `Parser.cs` (ядро парсера, токенизация, навигация).
+  - `Parser.Declarations.cs` (декларации функций, компонентов, систем, структур и т.д.).
+  - `Parser.Statements.cs` (инструкции, присваивания, блоки).
+  - `Parser.Expressions.cs` (выражения с приоритетами, лямбды, вызовы).
+- [x] Регрессионная валидация: полное прохождение тестов (closures, dynamic arrays, hashmap, raylib_game) и фиксация в git (коммит `d85a2bf`).
 
 ### [ ] Этап 30: Обобщенные компоненты и системы (Generics + Traits)
 - [ ] Обобщенные пользовательские структуры: `struct Node<T> { value: T }`.
