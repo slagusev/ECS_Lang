@@ -150,3 +150,11 @@ public sealed record SystemSymbol(
         return false;
     }
 }
+
+public sealed record ConstSymbol(
+    string Name,
+    TypeSymbol Type,
+    object Value,
+    SourceSpan Span
+);
+

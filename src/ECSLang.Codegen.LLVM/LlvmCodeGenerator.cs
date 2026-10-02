@@ -20,6 +20,7 @@ public sealed partial class LlvmCodeGenerator
     private HashMapEmitter? _mapEmitter;
     private StringArenaEmitter? _arenaEmitter;
     private int _lambdaCounter = 0;
+    private readonly Stack<(LLVMBasicBlockRef CondBB, LLVMBasicBlockRef ExitBB)> _loopStack = new();
 
     static LlvmCodeGenerator()
     {
@@ -46,6 +47,7 @@ public sealed partial class LlvmCodeGenerator
         _diBuilder = null;
         _currentSubprogram = null;
         _lambdaCounter = 0;
+        _loopStack.Clear();
 
         using var context = LLVMContextRef.Create();
         using var module = context.CreateModuleWithName("ecs_module");
@@ -886,6 +888,44 @@ public sealed partial class LlvmCodeGenerator
         return fn;
     }
 
+    private unsafe LLVMValueRef GetOrCreateToStringI64(LLVMContextRef context, LLVMModuleRef module, LLVMTypeRef i8PtrType, EcsRuntimeEmitter? ecs)
+    {
+        var fn = module.GetNamedFunction("rt_to_string_i64");
+        if (fn.Handle != IntPtr.Zero) return fn;
+
+        var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, context.Int64Type }, false);
+        fn = module.AddFunction("rt_to_string_i64", fnType);
+        var entry = fn.AppendBasicBlock("entry");
+        var b = context.CreateBuilder();
+        b.PositionAtEnd(entry);
+
+        var worldParam = fn.GetParam(0);
+        var val = fn.GetParam(1);
+
+        LLVMValueRef buf;
+        if (_arenaEmitter != null && ecs != null)
+        {
+            var arenaAlloc = _arenaEmitter.GetOrCreateArenaAlloc(ecs);
+            var allocType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(arenaAlloc);
+            buf = b.BuildCall2(allocType, arenaAlloc, new[] { worldParam, LLVMValueRef.CreateConstInt(context.Int64Type, 32) }, "arena_buf");
+        }
+        else
+        {
+            var mallocFunc = module.GetNamedFunction("malloc");
+            var mallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int64Type }, false);
+            buf = b.BuildCall2(mallocType, mallocFunc, new[] { LLVMValueRef.CreateConstInt(context.Int64Type, 32) }, "buf");
+        }
+
+        var sprintfFunc = module.GetNamedFunction("sprintf");
+        var sprintfType = LLVMTypeRef.CreateFunction(context.Int32Type, new[] { i8PtrType, i8PtrType }, true);
+        var fmt = b.BuildGlobalStringPtr("%lld", "fmt_lld");
+        b.BuildCall2(sprintfType, sprintfFunc, new[] { buf, fmt, val }, "");
+
+        b.BuildRet(buf);
+        b.Dispose();
+        return fn;
+    }
+
     private unsafe LLVMValueRef GetOrCreateToStringF32(LLVMContextRef context, LLVMModuleRef module, LLVMTypeRef i8PtrType, EcsRuntimeEmitter? ecs)
     {
         var fn = module.GetNamedFunction("rt_to_string_f32");
@@ -987,9 +1027,16 @@ public sealed partial class LlvmCodeGenerator
                 var fnBoolType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fnBool);
                 return builder.BuildCall2(fnBoolType, fnBool, new[] { val }, "str_bool");
             }
+            if (val.TypeOf == context.Int64Type)
+            {
+                var fn64 = GetOrCreateToStringI64(context, module, i8PtrType, ecs);
+                var fn64Type = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn64);
+                return builder.BuildCall2(fn64Type, fn64, new[] { worldPtr, val }, "str_i64");
+            }
+            var i32Val = val.TypeOf == context.Int32Type ? val : builder.BuildZExt(val, context.Int32Type, "zext_i32");
             var fn = GetOrCreateToStringI32(context, module, i8PtrType, ecs);
             var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
-            return builder.BuildCall2(fnType, fn, new[] { worldPtr, val }, "str_i32");
+            return builder.BuildCall2(fnType, fn, new[] { worldPtr, i32Val }, "str_i32");
         }
 
         if (val.TypeOf == context.FloatType || val.TypeOf == context.DoubleType)

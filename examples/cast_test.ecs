@@ -1,0 +1,75 @@
+component Position {
+    x: f32,
+    y: f32
+}
+
+component GridCell {
+    col: i32,
+    row: i32
+}
+
+system GridSnappingSystem {
+    query(pos: Position, mut cell: GridCell)
+    {
+        // Explicit cast from f32 to i32 for discrete grid coordinates
+        let cell_size: f32 = 16.0;
+        let grid_x = (pos.x / cell_size) as i32;
+        let grid_y = (pos.y / cell_size) as i32;
+
+        cell.col = grid_x;
+        cell.row = grid_y;
+    }
+}
+
+system GridDisplaySystem {
+    query(pos: Position, cell: GridCell)
+    {
+        println($"Entity Position ({pos.x}, {pos.y}) snapped to GridCell: [{cell.col}, {cell.row}]");
+    }
+}
+
+fn test_primitive_casts() {
+    println("--- Testing Primitive Casts ---");
+
+    // Float to Signed Int
+    let fx: f32 = 42.85;
+    let ix = fx as i32;
+    println($"f32 ({fx}) as i32 = {ix}");
+
+    // Signed Int to Float
+    let counter: i32 = 100;
+    let factor: f32 = 2.5;
+    let total = (counter as f32) * factor;
+    println($"i32 ({counter}) as f32 * {factor} = {total}");
+
+    // Int to larger Int (sign extension)
+    let small_num: i32 = 12345;
+    let big_num = small_num as i64;
+    println($"i32 ({small_num}) as i64 = {big_num}");
+
+    // Large Int to smaller Int (truncation)
+    let wide_val = 500 as i64;
+    let narrow_val = wide_val as i32;
+    println($"i64 ({wide_val}) as i32 = {narrow_val}");
+
+    // Chained cast
+    let chained = (99.9 as i32 as f32) + 0.5;
+    println($"Chained cast result = {chained}");
+}
+
+fn test_ecs_world_casts() {
+    println("--- Testing ECS World with Casts ---");
+    let mut world = ecs::create_world();
+
+    let entity = world.spawn();
+    world.set_Position(entity, 75.4, 130.8);
+    world.set_GridCell(entity, 0, 0);
+
+    GridSnappingSystem(world);
+    GridDisplaySystem(world);
+}
+
+fn main() {
+    test_primitive_casts();
+    test_ecs_world_casts();
+}

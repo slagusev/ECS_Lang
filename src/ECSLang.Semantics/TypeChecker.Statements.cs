@@ -71,6 +71,18 @@ public sealed partial class TypeChecker
             case BlockStatement block:
                 CheckBlock(block);
                 break;
+            case BreakStatementNode breakStmt:
+                if (_loopDepth == 0)
+                {
+                    _diagnostics.ReportError("'break' statement is only allowed inside a loop.", breakStmt.Span);
+                }
+                break;
+            case ContinueStatementNode contStmt:
+                if (_loopDepth == 0)
+                {
+                    _diagnostics.ReportError("'continue' statement is only allowed inside a loop.", contStmt.Span);
+                }
+                break;
         }
     }
 
@@ -127,6 +139,11 @@ public sealed partial class TypeChecker
         var sym = _currentScope.Lookup(assign.TargetName);
         if (sym == null)
         {
+            if (_constants.ContainsKey(assign.TargetName))
+            {
+                _diagnostics.ReportError($"Cannot assign to constant '{assign.TargetName}'.", assign.Span);
+                return;
+            }
             _diagnostics.ReportError($"Undefined variable '{assign.TargetName}'.", assign.Span);
             return;
         }
@@ -220,7 +237,15 @@ public sealed partial class TypeChecker
             _diagnostics.ReportError($"Condition in 'while' statement must be of type 'bool', got '{condType.Name}'.", whileStmt.Condition.Span);
         }
 
-        CheckBlock(whileStmt.Body);
+        _loopDepth++;
+        try
+        {
+            CheckBlock(whileStmt.Body);
+        }
+        finally
+        {
+            _loopDepth--;
+        }
     }
 
     private void CheckForStatement(ForStatement forStmt)
@@ -239,7 +264,15 @@ public sealed partial class TypeChecker
         var loopVar = new VariableSymbol(forStmt.VariableName, TypeSymbol.I32, IsMutable: false, forStmt.Span);
         _currentScope.TryDeclare(loopVar);
 
-        CheckBlock(forStmt.Body);
+        _loopDepth++;
+        try
+        {
+            CheckBlock(forStmt.Body);
+        }
+        finally
+        {
+            _loopDepth--;
+        }
 
         _currentScope = _currentScope.Parent!;
     }

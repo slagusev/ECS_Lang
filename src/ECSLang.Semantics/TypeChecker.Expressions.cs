@@ -23,6 +23,7 @@ public sealed partial class TypeChecker
             WildcardExpression => TypeSymbol.Unknown,
             LambdaExpression lambda => CheckLambdaExpression(lambda),
             IndirectCallExpression indCall => CheckIndirectCallExpression(indCall),
+            CastExpressionNode castExpr => CheckCastExpression(castExpr),
             _ => TypeSymbol.Unknown
         };
 
@@ -181,7 +182,32 @@ public sealed partial class TypeChecker
                 FindCaptures(ind.Callee, lambdaScope, captures);
                 foreach (var a in ind.Arguments) FindCaptures(a, lambdaScope, captures);
                 break;
+            case CastExpressionNode cast:
+                FindCaptures(cast.Expr, lambdaScope, captures);
+                break;
         }
+    }
+
+    private TypeSymbol CheckCastExpression(CastExpressionNode cast)
+    {
+        var srcType = CheckExpression(cast.Expr);
+        var targetType = TypeSymbol.FromName(cast.TargetTypeName);
+
+        if (srcType == TypeSymbol.Unknown || targetType == TypeSymbol.Unknown)
+        {
+            return targetType;
+        }
+
+        bool srcIsNumeric = srcType.IsInteger || srcType.IsFloatingPoint || srcType == TypeSymbol.Bool || srcType == TypeSymbol.Entity;
+        bool targetIsNumeric = targetType.IsInteger || targetType.IsFloatingPoint || targetType == TypeSymbol.Bool || targetType == TypeSymbol.Entity;
+
+        if (srcType == targetType || (srcIsNumeric && targetIsNumeric))
+        {
+            return targetType;
+        }
+
+        _diagnostics.ReportError($"Cannot cast expression of type '{srcType.Name}' to '{targetType.Name}'.", cast.Span);
+        return targetType;
     }
 
     private void CheckCaptureCandidate(string name, Scope lambdaScope, HashSet<string> captures)
@@ -189,7 +215,7 @@ public sealed partial class TypeChecker
         if (string.IsNullOrEmpty(name)) return;
         if (lambdaScope.ContainsLocal(name)) return;
         if (_functions.ContainsKey(name) || _components.ContainsKey(name) || _resources.ContainsKey(name) ||
-            _structs.ContainsKey(name) || _enums.ContainsKey(name) || _systems.ContainsKey(name)) return;
+            _structs.ContainsKey(name) || _enums.ContainsKey(name) || _systems.ContainsKey(name) || _constants.ContainsKey(name)) return;
         if (name is "println" or "print" or "readln" or "wait_key" or "Some" or "None" or "Ok" or "Err") return;
 
         var outerSym = lambdaScope.Parent?.Lookup(name);
@@ -265,12 +291,18 @@ public sealed partial class TypeChecker
         }
 
         var sym = _currentScope.Lookup(ident.Name);
-        if (sym == null)
+        if (sym != null)
         {
-            _diagnostics.ReportError($"Undefined variable '{ident.Name}'.", ident.Span);
-            return TypeSymbol.Unknown;
+            return sym.Type;
         }
-        return sym.Type;
+
+        if (_constants.TryGetValue(ident.Name, out var constSym))
+        {
+            return constSym.Type;
+        }
+
+        _diagnostics.ReportError($"Undefined variable '{ident.Name}'.", ident.Span);
+        return TypeSymbol.Unknown;
     }
 
     private TypeSymbol CheckMemberAccess(MemberAccessExpression mem)

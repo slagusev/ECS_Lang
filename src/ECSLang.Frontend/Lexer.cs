@@ -44,6 +44,10 @@ public sealed class Lexer
         ["without"] = TokenType.Without,
         ["impl"] = TokenType.Impl,
         ["trait"] = TokenType.Trait,
+        ["const"] = TokenType.Const,
+        ["break"] = TokenType.Break,
+        ["continue"] = TokenType.Continue,
+        ["as"] = TokenType.As,
         ["true"] = TokenType.True,
         ["false"] = TokenType.False,
     };

@@ -99,6 +99,12 @@ public sealed partial class Parser
                 Match(TokenType.CloseParen, "Expected ')' after argument list.");
                 expr = new IndirectCallExpression(expr, args, expr.Span);
             }
+            else if (Check(TokenType.As))
+            {
+                Advance(); // as
+                var targetType = ParseTypeAnnotation();
+                expr = new CastExpressionNode(expr, targetType, expr.Span);
+            }
             else
             {
                 break;

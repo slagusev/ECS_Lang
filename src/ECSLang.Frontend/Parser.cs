@@ -90,6 +90,10 @@ public sealed partial class Parser
             {
                 declarations.Add(ParseTraitDeclaration());
             }
+            else if (Check(TokenType.Const))
+            {
+                declarations.Add(ParseConstDeclaration());
+            }
             else
             {
                 _diagnostics.ReportError($"Unexpected token '{Current.Text}' at file root.", Current.Span);

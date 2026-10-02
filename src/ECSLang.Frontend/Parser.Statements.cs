@@ -66,6 +66,22 @@ public sealed partial class Parser
             return ParseMatchStatement();
         }
 
+        // 4.3 Break statement: break;
+        if (Check(TokenType.Break))
+        {
+            var breakTok = Advance();
+            Match(TokenType.Semicolon, "Expected ';' after 'break'.");
+            return new BreakStatementNode(breakTok.Span);
+        }
+
+        // 4.4 Continue statement: continue;
+        if (Check(TokenType.Continue))
+        {
+            var contTok = Advance();
+            Match(TokenType.Semicolon, "Expected ';' after 'continue'.");
+            return new ContinueStatementNode(contTok.Span);
+        }
+
         // 5. Assignment or Expression statement
         var expr = ParseExpression();
         if (Current.Type is TokenType.Equal or TokenType.PlusEqual or TokenType.MinusEqual or TokenType.StarEqual or TokenType.SlashEqual)

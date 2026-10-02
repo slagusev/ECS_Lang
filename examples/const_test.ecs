@@ -1,0 +1,54 @@
+import "std/keys.ecs";
+import "std/mouse.ecs";
+
+const MAX_PLAYERS: i32 = 4;
+const DEFAULT_SPEED: f32 = 12.5;
+const HEX_COLOR_MASK: i32 = 0x00FF00;
+const GREETING: string = "Compile-time constants working!";
+const COMBINED: i32 = MAX_PLAYERS * 10;
+
+fn describe_key(key: i32) {
+    match key {
+        KEY_SPACE => {
+            println("Key is SPACE");
+        }
+        KEY_ESCAPE => {
+            println("Key is ESCAPE");
+        }
+        KEY_ENTER => {
+            println("Key is ENTER");
+        }
+        _ => {
+            println("Other key");
+        }
+    }
+}
+
+fn describe_mouse(btn: i32) {
+    match btn {
+        MOUSE_BUTTON_LEFT => {
+            println("Mouse button: LEFT");
+        }
+        MOUSE_BUTTON_RIGHT => {
+            println("Mouse button: RIGHT");
+        }
+        _ => {
+            println("Other mouse button");
+        }
+    }
+}
+
+fn main() {
+    println(GREETING);
+    println($"Max players: {MAX_PLAYERS}");
+    println($"Default speed: {DEFAULT_SPEED}");
+    println($"Hex mask: {HEX_COLOR_MASK}");
+    println($"Combined: {COMBINED}");
+
+    describe_key(KEY_SPACE);
+    describe_key(KEY_ESCAPE);
+    describe_key(KEY_A);
+
+    describe_mouse(MOUSE_BUTTON_LEFT);
+    describe_mouse(MOUSE_BUTTON_RIGHT);
+}

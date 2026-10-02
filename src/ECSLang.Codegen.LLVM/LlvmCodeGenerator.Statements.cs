@@ -205,7 +205,15 @@ public sealed partial class LlvmCodeGenerator
                     builder.BuildCondBr(loopCondVal, whileBodyBB, whileExitBB);
 
                     builder.PositionAtEnd(whileBodyBB);
-                    CompileBlock(context, module, builder, function, whileStmt.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+                    _loopStack.Push((whileCondBB, whileExitBB));
+                    try
+                    {
+                        CompileBlock(context, module, builder, function, whileStmt.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+                    }
+                    finally
+                    {
+                        _loopStack.Pop();
+                    }
                     if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
                         builder.BuildBr(whileCondBB);
 
@@ -240,7 +248,15 @@ public sealed partial class LlvmCodeGenerator
 
                     // for_body
                     builder.PositionAtEnd(forBodyBB);
-                    CompileBlock(context, module, builder, function, forStmt.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+                    _loopStack.Push((forIncBB, forExitBB));
+                    try
+                    {
+                        CompileBlock(context, module, builder, function, forStmt.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
+                    }
+                    finally
+                    {
+                        _loopStack.Pop();
+                    }
                     if (builder.InsertBlock.Terminator.Handle == IntPtr.Zero)
                         builder.BuildBr(forIncBB);
 
@@ -292,6 +308,28 @@ public sealed partial class LlvmCodeGenerator
                     else
                     {
                         builder.BuildRetVoid();
+                    }
+                    break;
+
+                case BreakStatementNode breakStmt:
+                    if (_loopStack.Count > 0)
+                    {
+                        builder.BuildBr(_loopStack.Peek().ExitBB);
+                    }
+                    else
+                    {
+                        _diagnostics.ReportError("'break' statement is only allowed inside a loop.", breakStmt.Span);
+                    }
+                    break;
+
+                case ContinueStatementNode contStmt:
+                    if (_loopStack.Count > 0)
+                    {
+                        builder.BuildBr(_loopStack.Peek().CondBB);
+                    }
+                    else
+                    {
+                        _diagnostics.ReportError("'continue' statement is only allowed inside a loop.", contStmt.Span);
                     }
                     break;
 
@@ -561,6 +599,10 @@ public sealed partial class LlvmCodeGenerator
                 {
                     nonWildcardArms.Add((mSym.Value, arm));
                 }
+            }
+            else if (arm.Pattern is IdentifierExpression constId && _typeChecker.Constants.TryGetValue(constId.Name, out var cSym) && cSym.Value is int cVal)
+            {
+                nonWildcardArms.Add((cVal, arm));
             }
         }
 

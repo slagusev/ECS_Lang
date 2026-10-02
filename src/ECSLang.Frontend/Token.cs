@@ -47,6 +47,10 @@ public enum TokenType
     Without,
     Impl,
     Trait,
+    Const,
+    Break,
+    Continue,
+    As,
 
     // Punctuation & Delimiters
     OpenParen,    // (

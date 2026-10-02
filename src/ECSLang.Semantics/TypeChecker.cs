@@ -46,6 +46,7 @@ public sealed partial class TypeChecker
     private readonly Dictionary<string, Dictionary<string, FunctionDeclaration>> _methods = new(StringComparer.Ordinal);
     private readonly Dictionary<string, TraitDeclaration> _traits = new(StringComparer.Ordinal);
     private readonly Dictionary<string, HashSet<string>> _traitImpls = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ConstSymbol> _constants = new(StringComparer.Ordinal);
     private readonly Dictionary<string, StructDeclaration> _genericStructs = new(StringComparer.Ordinal);
     private readonly Dictionary<string, ComponentDeclaration> _genericComponents = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FunctionDeclaration> _genericFunctions = new(StringComparer.Ordinal);
@@ -54,6 +55,7 @@ public sealed partial class TypeChecker
     private readonly List<PipelineDeclaration> _pipelines = new();
     private Scope _currentScope = new();
     private TypeSymbol? _currentExpectedReturnType;
+    private int _loopDepth = 0;
 
     public List<DeclarationNode> MonomorphizedDeclarations { get; } = new();
 
@@ -62,6 +64,7 @@ public sealed partial class TypeChecker
     public IReadOnlyDictionary<string, StructSymbol> Structs => _structs;
     public IReadOnlyDictionary<string, EventSymbol> Events => _events;
     public IReadOnlyDictionary<string, EnumSymbol> Enums => _enums;
+    public IReadOnlyDictionary<string, ConstSymbol> Constants => _constants;
     public IReadOnlyDictionary<string, SystemSymbol> Systems => _systems;
     public IReadOnlyDictionary<string, FunctionDeclaration> Functions => _functions;
     public IReadOnlyDictionary<string, Dictionary<string, FunctionDeclaration>> Methods => _methods;
@@ -89,6 +92,17 @@ public sealed partial class TypeChecker
                 RegisterTrait(trait);
             }
         }
+
+        // Pass 0.5: Register compile-time Constants
+        var constDecls = new List<ConstDeclaration>();
+        foreach (var decl in program.Declarations)
+        {
+            if (decl is ConstDeclaration c)
+            {
+                constDecls.Add(c);
+            }
+        }
+        RegisterConstants(constDecls);
 
         // Pass 1: Register all Components, Resources, Structs, Events, Enums, and Functions
         foreach (var decl in program.Declarations)

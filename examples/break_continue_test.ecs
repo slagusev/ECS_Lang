@@ -1,0 +1,45 @@
+fn test_while_break_continue() {
+    println("--- Testing while with continue and break ---");
+    let mut i = 0;
+    while i < 20 {
+        i = i + 1;
+
+        // Skip even numbers using continue
+        if i % 2 == 0 {
+            continue;
+        }
+
+        // Break once i exceeds 11
+        if i > 11 {
+            println($"Breaking at i = {i}");
+            break;
+        }
+
+        println($"Odd number: {i}");
+    }
+    println($"Finished while loop. Final i = {i}");
+}
+
+fn test_for_break_continue() {
+    println("--- Testing for with continue and break ---");
+    for k in 1..10 {
+        // Skip 3 using continue
+        if k == 3 {
+            continue;
+        }
+
+        // Break at 7
+        if k == 7 {
+            println($"Breaking for loop at k = {k}");
+            break;
+        }
+
+        println($"For iteration: {k}");
+    }
+    println("Finished for loop.");
+}
+
+fn main() {
+    test_while_break_continue();
+    test_for_break_continue();
+}

@@ -1,0 +1,25 @@
+// =====================================================================
+// ECSLang Standard Library: Mouse Constants (Raylib Mouse Codes)
+// =====================================================================
+
+// Mouse buttons
+const MOUSE_BUTTON_LEFT: i32 = 0;
+const MOUSE_BUTTON_RIGHT: i32 = 1;
+const MOUSE_BUTTON_MIDDLE: i32 = 2;
+const MOUSE_BUTTON_SIDE: i32 = 3;
+const MOUSE_BUTTON_EXTRA: i32 = 4;
+const MOUSE_BUTTON_FORWARD: i32 = 5;
+const MOUSE_BUTTON_BACK: i32 = 6;
+
+// Mouse cursor shapes
+const MOUSE_CURSOR_DEFAULT: i32 = 0;
+const MOUSE_CURSOR_ARROW: i32 = 1;
+const MOUSE_CURSOR_IBEAM: i32 = 2;
+const MOUSE_CURSOR_CROSSHAIR: i32 = 3;
+const MOUSE_CURSOR_POINTING_HAND: i32 = 4;
+const MOUSE_CURSOR_RESIZE_EW: i32 = 5;
+const MOUSE_CURSOR_RESIZE_NS: i32 = 6;
+const MOUSE_CURSOR_RESIZE_NWSE: i32 = 7;
+const MOUSE_CURSOR_RESIZE_NESW: i32 = 8;
+const MOUSE_CURSOR_RESIZE_ALL: i32 = 9;
+const MOUSE_CURSOR_NOT_ALLOWED: i32 = 10;

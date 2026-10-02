@@ -635,4 +635,20 @@ public sealed partial class Parser
         Match(TokenType.CloseBrace, "Expected '}' to close 'trait' body.");
         return new TraitDeclaration(nameToken.Text, methods, traitKeyword.Span);
     }
+
+    private ConstDeclaration ParseConstDeclaration()
+    {
+        var startTok = Match(TokenType.Const);
+        var nameTok = Match(TokenType.Identifier, "Expected constant name after 'const'.");
+        string typeName = "";
+        if (Check(TokenType.Colon))
+        {
+            Advance();
+            typeName = ParseTypeAnnotation();
+        }
+        Match(TokenType.Equal, "Expected '=' after constant name or type in const declaration.");
+        var initializer = ParseExpression();
+        Match(TokenType.Semicolon, "Expected ';' after const declaration.");
+        return new ConstDeclaration(nameTok.Text, typeName, initializer, startTok.Span);
+    }
 }

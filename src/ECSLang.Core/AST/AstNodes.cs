@@ -65,6 +65,13 @@ public sealed record EnumDeclaration(
     SourceSpan Span
 ) : DeclarationNode(Span);
 
+public sealed record ConstDeclaration(
+    string Name,
+    string TypeName,
+    ExpressionNode Initializer,
+    SourceSpan Span
+) : DeclarationNode(Span);
+
 public sealed record QueryParameter(
     bool IsMutable,
     string Name,
@@ -218,6 +225,10 @@ public sealed record MatchStatement(
 
 public sealed record ReturnStatement(ExpressionNode? Value, SourceSpan Span) : StatementNode(Span);
 
+public sealed record BreakStatementNode(SourceSpan Span) : StatementNode(Span);
+
+public sealed record ContinueStatementNode(SourceSpan Span) : StatementNode(Span);
+
 public sealed record ExpressionStatement(ExpressionNode Expression, SourceSpan Span) : StatementNode(Span);
 
 // Expressions
@@ -314,3 +325,10 @@ public sealed record IndirectCallExpression(
     IReadOnlyList<ExpressionNode> Arguments,
     SourceSpan Span
 ) : ExpressionNode(Span);
+
+public sealed record CastExpressionNode(
+    ExpressionNode Expr,
+    string TargetTypeName,
+    SourceSpan Span
+) : ExpressionNode(Span);
+
