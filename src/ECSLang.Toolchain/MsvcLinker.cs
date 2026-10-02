@@ -3,7 +3,7 @@ using ECSLang.Core;
 
 namespace ECSLang.Toolchain;
 
-public sealed class MsvcLinker : ILinker
+public sealed partial class MsvcLinker : ILinker
 {
     private readonly DiagnosticsBag _diagnostics;
 
@@ -14,10 +14,19 @@ public sealed class MsvcLinker : ILinker
 
     public bool Link(string objFilePath, string outputExePath, CompilerOptions? options = null)
     {
-        var (linkExe, libPaths) = ResolveMsvcPaths();
+        var (msvcLinkExe, libPaths) = ResolveMsvcPaths();
+
+        // In dev profile (non-release), prioritize fast multithreaded lld-link with silent fallback to MSVC link.exe
+        string? linkExe = null;
+        if (options?.IsRelease != true)
+        {
+            linkExe = TryResolveLldLink(ResolveVsPath());
+        }
+        linkExe ??= msvcLinkExe;
+
         if (string.IsNullOrEmpty(linkExe) || !File.Exists(linkExe))
         {
-            _diagnostics.ReportError("MSVC link.exe not found on this machine. Please install Visual Studio C++ Build Tools.", SourceSpan.None);
+            _diagnostics.ReportError("Linker not found on this machine. Please install Visual Studio C++ Build Tools or LLVM.", SourceSpan.None);
             return false;
         }
 

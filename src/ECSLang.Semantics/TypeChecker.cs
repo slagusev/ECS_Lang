@@ -81,8 +81,13 @@ public sealed partial class TypeChecker
     public TypeSymbol GetNodeType(AstNode node) =>
         _nodeTypes.TryGetValue(node, out var t) ? t : TypeSymbol.Unknown;
 
+    public bool IsChecked { get; private set; }
+
     public void CheckProgram(ProgramNode program)
     {
+        if (IsChecked) return;
+        IsChecked = true;
+
         RegisterBuiltinComponents();
 
         // Pass 0: Register Traits

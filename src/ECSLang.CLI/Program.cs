@@ -2,6 +2,7 @@ using System.Diagnostics;
 using ECSLang.Codegen.LLVM;
 using ECSLang.Core;
 using ECSLang.Frontend;
+using ECSLang.Semantics;
 using ECSLang.Toolchain;
 
 namespace ECSLang.CLI;
@@ -123,9 +124,14 @@ public static class Program
         Console.WriteLine($"[ECS-Lang] Compiling {Path.GetFileName(inputPath)} [{modeTag}]...");
         Console.ResetColor();
 
-        // 1. Load project and modules with cycle detection
+        var swTotal = Stopwatch.StartNew();
+
+        // 1. Frontend (Parsing & Module Resolution)
+        var swFrontend = Stopwatch.StartNew();
         var loader = new ProjectLoader(diagnostics);
         var programAst = loader.Load(inputPath);
+        swFrontend.Stop();
+
         if (programAst == null || diagnostics.HasErrors)
         {
             diagnostics.PrintToConsole();
@@ -137,13 +143,28 @@ public static class Program
             Console.WriteLine($"[ECS-Lang] Resolved {loader.LoadedFiles.Count} module(s): {string.Join(", ", loader.LoadedFiles.Select(Path.GetFileName))}");
         }
 
-        // 4. LLVM Codegen
+        // 2. Semantics (Type Checking & DAG Dependency Analysis)
+        var swSemantics = Stopwatch.StartNew();
+        var typeChecker = new TypeChecker(diagnostics);
+        typeChecker.CheckProgram(programAst);
+        swSemantics.Stop();
+
+        if (diagnostics.HasErrors)
+        {
+            diagnostics.PrintToConsole();
+            return 1;
+        }
+
+        // 3. LLVM Codegen
+        var swCodegen = Stopwatch.StartNew();
         string finalObj = customOutputExe != null && emitObjOnly
             ? customOutputExe
             : Path.Combine(outputDir, $"{baseName}{options.Target.ObjectExtension}");
         string tempObj = emitObjOnly ? finalObj : Path.Combine(Path.GetTempPath(), $"{baseName}_{Guid.NewGuid():N}{options.Target.ObjectExtension}");
-        var codegen = new LlvmCodeGenerator(diagnostics);
+        var codegen = new LlvmCodeGenerator(diagnostics, typeChecker);
         bool codegenSuccess = codegen.Compile(programAst, tempObj, emitIrPath, options);
+        swCodegen.Stop();
+
         if (!codegenSuccess || diagnostics.HasErrors)
         {
             diagnostics.PrintToConsole();
@@ -157,13 +178,16 @@ public static class Program
 
         if (emitObjOnly)
         {
+            swTotal.Stop();
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"[ECS-Lang] Successfully compiled object file to {finalObj}");
             Console.ResetColor();
+            PrintCompilationMetrics(swFrontend.Elapsed.TotalMilliseconds, swSemantics.Elapsed.TotalMilliseconds, swCodegen.Elapsed.TotalMilliseconds, 0.0, swTotal.Elapsed.TotalMilliseconds);
             return 0;
         }
 
-        // 5. Linker
+        // 4. Linker
+        var swLinker = Stopwatch.StartNew();
         var outDir = Path.GetDirectoryName(Path.GetFullPath(outputExe));
         if (!string.IsNullOrEmpty(outDir) && !Directory.Exists(outDir))
         {
@@ -171,6 +195,7 @@ public static class Program
         }
         var linker = LinkerFactory.Create(options.Target, diagnostics);
         bool linkSuccess = linker.Link(tempObj, outputExe, options);
+        swLinker.Stop();
 
         // Cleanup temp obj file
         try { if (File.Exists(tempObj)) File.Delete(tempObj); } catch { }
@@ -181,9 +206,18 @@ public static class Program
             return 1;
         }
 
+        swTotal.Stop();
+
         Console.ForegroundColor = ConsoleColor.Green;
         Console.WriteLine($"[ECS-Lang] Successfully compiled to {outputExe}");
         Console.ResetColor();
+
+        PrintCompilationMetrics(
+            swFrontend.Elapsed.TotalMilliseconds,
+            swSemantics.Elapsed.TotalMilliseconds,
+            swCodegen.Elapsed.TotalMilliseconds,
+            swLinker.Elapsed.TotalMilliseconds,
+            swTotal.Elapsed.TotalMilliseconds);
 
         // 6. Run if requested
         if (command == "run")
@@ -231,5 +265,18 @@ public static class Program
         Console.WriteLine("  --wait-key      Wait for Enter key before exiting console");
         Console.WriteLine("  -c, --emit-obj  Emit object file (.obj / .o) without linking");
         Console.WriteLine("  --emit-ir       Emit LLVM IR (.ll) file");
+    }
+
+    private static void PrintCompilationMetrics(double frontendMs, double semanticsMs, double codegenMs, double linkerMs, double totalMs)
+    {
+        var ci = System.Globalization.CultureInfo.InvariantCulture;
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.WriteLine("[ECS-Lang] Compilation metrics:");
+        Console.WriteLine($"  - Frontend  : {frontendMs.ToString("F2", ci)} ms");
+        Console.WriteLine($"  - Semantics : {semanticsMs.ToString("F2", ci)} ms");
+        Console.WriteLine($"  - Codegen   : {codegenMs.ToString("F2", ci)} ms");
+        Console.WriteLine($"  - Linker    : {linkerMs.ToString("F2", ci)} ms");
+        Console.WriteLine($"  - Total Time: {totalMs.ToString("F2", ci)} ms");
+        Console.ResetColor();
     }
 }
