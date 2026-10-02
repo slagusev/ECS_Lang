@@ -51,6 +51,9 @@ copy /y "%ROOT_DIR%examples\18_arcade_void_defender.ecs" "%EXAMPLES_DIR%\" >nul
 if exist "%ROOT_DIR%README.md" (
     copy /y "%ROOT_DIR%README.md" "%DIST_DIR%\" >nul
 )
+if exist "%ROOT_DIR%LICENSE" (
+    copy /y "%ROOT_DIR%LICENSE" "%DIST_DIR%\" >nul
+)
 
 echo.
 echo [5/5] Verifying Native AOT SDK Executable...
