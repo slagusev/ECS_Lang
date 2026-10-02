@@ -725,6 +725,7 @@ public sealed partial class LlvmCodeGenerator
             "i8" or "u8" or "byte" => context.Int8Type,
             "bool" => context.Int1Type,
             "string" or "str" => LLVMTypeRef.CreatePointer(context.Int8Type, 0),
+            "str_view" => context.GetStructType(new[] { LLVMTypeRef.CreatePointer(context.Int8Type, 0), context.Int32Type }, false),
             "World" or "world" => ecs != null ? LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0) : LLVMTypeRef.CreatePointer(context.Int8Type, 0),
             "Commands" or "commands" => ecs != null ? LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0) : LLVMTypeRef.CreatePointer(context.Int8Type, 0),
             "Entity" or "entity" => context.Int32Type,
@@ -1050,6 +1051,36 @@ public sealed partial class LlvmCodeGenerator
             var fn = GetOrCreateToStringF32(context, module, i8PtrType, ecs);
             var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
             return builder.BuildCall2(fnType, fn, new[] { worldPtr, val }, "str_f32");
+        }
+
+        if (type == TypeSymbol.StrView || (val.TypeOf.Kind == LLVMTypeKind.LLVMStructTypeKind && val.TypeOf.StructElementTypesCount == 2))
+        {
+            var ptr = builder.BuildExtractValue(val, 0, "view_ptr");
+            var len = builder.BuildExtractValue(val, 1, "view_len");
+            var len64 = builder.BuildZExt(len, context.Int64Type, "view_len64");
+            var allocSize = builder.BuildAdd(len64, LLVMValueRef.CreateConstInt(context.Int64Type, 1), "view_alloc_size");
+
+            LLVMValueRef newBuf;
+            if (_arenaEmitter != null && ecs != null && worldPtr.Handle != IntPtr.Zero)
+            {
+                var arenaAlloc = _arenaEmitter.GetOrCreateArenaAlloc(ecs);
+                var allocType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(arenaAlloc);
+                newBuf = builder.BuildCall2(allocType, arenaAlloc, new[] { worldPtr, allocSize }, "view_to_str_arena");
+            }
+            else
+            {
+                var mallocFunc = GetOrDeclareCrtFunc(module, "malloc", i8PtrType, new[] { context.Int64Type });
+                var mallocType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(mallocFunc);
+                newBuf = builder.BuildCall2(mallocType, mallocFunc, new[] { allocSize }, "view_to_str_malloc");
+            }
+
+            var memcpyFunc = GetOrDeclareCrtFunc(module, "memcpy", i8PtrType, new[] { i8PtrType, i8PtrType, context.Int64Type });
+            var memcpyType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(memcpyFunc);
+            builder.BuildCall2(memcpyType, memcpyFunc, new[] { newBuf, ptr, len64 }, "");
+
+            var termPtr = builder.BuildInBoundsGEP2(context.Int8Type, newBuf, new[] { len64 }, "view_term_ptr");
+            builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int8Type, 0), termPtr);
+            return newBuf;
         }
 
         if (type == TypeSymbol.String || val.TypeOf.Kind == LLVMTypeKind.LLVMPointerTypeKind)

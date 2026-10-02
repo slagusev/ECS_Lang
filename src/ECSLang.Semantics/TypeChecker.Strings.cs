@@ -95,6 +95,27 @@ public sealed partial class TypeChecker
                 returnType = TypeSymbol.I32;
                 return true;
 
+            case "view_substring":
+                if (methodCall.Arguments.Count != 2)
+                {
+                    _diagnostics.ReportError("Method 'view_substring' on string expects exactly 2 arguments (start: i32, length: i32).", methodCall.Span);
+                }
+                else
+                {
+                    var startType = CheckExpression(methodCall.Arguments[0]);
+                    if (!startType.IsInteger)
+                    {
+                        _diagnostics.ReportError($"Method 'view_substring' expects integer 'start', but got '{startType.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                    var lenType = CheckExpression(methodCall.Arguments[1]);
+                    if (!lenType.IsInteger)
+                    {
+                        _diagnostics.ReportError($"Method 'view_substring' expects integer 'length', but got '{lenType.Name}'.", methodCall.Arguments[1].Span);
+                    }
+                }
+                returnType = TypeSymbol.StrView;
+                return true;
+
             case "substring":
                 if (methodCall.Arguments.Count != 2)
                 {

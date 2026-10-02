@@ -132,6 +132,15 @@ public sealed partial class LlvmCodeGenerator
                 return true;
             }
 
+            case "view_substring":
+            {
+                var strlenFunc = GetOrDeclareCrtFunc(module, "strlen", context.Int64Type, new[] { i8PtrType });
+                var strlenType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(strlenFunc);
+                var sLen = builder.BuildCall2(strlenType, strlenFunc, new[] { targetVal }, "sub_slen");
+                result = EmitViewSubstring(context, builder, targetVal, sLen, methodCall.Arguments[0], methodCall.Arguments[1], module, function, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                return true;
+            }
+
             case "substring":
             {
                 var startArg = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);

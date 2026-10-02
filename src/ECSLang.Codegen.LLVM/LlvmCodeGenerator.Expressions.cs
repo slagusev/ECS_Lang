@@ -95,6 +95,11 @@ public sealed partial class LlvmCodeGenerator
                     var len64 = builder.BuildCall2(strlenType, strlenFunc, new[] { strVal }, "slen64");
                     return builder.BuildTrunc(len64, context.Int32Type, "slen32");
                 }
+                if (memTargetType == TypeSymbol.StrView && mem.MemberName is "len" or "length")
+                {
+                    var viewVal = CompileExpression(context, module, builder, function, mem.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    return builder.BuildExtractValue(viewVal, 1, "view_len");
+                }
                 if (memTargetType.IsDynamicArray && mem.MemberName is "len" or "length" or "capacity")
                 {
                     var dynArrStructType = MapType(context, memTargetType.Name, ecs);
@@ -934,6 +939,11 @@ public sealed partial class LlvmCodeGenerator
                 if (targetType == TypeSymbol.String && TryGenerateStringMethodCall(context, module, builder, function, methodCall, targetVal, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, out var strMethodRes))
                 {
                     return strMethodRes;
+                }
+
+                if (targetType == TypeSymbol.StrView && TryGenerateStrViewMethodCall(context, module, builder, function, methodCall, targetVal, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, out var strViewMethodRes))
+                {
+                    return strViewMethodRes;
                 }
 
                 if (targetType.IsOption)
@@ -1834,6 +1844,13 @@ public sealed partial class LlvmCodeGenerator
                             var fmt = builder.BuildGlobalStringPtr(addNewline ? "%d\n" : "%d", "fmt_b");
                             var i32Val = builder.BuildZExt(val, context.Int32Type, "b_to_i32");
                             return builder.BuildCall2(printfType, printfFunc, new[] { fmt, i32Val }, "printf_call");
+                        }
+                        else if (argType == TypeSymbol.StrView || (val.TypeOf.Kind == LLVMTypeKind.LLVMStructTypeKind && val.TypeOf.StructElementTypesCount == 2))
+                        {
+                            var vPtr = builder.BuildExtractValue(val, 0, "view_p");
+                            var vLen = builder.BuildExtractValue(val, 1, "view_l");
+                            var fmt = builder.BuildGlobalStringPtr(addNewline ? "%.*s\n" : "%.*s", "fmt_str_view");
+                            return builder.BuildCall2(printfType, printfFunc, new[] { fmt, vLen, vPtr }, "printf_call");
                         }
                         else if (isValPointer)
                         {

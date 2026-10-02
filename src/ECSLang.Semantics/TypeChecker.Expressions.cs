@@ -300,7 +300,7 @@ public sealed partial class TypeChecker
         }
 
         var targetType = CheckExpression(mem.Target);
-        if (targetType == TypeSymbol.String && mem.MemberName is "len" or "length")
+        if ((targetType == TypeSymbol.String || targetType == TypeSymbol.StrView) && mem.MemberName is "len" or "length")
         {
             return TypeSymbol.I32;
         }
@@ -872,6 +872,12 @@ public sealed partial class TypeChecker
         {
             _nodeTypes[methodCall] = strMethodType;
             return strMethodType;
+        }
+
+        if (targetType == TypeSymbol.StrView && TryCheckStrViewMethod(methodCall, targetType, out var strViewMethodType))
+        {
+            _nodeTypes[methodCall] = strViewMethodType;
+            return strViewMethodType;
         }
 
         if (targetType.IsDynamicArray)

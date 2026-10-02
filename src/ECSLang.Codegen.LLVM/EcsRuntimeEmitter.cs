@@ -308,6 +308,7 @@ public sealed partial class EcsRuntimeEmitter
             "i32" or "u32" or "int" => _context.Int32Type,
             "bool" => _context.Int1Type,
             "string" or "str" => LLVMTypeRef.CreatePointer(_context.Int8Type, 0),
+            "str_view" => _context.GetStructType(new[] { LLVMTypeRef.CreatePointer(_context.Int8Type, 0), _context.Int32Type }, false),
             "World" or "world" => LLVMTypeRef.CreatePointer(_worldStructType, 0),
             "Commands" or "commands" => LLVMTypeRef.CreatePointer(_worldStructType, 0),
             "Entity" or "entity" => _context.Int32Type,

@@ -10,7 +10,7 @@
 
 // 1. Columnar ECS Components (SoA Layout in Memory Chunks)
 component LogTimestamp {
-    time: string
+    time: str_view
 }
 
 component LogLevel {
@@ -166,11 +166,11 @@ fn main(): i32 {
         }
 
         if line_len > 10 {
-            let line = content.substring(offset, line_len);
+            let line = content.view_substring(offset, line_len);
 
             let is_err = line.contains("[ERROR]");
             let is_get = line.contains("GET");
-            let ts = line.substring(0, 10);
+            let ts = line.view_substring(0, 10);
 
             let mut status = 200;
             let mut resp_time = 0.0;
