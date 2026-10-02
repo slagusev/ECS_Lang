@@ -55,6 +55,9 @@ public sealed partial class LlvmCodeGenerator
             case ErrorPropagationExpressionNode tryExpr:
                 return GenerateErrorPropagationExpression(context, module, builder, function, tryExpr, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
 
+            case BulkSpawnExpressionNode bulkSpawn:
+                return GenerateBulkSpawnExpression(context, module, builder, function, bulkSpawn, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+
             case IdentifierExpression ident:
                 if (locals.TryGetValue(ident.Name, out var varPtr))
                 {

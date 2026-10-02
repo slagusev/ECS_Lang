@@ -26,6 +26,7 @@ public sealed partial class TypeChecker
             CastExpressionNode castExpr => CheckCastExpression(castExpr),
             ResourceGetExpressionNode resGet => CheckResourceGetExpression(resGet),
             ErrorPropagationExpressionNode tryExpr => CheckErrorPropagationExpression(tryExpr),
+            BulkSpawnExpressionNode bulkSpawn => CheckBulkSpawnExpression(bulkSpawn),
             _ => TypeSymbol.Unknown
         };
 

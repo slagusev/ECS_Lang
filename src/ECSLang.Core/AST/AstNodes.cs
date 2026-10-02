@@ -281,6 +281,12 @@ public sealed record MethodCallExpression(
     SourceSpan Span
 ) : ExpressionNode(Span);
 
+public sealed record BulkSpawnExpressionNode(
+    ExpressionNode Target,
+    IReadOnlyList<ExpressionNode> Components,
+    SourceSpan Span
+) : ExpressionNode(Span);
+
 public sealed record ResourceGetExpressionNode(
     ExpressionNode Target,
     string ResourceName,
