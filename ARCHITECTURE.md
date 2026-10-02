@@ -1039,5 +1039,69 @@ public interface ILinker
 | **17** | `17_bouncing_balls.ecs` | Игра / Физика | Интерактивная 2D физическая песочница: гравитация, отскок от стен и ракетки игрока с коэффициентом упругости, спавн шариков по клику мыши / пробелу, счетчик очков и шар-счетчик, оверлей профайлера `F1` | Интерактивная 2D игра (60 FPS) |
 | **18** | `18_arcade_void_defender.ecs` | Игра / Аркада | Законченная космическая аркада: многостадийный пайплайн, параллельный параллакс звезд, эскадрильи пришельцев с конечным автоматом AI (патрулирование, пикирование, уклонение), лазерные пушки, взрывные частицы, HUD, экран победы | Интерактивная 2D игра (60 FPS) |
 
+---
+
+## 30. Фаза P0: Системное ядро и управляющие конструкции (const, break/continue, as)
+
+Фаза P0 («Стоп-кровотечение») ликвидирует архитектурные пробелы базового синтаксиса и низкоуровневого управления вычислениями перед переходом к крупномасштабным прикладным демонстраторам:
+
+```mermaid
+flowchart TD
+    subgraph Frontend["ECSLang.Frontend"]
+        T["Токены: const, break, continue, as"]
+        P["Parser: ParseConst, ParseBreak, ParseContinue, Pratt ParseCast ('as')"]
+    end
+    subgraph Semantics["ECSLang.Semantics"]
+        P05["Pass 0.5: RegisterConstants & Constant Folding"]
+        TC["TypeChecker: _loopDepth validation, CheckCastExpression"]
+    end
+    subgraph LLVM["ECSLang.Codegen.LLVM"]
+        IR_Const["Zero-Cost Inlining: LLVM.ConstInt / ConstReal / ConstString"]
+        IR_Loop["CFG Basic Blocks: _loopStack (condBB, exitBB, forIncBB)"]
+        IR_Cast["Native Opcodes: fptosi, sitofp, sext, trunc, fpext, fptrunc"]
+    end
+    Frontend --> Semantics --> LLVM
+```
+
+### 30.1. Глобальные и локальные Compile-Time Константы (`const`)
+- **Лексер и парсер**: ключевое слово `const`, AST-узел `ConstDeclaration` (`Name`, `Type`, `Initializer`).
+- **Семантический анализ (Pass 0.5)**:
+  - Выделенный предварительный проход `RegisterConstants` в `TypeChecker.Declarations.cs`. Вычисляет значения константных выражений до проверки тел функций и систем (Constant Folding для литералов, унарных и бинарных арифметических операций).
+  - Регистрация в `SymbolTable` в виде `ConstSymbol`.
+  - Защита от мутаций: попытка присваивания константе пресекается на этапе семантики с ошибкой `CannotAssignToConst`.
+- **Генерация LLVM IR**:
+  - Zero-Cost Abstraction: константы не размещаются на стеке и не требуют статической памяти `.data`. При обращении к константе эмиттер `LlvmCodeGenerator.Expressions.cs` возвращает готовый немедленный операнд (`LLVM.ConstInt`, `LLVM.ConstReal`, глобальный строковый константный пул).
+  - Полная поддержка использования констант в ветвях `match` сопоставления с образцом.
+- **Стандартная библиотека кодов ввода**:
+  - `std/keys.ecs`: константы всех клавиш клавиатуры Raylib (`KEY_A`..`KEY_Z`, `KEY_SPACE`, `KEY_ENTER`, `KEY_ESCAPE`, `KEY_UP`..`KEY_DOWN`).
+  - `std/mouse.ecs`: константы кнопок мыши (`MOUSE_BUTTON_LEFT`, `RIGHT`, `MIDDLE`) и курсоров.
+
+### 30.2. Операторы управления циклами (`break` и `continue`)
+- **Лексер и парсер**: ключевые слова `break` и `continue`, AST-узлы `BreakStatementNode` и `ContinueStatementNode`.
+- **Семантический анализ**:
+  - Счетчик глубины циклов `_loopDepth` в `TypeChecker.Statements.cs`.
+  - Проверка валидности контекста: выброс диагностик `CannotBreakOutsideLoop` и `CannotContinueOutsideLoop` при обнаружении операторов вне циклов.
+- **Генерация LLVM IR и управление CFG**:
+  - Стек контекстов циклов `_loopStack` хранит кортежи целевых базовых блоков `(condBB, exitBB, forIncBB)`.
+  - Оператор `break` выполняет безусловный прыжок `BuildBr(exitBB)` на блок завершения ближайшего объемлющего цикла.
+  - Оператор `continue`:
+    - В циклах `while`: прыжок на `condBB` (блок повторной проверки условия).
+    - В диапазонах `for i in start..end`: прыжок на блок инкремента `forIncBB`. Это гарантирует шаг переменной `i++` перед последующей проверкой `condBB`, предотвращая бесконечные циклы.
+
+### 30.3. Оператор явного приведения типов (`as`)
+- **Лексер и парсер**: ключевое слово `as`, AST-узел `CastExpressionNode` (`Expression`, `TargetType`).
+- **Синтаксический приоритет**: парсинг в `Parser.Expressions.cs` в рамках Pratt-парсера с высоким приоритетом бинарного приведения (`Precedence.Cast`).
+- **Семантический анализ**:
+  - Метод `CheckCastExpression` в `TypeChecker.Expressions.cs` валидирует совместимость типов.
+  - Разрешены приведения между всеми скалярными числовыми типами: `i32`, `i64`, `f32`, `f64`. Тождественные приведения (`T as T`) разрешены и оптимизируются в no-op. Приведение несовместимых типов пресекается ошибкой типизации.
+- **Генерация нативных инструкций LLVM**:
+  - `fptosi`: преобразование вещественных в целые со знаком (`f32`/`f64` -> `i32`/`i64`).
+  - `sitofp`: преобразование целых со знаком в вещественные (`i32`/`i64` -> `f32`/`f64`).
+  - `sext`: знаковое расширение разрядности (`i32` -> `i64`).
+  - `trunc`: усечение разрядности целых (`i64` -> `i32`).
+  - `fpext` / `fptrunc`: преобразование точности чисел с плавающей точкой (`f32` <-> `f64`).
+  - Поддержка рантайм-форматирования 64-битных целых `%lld` через `rt_to_string_i64` при интерполяции строк `$"..."`.
+
+
 
 

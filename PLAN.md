@@ -519,7 +519,33 @@ fn main(): i32 {
 - [x] Поддержка метода длины строк `.len()` наряду со свойством `.len` в `TypeChecker.Expressions.cs` и `LlvmCodeGenerator.Expressions.cs`.
 - [x] Сквозной тест сетевой подсистемы: [`examples/net_echo_test.ecs`](file:///C:/Users/office/Documents/ECS_Lang/examples/net_echo_test.ecs) — одновременная неблокирующая передача данных по TCP и UDP через шину событий ECS, реакция систем `read(packet: NetPacketReceived)` и успешное завершение с кодом 0.
 
-### [ ] Этап 33: Комплексная демонстрационная экосистема (Универсальность ECSLang)
+### [x] Этап 33: Фаза P0 — Системное ядро и управляющие конструкции (Стоп-кровотечение)
+- [x] Пункт 2.2: Compile-Time константы (`const`):
+  - Ключевое слово `const`, токен `TokenType.Const`, AST-узел `ConstDeclaration`.
+  - Модульный парсер: `ParseConstDeclaration()` в `Parser.Declarations.cs`.
+  - Pass 0.5 семантического анализа: `RegisterConstants()` в `TypeChecker.Declarations.cs`, предварительное вычисление константных выражений (Constant Folding) до проверки тел систем и функций.
+  - Символ `ConstSymbol` в таблице символов, валидация невозможности мутации (`CannotAssignToConst`).
+  - Zero-Cost LLVM кодогенерация: инлайнинг немедленных операндов (`LLVM.ConstInt`, `LLVM.ConstReal`, константный пул строк) в `LlvmCodeGenerator.Expressions.cs`.
+  - Поддержка констант в ветвях сопоставления шаблонов `match`.
+  - Модули стандартной библиотеки: `std/keys.ecs` (коды клавиш Raylib) и `std/mouse.ecs` (кнопки мыши и стили курсоров).
+  - Сквозной тест: `examples/const_test.ecs` (код 0).
+- [x] Пункт 2.3: Управление циклами (`break` и `continue`):
+  - Ключевые слова `break` и `continue`, токены `TokenType.Break`/`TokenType.Continue`, AST-узлы `BreakStatementNode`/`ContinueStatementNode`.
+  - Парсинг инструкций в `Parser.Statements.cs`.
+  - Семантическая проверка контекста в `TypeChecker.Statements.cs`: счетчик вложенности `_loopDepth`, валидация ошибок `CannotBreakOutsideLoop` и `CannotContinueOutsideLoop`.
+  - LLVM кодогенерация CFG: стек `_loopStack` с кортежами `(condBB, exitBB, forIncBB)`.
+  - Семантика `break`: переход `BuildBr(exitBB)` на блок завершения цикла.
+  - Семантика `continue`: в циклах `while` — переход на `condBB`; в диапазонах `for i in start..end` — корректный переход на блок инкремента `forIncBB` с шагом `i++` (предотвращение бесконечного зацикливания).
+  - Сквозной тест: `examples/break_continue_test.ecs` (код 0).
+- [x] Пункт 2.4: Оператор явного приведения типов (`as`):
+  - Ключевое слово `as`, токен `TokenType.As`, AST-узел `CastExpressionNode`.
+  - Синтаксический разбор в Pratt-парсере `Parser.Expressions.cs` с высоким приоритетом (`Precedence.Cast`).
+  - Семантическая валидация: `CheckCastExpression()` в `TypeChecker.Expressions.cs` (проверка типов `i32`, `i64`, `f32`, `f64`, тождественные no-op приведения, отсечение несовместимых типов).
+  - LLVM инструкции кодогенерации в `LlvmCodeGenerator.Expressions.cs`: `BuildFPToSI`, `BuildSIToFP`, `BuildSExt`, `BuildZExt`, `BuildTrunc`, `BuildFPExt`, `BuildFPTrunc`.
+  - Поддержка 64-битного форматирования `%lld` (`rt_to_string_i64`) в интерполяции строк.
+  - Сквозной тест: `examples/cast_test.ecs` (код 0).
+
+### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.
 - [ ] GUI-приложение: редактор уровней или инспектор сцены на ECS GUI компонентах.
 - [ ] Сетевой сервис: клиент-серверный чат / симуляция с сетевыми ECS-компонентами.
