@@ -1,4 +1,5 @@
 # ⚡ ECSLang: High-Performance Pure ECS & Data-Oriented Systems Language
+### ⚡ Высокопроизводительный язык системного программирования на базе чистого ECS и Data-Oriented Design
 
 <p align="center">
   <img src="https://img.shields.io/badge/LLVM-20.1.2-blue.svg?style=for-the-badge&logo=llvm" alt="LLVM 20" />
@@ -8,17 +9,23 @@
   <img src="https://img.shields.io/badge/License-Dual_Open--Core_|_WinRAR--Style-orange.svg?style=for-the-badge" alt="License" />
 </p>
 
+<p align="center">
+  <b><a href="#-english">English Documentation</a></b> | <b><a href="#-русская-версия">Русская документация</a></b>
+</p>
+
 ---
 
-## 🚀 Overview / Обзор
+# 🇬🇧 English
+
+## 🚀 Overview
 
 **ECSLang** is an ultra-fast, compiled systems programming language designed from the ground up around **Pure Entity Component System (ECS)** and **Data-Oriented Design (DOD)** principles. Backed by **LLVM 20**, ECSLang achieves bare-metal CPU throughput with **0% Garbage Collector pauses, 0% OOP inheritance bloat**, and zero-cost high-level abstractions.
 
-> *"What if ECS was not a third-party library, but a first-class language citizen compiled directly into cache-coherent Structure of Arrays (SoA) machine code?"*
+> *"What if ECS was not an external library, but a first-class language citizen compiled directly into cache-coherent Structure of Arrays (SoA) machine code?"*
 
 ### 🌟 Key Architectural Pillars:
 - **Zero-GC & Bare-Metal Speed**: Deterministic memory management without garbage collection pauses or hidden allocations.
-- **First-Class Isolated Worlds**: Multi-world architecture (`let mut world = ecs::create_world()`) eliminates global state.
+- **First-Class Isolated Worlds**: Multi-world architecture (`let mut world = ecs::create_world()`) eliminates hidden global state.
 - **Columnar Archetype (SoA) Storage**: Entities with matching component signatures live in dense contiguous memory blocks tuned for L1/L2 CPU cache lines and SIMD auto-vectorization.
 - **Bevy-Grade `parallel auto` Scheduler**: Compiler builds a static dependency Directed Acyclic Graph (DAG) based on component read/write access masks and executes collision-free systems across CPU thread pools without data races.
 - **Bulk Spawn (`world.spawn_with`)**: Instant single-pass archetype allocation reducing entity migrations from $O(N \times M)$ to **0**.
@@ -55,7 +62,7 @@ Processing structured server access logs into columnar SoA archetypes with paral
 
 ---
 
-## 💻 Code Showcase / Примеры кода
+## 💻 Code Showcase
 
 ### 1. In-Memory OLAP Big Data Engine (`olap_bigdata_analyzer.ecs`)
 Demonstrating columnar components, bulk entity creation, zero-copy string views, and parallel auto-scheduled systems.
@@ -218,20 +225,18 @@ ECSLang/
 └── PLAN.md / ARCHITECTURE.md   # Complete technical specifications & design docs
 ```
 
-## 📄 License & Commercial Terms / Лицензирование и коммерческие условия
-
-ECSLang is distributed under a **Dual Open-Core & Fair-Use License (WinRAR-style Model)** adapted for both global and Russian IT markets:
-
 ---
 
-### 🇬🇧 English Version
+## 📄 License & Commercial Terms (English)
 
-#### 1. 🟢 Free Community & Indie License (100% Free Forever)
-- **Eligibility**: Individuals, independent developers, students, researchers, hobbyists, non-profit organizations, and small businesses whose **annual gross revenue and external funding do not exceed \$25,000 USD (or 2,000,000 RUB)**.
+ECSLang is distributed under a **Dual Open-Core & Fair-Use License (WinRAR-style Model)**:
+
+### 1. 🟢 Free Community & Indie License (100% Free Forever)
+- **Eligibility**: Individuals, independent developers, students, researchers, hobbyists, non-profit organizations, and small businesses whose **annual gross revenue and external funding do not exceed $25,000 USD (or 2,000,000 RUB)**.
 - **Rights**: Fully free, perpetual, non-exclusive license to use, compile, distribute, and build applications with ECSLang with **zero royalties**.
 
-#### 2. 🏢 Commercial Enterprise License
-- **Eligibility**: Any legal entity, business, or organization whose **annual gross revenue or external funding exceeds \$25,000 USD (or 2,000,000 RUB)**.
+### 2. 🏢 Commercial Enterprise License
+- **Eligibility**: Any legal entity, business, or organization whose **annual gross revenue or external funding exceeds $25,000 USD (or 2,000,000 RUB)**.
 - **Requirement**: A valid commercial license is required per active developer workstation and production server deployment running ECSLang or proprietary enterprise clustering modules.
 - **Enterprise Features**: Access to closed-source distributed AI cluster synchronization, multi-node RDMA SoA archetypes, dedicated 24/7 SLA support, and proprietary LLVM optimization passes.
 
@@ -263,17 +268,227 @@ PURPOSE AND NONINFRINGEMENT.
 ```
 
 ---
+---
 
-### 🇷🇺 Русская версия (Условия лицензирования)
+# 🇷🇺 Русская версия
 
-#### 1. 🟢 Бесплатная Community & Indie лицензия (Бессрочно и бесплатно)
-- **Для кого**: Физические лица, независимые разработчики (инди), студенты, ученые, опенсорс-сообщество и стартапы с **годовым валовым доходом и инвестициями до 2 000 000 рублей (или \$25,000 USD)**.
+## 🚀 Обзор языка
+
+**ECSLang** — это сверхбыстрый компилируемый язык системного программирования, спроектированный с чистого листа вокруг парадигмы **Pure Entity Component System (ECS)** и принципов **Data-Oriented Design (DOD)**. Работая на передовом бэкенде **LLVM 20**, ECSLang гарантирует нативную скорость «близко к железу» с **0% пауз сборщика мусора (GC)**, **0% оверхеда ООП-наследования** и нулевой стоимостью высокоуровневых абстракций.
+
+> *«Что если бы ECS был не сторонней библиотекой или громоздкой надстройкой, а полноправным гражданином первого класса языка, компилируемым напрямую в кеш-локальный машинный код колоночных структур массивов (SoA)?»*
+
+### 🌟 Ключевые архитектурные преимущества:
+- **0% Garbage Collection & Нативная скорость**: Детерминированное управление памятью без пауз сборщика мусора и скрытых фоновых аллокаций.
+- **Изолированные контексты миров (First-Class Worlds)**: Архитектура независимых миров (`let mut world = ecs::create_world()`) полностью исключает глобальное состояние.
+- **Колоночное хранилище архетипов (SoA)**: Сущности с одинаковым набором компонентов группируются в плотные непрерывные блоки памяти, идеально ложащиеся в L1/L2 кеш процессора и поддерживающие авто-векторизацию SIMD.
+- **Автопланировщик пула потоков `parallel auto` (DAG Scheduler уровня Bevy)**: Компилятор строит статический направленный граф без циклов (DAG) на базе масок чтения/записи компонентов и параллельно выполняет бесконфликтные системы на всех ядрах CPU без гонок данных.
+- **Массовый спавн (`world.spawn_with`)**: Прямое создание сущности в целевом архетипе за один проход, сокращающее миграции памяти с $O(N \times M)$ до **абсолютного нуля**.
+- **Zero-Copy строковые срезы (`str_view`)**: Бесплатный парсинг и поиск подстрок через легковесные структуры в регистрах процессора (`{ ptr, len }`) без единого вызова `malloc` и `memcpy`.
+- **Встроенная стандартная библиотека**: Включает 2D-графику и звук (Raylib), чистый ECS GUI-фреймворк, неблокирующие сокеты без локов и 64-битный ввод-вывод для Big Data.
+
+---
+
+## 📊 Честные тесты производительности (Apples-to-Apples на Sandy Bridge)
+
+Все тесты проведены на реальном потребительском оборудовании прошлых поколений (Intel Sandy Bridge, DDR3 RAM) против платформы **C# (.NET 9 JIT / AOT)** в строго зеркальных условиях.
+
+### 1. Файловый I/O уровня Enterprise (1 000 000 записей: Open → Lock → Append → Close)
+Каждая итерация выполняет полный цикл потокобезопасной атомарной записи на диск (эмуляция транзакционного лога).
+
+| Метрика | C# (.NET 9) | ECSLang (LLVM -O3) | Преимущество ECSLang |
+|---|---|---|---|
+| **Запись 1 000 000 строк (Atomic)** | 5 420 мс | **3 190 мс** | **в 1.70 раза быстрее** |
+| **Пропускная способность записи** | 184 500 строк/сек | **313 479 строк/сек** | **+70% к скорости** |
+| **Чтение файла 74.0 МБ** | 189 мс | **72 мс** | **в 2.62 раза быстрее** |
+| **Скорость чтения с диска** | 391.5 МБ/сек | **1 027.8 МБ/сек** | **> 1.0 ГБ/сек (холодный диск)** |
+| **Оверхед по оперативной памяти** | 94 МБ | **1.2 МБ** | **в 78 раз меньше памяти** |
+
+### 2. In-Memory OLAP Big Data аналитика (50 000 записей логов)
+Загрузка и парсинг неструктурированного лога в SoA-колонки с параллельным анализом в пуле потоков:
+
+| Стадия пайплайна | Наивный подход | Оптимизированное ядро ECSLang | Ускорение |
+|---|---|---|---|
+| **Пакетная генерация (Шаг A)** | 4 200 мс (построчно) | **4.22 мс** (буфер в памяти) | **~1000x быстрее** |
+| **Парсинг лога (Шаг C)** | 5 040 мс (аллокации строк) | **142 мс** (Zero-Copy `str_view`) | **в 35 раз быстрее** |
+| **Миграции SoA-памяти** | 250 000 миграций | **0 миграций** (`spawn_with`) | **Ликвидированы на 100%** |
+| **Параллельный запрос (Шаг D)** | 1.84 мс | **0.37 мс** (`parallel auto` DAG) | **в 5 раз быстрее** |
+| **Пропускная способность OLAP** | 27.1 млн записей/сек | **136.46 млн записей / сек** | **Субмиллисекундный OLAP** |
+
+---
+
+## 💻 Примеры исходного кода
+
+### 1. Движок In-Memory OLAP Big Data аналитики (`olap_bigdata_analyzer.ecs`)
+```rust
+// 1. Чистые колоночные компоненты (SoA-раскладка памяти)
+component LogTimestamp { time: str_view }
+component LogLevel     { is_info: bool, is_error: bool }
+component HttpMethod   { is_get: bool }
+component ResponseTime { ms: f32 }
+component StatusCode   { code: i32 }
+
+// 2. Глобальные изолированные ресурсы без гонок данных
+resource ErrorStats   { count: i32 }
+resource LatencyStats { total_ms: f32 }
+
+// 3. Системы аналитики
+system FilterErrorsSystem {
+    query(lvl: LogLevel, mut errs: ErrorStats) {
+        if lvl.is_error {
+            errs.count += 1;
+        }
+    }
+}
+
+system MetricsAggregatorSystem {
+    query(rt: ResponseTime, mut lat: LatencyStats) {
+        lat.total_ms += rt.ms;
+    }
+}
+
+// 4. Параллельный конвейер запросов (Автоматический DAG-планировщик)
+pipeline OlapQueryPipeline {
+    stage Analysis {
+        // Компилятор автоматически определяет отсутствие конфликтов
+        // и отправляет обе системы на параллельное исполнение в ThreadPool!
+        parallel auto {
+            FilterErrorsSystem;
+            MetricsAggregatorSystem;
+        }
+    }
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+    world.set_ErrorStats(0);
+    world.set_LatencyStats(0.0);
+
+    // Загрузка лога и парсинг без аллокаций памяти
+    let content = file_read_text("server_bigdata.log").unwrap();
+    let line: str_view = content.view_substring(0, 52);
+
+    let is_err = line.contains("[ERROR]");
+    let is_get = line.contains("GET");
+    let ts_view = line.view_substring(0, 10); // 0 байт выделено в куче!
+
+    // Bulk Spawn: прямое добавление в целевой SoA-архетип за 1 шаг
+    let entity = world.spawn_with(
+        LogLevel(!is_err, is_err),
+        HttpMethod(is_get),
+        LogTimestamp(ts_view),
+        StatusCode(200),
+        ResponseTime(45.2)
+    );
+
+    // Запуск параллельного OLAP-запроса
+    OlapQueryPipeline(world);
+
+    let errors = world.get_ErrorStats();
+    println($"Найдено ошибок в логах: {errors.count}");
+    return 0;
+}
+```
+
+### 2. Чистая игровая физика DOD на 100 000 сущностей
+```rust
+component Position { x: f32, y: f32 }
+component Velocity { vx: f32, vy: f32 }
+
+system MovementSystem {
+    query(mut pos: Position, vel: Velocity) {
+        pos.x += vel.vx * 0.016;
+        pos.y += vel.vy * 0.016;
+    }
+}
+
+pipeline GamePipeline {
+    stage Update {
+        MovementSystem;
+    }
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+    
+    // Создание 100 000 сущностей в плотной непрерывной SoA памяти
+    for i in 0..100000 {
+        world.spawn_with(
+            Position(0.0, 0.0),
+            Velocity(10.0, 5.0)
+        );
+    }
+
+    GamePipeline(world);
+    return 0;
+}
+```
+
+---
+
+## 📦 Быстрый старт и использование CLI
+
+### 1. Скачивание и установка SDK
+Распакуйте релизный архив `ecslang-sdk`. Добавьте путь к папке `bin/` в системную переменную `PATH`.
+
+### 2. Сборка и запуск программ
+```bash
+# Запуск программы в режиме быстрой разработки (Debug)
+ecslang run examples/01_hello_world.ecs
+
+# Высокопроизводительная релизная сборка (-O3, MSVC link.exe)
+ecslang build examples/olap_bigdata_analyzer.ecs --release -o olap_analyzer.exe
+
+# Запуск нативного скомпилированного бинарника
+./olap_analyzer.exe
+```
+
+### 3. Опции компилятора
+```
+Нативный компилятор ECS-Lang (Бэкенд LLVM 20)
+Использование:
+  ecslang build <файл.ecs> [опции]
+  ecslang run   <файл.ecs> [опции]
+
+Опции:
+  --release, -r   Включить максимальные оптимизации (-O3, LTO)
+  -O0 .. -O3      Уровень оптимизаций LLVM (по умолчанию: -O0)
+  -g, --debug     Генерировать отладочную информацию PDB/CodeView
+  --emit-ir       Выгрузить промежуточный код LLVM IR (.ll)
+  --emit-obj      Сгенерировать нативный объектный файл (.obj)
+  --target, -t    Целевая архитектура (например, x86_64-pc-windows-msvc)
+```
+
+---
+
+## 🏛️ Архитектура репозитория
+
+```
+ECSLang/
+├── src/
+│   ├── ECSLang.Core/           # AST-узлы, токены лексера, SourceSpan, ошибки
+│   ├── ECSLang.Frontend/       # Модульный парсер рекурсивного спуска
+│   ├── ECSLang.Semantics/      # Проверка типов, таблица символов, анализ DAG
+│   ├── ECSLang.Codegen.LLVM/   # Генератор LLVM IR 20, SoA рантайм памяти
+│   ├── ECSLang.Toolchain/      # Автопоиск линкеров MSVC link.exe / lld-link
+│   └── ECSLang.CLI/            # Нативный AOT интерфейс командной строки
+├── std/                        # Стандартная библиотека (GUI, Сеть, Математика, Ввод)
+├── examples/                   # Проверенные бенчмарки, примеры и игры
+├── publish_sdk.bat             # Скрипт автоматизированной сборки Native AOT SDK
+└── PLAN.md / ARCHITECTURE.md   # Полная техническая и архитектурная документация
+```
+
+---
+
+## 📄 Условия лицензирования (Русская версия)
+
+ECSLang распространяется по **Двухкомпонентной модели Open-Core (по типу WinRAR)**, адаптированной под реалии отечественного рынка:
+
+### 1. 🟢 Бесплатная Community & Indie лицензия (Бессрочно и бесплатно)
+- **Для кого**: Физические лица, независимые разработчики (инди), студенты, ученые, опенсорс-сообщество и стартапы с **годовым валовым доходом и инвестициями до 2 000 000 рублей (или $25,000 USD)**.
 - **Права**: Полное, бессрочное, неэксклюзивное право на разработку, компиляцию, коммерческий и некоммерческий релиз любых продуктов без роялти и отчислений.
 
-#### 2. 🏢 Корпоративная коммерческая лицензия (Enterprise)
-- **Для кого**: Любые юридические лица, компании и корпорации с **годовым оборотом или привлеченным финансированием свыше 2 000 000 рублей (или \$25,000 USD)**.
+### 2. 🏢 Корпоративная коммерческая лицензия (Enterprise)
+- **Для кого**: Любые юридические лица, компании и корпорации с **годовым оборотом или привлеченным финансированием свыше 2 000 000 рублей (или $25,000 USD)**.
 - **Условия**: Обязательное приобретение коммерческой лицензии на каждое рабочее место штатного разработчика и каждый рабочий сервер в продакшене.
 - **Enterprise-возможности**: Доступ к закрытым модулям распределенной синхронизации кластеров ИИ, репликации SoA-архетипов по высокоскоростным сетям (RDMA), круглосуточной техподдержке по SLA и кастомным проходам оптимизации LLVM.
-
-
-
