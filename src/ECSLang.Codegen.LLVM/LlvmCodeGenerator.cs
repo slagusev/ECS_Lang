@@ -504,6 +504,13 @@ public sealed partial class LlvmCodeGenerator
         bool isMain = fnDecl.Name == "main";
         bool hasWaitKey = isMain && ContainsWaitKey(fnDecl.Body);
 
+        if (isMain && _options.Target.IsWindows)
+        {
+            var setConsoleOutputCpFunc = GetOrDeclareCrtFunc(module, "SetConsoleOutputCP", context.Int32Type, new[] { context.Int32Type });
+            var setConsoleOutputCpType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(setConsoleOutputCpFunc);
+            builder.BuildCall2(setConsoleOutputCpType, setConsoleOutputCpFunc, new[] { LLVMValueRef.CreateConstInt(context.Int32Type, 65001) }, "");
+        }
+
         CompileBlock(context, module, builder, function, fnDecl.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
 
         // Ensure terminating return if not explicitly present
