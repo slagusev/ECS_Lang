@@ -27,6 +27,33 @@ public sealed partial class LlvmCodeGenerator
         var freeType = LLVMTypeRef.CreateFunction(voidType, new[] { i8PtrType }, false);
         var memsetType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i32Type, i64Type }, false);
 
+        if (strlenFunc.Handle == IntPtr.Zero) strlenFunc = module.AddFunction("strlen", strlenType);
+        if (mallocFunc.Handle == IntPtr.Zero) mallocFunc = module.AddFunction("malloc", mallocType);
+        if (freeFunc.Handle == IntPtr.Zero) freeFunc = module.AddFunction("free", freeType);
+        if (memsetFunc.Handle == IntPtr.Zero) memsetFunc = module.AddFunction("memset", memsetType);
+
+        var memcpyType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i8PtrType, i64Type }, false);
+        var memcpyFunc = module.GetNamedFunction("memcpy");
+        if (memcpyFunc.Handle == IntPtr.Zero) memcpyFunc = module.AddFunction("memcpy", memcpyType);
+
+        var memmoveType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i8PtrType, i64Type }, false);
+        var memmoveFunc = module.GetNamedFunction("memmove");
+        if (memmoveFunc.Handle == IntPtr.Zero) memmoveFunc = module.AddFunction("memmove", memmoveType);
+
+        var reallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, i64Type }, false);
+        var reallocFunc = module.GetNamedFunction("realloc");
+        if (reallocFunc.Handle == IntPtr.Zero) reallocFunc = module.AddFunction("realloc", reallocType);
+
+        var htonlType = LLVMTypeRef.CreateFunction(i32Type, new[] { i32Type }, false);
+        var htonlFunc = module.GetNamedFunction("htonl");
+        if (htonlFunc.Handle == IntPtr.Zero) htonlFunc = module.AddFunction("htonl", htonlType);
+
+        var ntohlType = LLVMTypeRef.CreateFunction(i32Type, new[] { i32Type }, false);
+        var ntohlFunc = module.GetNamedFunction("ntohl");
+        if (ntohlFunc.Handle == IntPtr.Zero) ntohlFunc = module.AddFunction("ntohl", ntohlType);
+
+        var vecU8Type = context.GetStructType(new[] { i8PtrType, i32Type, i32Type }, false);
+
         bool isWindows = _options.Target.IsWindows;
 
         // Raw C socket API declarations
@@ -605,6 +632,213 @@ public sealed partial class LlvmCodeGenerator
             netBuilder.BuildCall2(usleepType, usleepFunc, new[] { usec }, "");
         }
         netBuilder.BuildRetVoid();
+
+        // 14. ecs_net_tcp_send_framed(fd: i32, data: ptr) -> i32
+        var netSendFramedType = LLVMTypeRef.CreateFunction(i32Type, new[] { i32Type, i8PtrType }, false);
+        var netSendFramedFunc = module.AddFunction("ecs_net_tcp_send_framed", netSendFramedType);
+        var sfBB = netSendFramedFunc.AppendBasicBlock("entry");
+        netBuilder.PositionAtEnd(sfBB);
+        var sfFd = netSendFramedFunc.GetParam(0);
+        var sfFd64 = netBuilder.BuildZExt(sfFd, i64Type, "sf_fd64");
+        var sfData = netSendFramedFunc.GetParam(1);
+
+        var sfPayloadLen64 = netBuilder.BuildCall2(strlenType, strlenFunc, new[] { sfData }, "sf_plen64");
+        var sfPayloadLen32 = netBuilder.BuildTrunc(sfPayloadLen64, i32Type, "sf_plen32");
+        var sfNetLen = netBuilder.BuildCall2(htonlType, htonlFunc, new[] { sfPayloadLen32 }, "sf_netlen");
+
+        var sfTotalLen32 = netBuilder.BuildAdd(sfPayloadLen32, LLVMValueRef.CreateConstInt(i32Type, 4), "sf_tot_len32");
+        var sfTotalLen64 = netBuilder.BuildZExt(sfTotalLen32, i64Type, "sf_tot_len64");
+        var sfBuf = netBuilder.BuildCall2(mallocType, mallocFunc, new[] { sfTotalLen64 }, "sf_buf");
+
+        var sfLenSlot = netBuilder.BuildBitCast(sfBuf, LLVMTypeRef.CreatePointer(i32Type, 0), "sf_len_slot");
+        netBuilder.BuildStore(sfNetLen, sfLenSlot);
+
+        var sfPayloadDst = netBuilder.BuildGEP2(context.Int8Type, sfBuf, new[] { LLVMValueRef.CreateConstInt(i32Type, 4) }, "sf_payload_dst");
+        netBuilder.BuildCall2(memcpyType, memcpyFunc, new[] { sfPayloadDst, sfData, sfPayloadLen64 }, "");
+
+        var sfSent = netBuilder.BuildCall2(sendType, sendFunc, new[] { sfFd64, sfBuf, sfTotalLen32, LLVMValueRef.CreateConstInt(i32Type, 0) }, "sf_sent");
+        netBuilder.BuildCall2(freeType, freeFunc, new[] { sfBuf }, "");
+        netBuilder.BuildRet(sfSent);
+
+        // 15. ecs_net_tcp_recv_append(fd: i32, buf: Vec<u8>, max_len: i32) -> Vec<u8>
+        var netRecvAppendType = LLVMTypeRef.CreateFunction(vecU8Type, new[] { i32Type, vecU8Type, i32Type }, false);
+        var netRecvAppendFunc = module.AddFunction("ecs_net_tcp_recv_append", netRecvAppendType);
+        var raEntryBB = netRecvAppendFunc.AppendBasicBlock("entry");
+        var raHasDataBB = netRecvAppendFunc.AppendBasicBlock("has_data");
+        var raNoDataBB = netRecvAppendFunc.AppendBasicBlock("no_data");
+        netBuilder.PositionAtEnd(raEntryBB);
+
+        var raFd = netRecvAppendFunc.GetParam(0);
+        var raFd64 = netBuilder.BuildZExt(raFd, i64Type, "ra_fd64");
+        var raBuf = netRecvAppendFunc.GetParam(1);
+        var raMaxLen = netRecvAppendFunc.GetParam(2);
+
+        var raMaxLenClean = netBuilder.BuildSelect(
+            netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, raMaxLen, LLVMValueRef.CreateConstInt(i32Type, 0), ""),
+            raMaxLen,
+            LLVMValueRef.CreateConstInt(i32Type, 4096),
+            "ra_maxlen_clean");
+
+        var raTempBuf = netBuilder.BuildCall2(mallocType, mallocFunc, new[] { netBuilder.BuildZExt(raMaxLenClean, i64Type, "") }, "ra_tmp");
+        var raRead = netBuilder.BuildCall2(recvType, recvFunc, new[] { raFd64, raTempBuf, raMaxLenClean, LLVMValueRef.CreateConstInt(i32Type, 0) }, "ra_read");
+
+        var raHasData = netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, raRead, LLVMValueRef.CreateConstInt(i32Type, 0), "ra_has_data");
+        netBuilder.BuildCondBr(raHasData, raHasDataBB, raNoDataBB);
+
+        netBuilder.PositionAtEnd(raNoDataBB);
+        netBuilder.BuildCall2(freeType, freeFunc, new[] { raTempBuf }, "");
+        netBuilder.BuildRet(raBuf);
+
+        netBuilder.PositionAtEnd(raHasDataBB);
+        var curData = netBuilder.BuildExtractValue(raBuf, 0, "cur_data");
+        var curLen = netBuilder.BuildExtractValue(raBuf, 1, "cur_len");
+        var curCap = netBuilder.BuildExtractValue(raBuf, 2, "cur_cap");
+
+        var neededLen = netBuilder.BuildAdd(curLen, raRead, "needed_len");
+        var needGrow = netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, neededLen, curCap, "need_grow");
+
+        var raGrowBB = netRecvAppendFunc.AppendBasicBlock("ra_grow");
+        var raAppendBB = netRecvAppendFunc.AppendBasicBlock("ra_append");
+        netBuilder.BuildCondBr(needGrow, raGrowBB, raAppendBB);
+
+        netBuilder.PositionAtEnd(raGrowBB);
+        var doubleCap = netBuilder.BuildMul(curCap, LLVMValueRef.CreateConstInt(i32Type, 2), "ra_double_cap");
+        var largerCap = netBuilder.BuildSelect(
+            netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, neededLen, doubleCap, ""),
+            neededLen,
+            doubleCap,
+            "ra_larger_cap");
+        var newCapCalculated = netBuilder.BuildSelect(
+            netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, largerCap, LLVMValueRef.CreateConstInt(i32Type, 16), ""),
+            LLVMValueRef.CreateConstInt(i32Type, 16),
+            largerCap,
+            "ra_new_cap");
+        var reallocPtr = netBuilder.BuildCall2(reallocType, reallocFunc, new[] { curData, netBuilder.BuildZExt(newCapCalculated, i64Type, "") }, "ra_realloc");
+        netBuilder.BuildBr(raAppendBB);
+
+        netBuilder.PositionAtEnd(raAppendBB);
+        var finalData = netBuilder.BuildPhi(i8PtrType, "final_data");
+        finalData.AddIncoming(new[] { curData, reallocPtr }, new[] { raHasDataBB, raGrowBB }, 2);
+
+        var finalCap = netBuilder.BuildPhi(i32Type, "final_cap");
+        finalCap.AddIncoming(new[] { curCap, newCapCalculated }, new[] { raHasDataBB, raGrowBB }, 2);
+
+        var appendDst = netBuilder.BuildGEP2(context.Int8Type, finalData, new[] { curLen }, "ra_append_dst");
+        netBuilder.BuildCall2(memmoveType, memmoveFunc, new[] { appendDst, raTempBuf, netBuilder.BuildZExt(raRead, i64Type, "") }, "");
+        netBuilder.BuildCall2(freeType, freeFunc, new[] { raTempBuf }, "");
+
+        var raRes0 = netBuilder.BuildInsertValue(LLVMValueRef.CreateConstNull(vecU8Type), finalData, 0, "ra_res0");
+        var raRes1 = netBuilder.BuildInsertValue(raRes0, neededLen, 1, "ra_res1");
+        var raRes2 = netBuilder.BuildInsertValue(raRes1, finalCap, 2, "ra_res2");
+        netBuilder.BuildRet(raRes2);
+
+        // 16. ecs_net_buffer_read_i32(buf: Vec<u8>, offset: i32) -> i32
+        var netReadI32Type = LLVMTypeRef.CreateFunction(i32Type, new[] { vecU8Type, i32Type }, false);
+        var netReadI32Func = module.AddFunction("ecs_net_buffer_read_i32", netReadI32Type);
+        var rbEntryBB = netReadI32Func.AppendBasicBlock("entry");
+        var rbValidBB = netReadI32Func.AppendBasicBlock("valid");
+        var rbInvalidBB = netReadI32Func.AppendBasicBlock("invalid");
+        netBuilder.PositionAtEnd(rbEntryBB);
+
+        var rbBuf = netReadI32Func.GetParam(0);
+        var rbOffset = netReadI32Func.GetParam(1);
+
+        var rbData = netBuilder.BuildExtractValue(rbBuf, 0, "rb_data");
+        var rbLen = netBuilder.BuildExtractValue(rbBuf, 1, "rb_len");
+
+        var offGeq0 = netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, rbOffset, LLVMValueRef.CreateConstInt(i32Type, 0), "off_geq_0");
+        var offPlus4 = netBuilder.BuildAdd(rbOffset, LLVMValueRef.CreateConstInt(i32Type, 4), "off_plus_4");
+        var offLeqLen = netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSLE, offPlus4, rbLen, "off_leq_len");
+        var offValid = netBuilder.BuildAnd(offGeq0, offLeqLen, "off_valid");
+        netBuilder.BuildCondBr(offValid, rbValidBB, rbInvalidBB);
+
+        netBuilder.PositionAtEnd(rbInvalidBB);
+        netBuilder.BuildRet(LLVMValueRef.CreateConstInt(i32Type, unchecked((ulong)-1), true));
+
+        netBuilder.PositionAtEnd(rbValidBB);
+        var rbPtrRaw = netBuilder.BuildGEP2(context.Int8Type, rbData, new[] { rbOffset }, "rb_ptr_raw");
+        var rbAlloca = netBuilder.BuildAlloca(i32Type, "rb_alloca");
+        var rbAllocaPtr = netBuilder.BuildBitCast(rbAlloca, i8PtrType, "rb_alloca_ptr");
+        netBuilder.BuildCall2(memcpyType, memcpyFunc, new[] { rbAllocaPtr, rbPtrRaw, LLVMValueRef.CreateConstInt(i64Type, 4) }, "");
+        var rawVal = netBuilder.BuildLoad2(i32Type, rbAlloca, "rb_raw_val");
+        var hostVal = netBuilder.BuildCall2(ntohlType, ntohlFunc, new[] { rawVal }, "rb_host_val");
+        netBuilder.BuildRet(hostVal);
+
+        // 17. ecs_net_buffer_extract_str(buf: Vec<u8>, offset: i32, len: i32) -> ptr
+        var netExtractStrType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { vecU8Type, i32Type, i32Type }, false);
+        var netExtractStrFunc = module.AddFunction("ecs_net_buffer_extract_str", netExtractStrType);
+        var esEntryBB = netExtractStrFunc.AppendBasicBlock("entry");
+        var esValidBB = netExtractStrFunc.AppendBasicBlock("valid");
+        var esInvalidBB = netExtractStrFunc.AppendBasicBlock("invalid");
+        netBuilder.PositionAtEnd(esEntryBB);
+
+        var esBuf = netExtractStrFunc.GetParam(0);
+        var esOffset = netExtractStrFunc.GetParam(1);
+        var esLen = netExtractStrFunc.GetParam(2);
+
+        var esData = netBuilder.BuildExtractValue(esBuf, 0, "es_data");
+        var esBufLen = netBuilder.BuildExtractValue(esBuf, 1, "es_buflen");
+
+        var esOffGeq0 = netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, esOffset, LLVMValueRef.CreateConstInt(i32Type, 0), "es_off_geq_0");
+        var esLenGeq0 = netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, esLen, LLVMValueRef.CreateConstInt(i32Type, 0), "es_len_geq_0");
+        var esEnd = netBuilder.BuildAdd(esOffset, esLen, "es_end");
+        var esEndLeq = netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSLE, esEnd, esBufLen, "es_end_leq");
+        var esCond = netBuilder.BuildAnd(netBuilder.BuildAnd(esOffGeq0, esLenGeq0, ""), esEndLeq, "es_cond");
+        netBuilder.BuildCondBr(esCond, esValidBB, esInvalidBB);
+
+        netBuilder.PositionAtEnd(esInvalidBB);
+        netBuilder.BuildRet(netBuilder.BuildGlobalStringPtr("", "net_extract_empty"));
+
+        netBuilder.PositionAtEnd(esValidBB);
+        var esAllocSz = netBuilder.BuildAdd(esLen, LLVMValueRef.CreateConstInt(i32Type, 1), "es_alloc_sz");
+        var esAllocSz64 = netBuilder.BuildZExt(esAllocSz, i64Type, "es_alloc_sz64");
+        var esStr = netBuilder.BuildCall2(mallocType, mallocFunc, new[] { esAllocSz64 }, "es_str");
+
+        var esSrc = netBuilder.BuildGEP2(context.Int8Type, esData, new[] { esOffset }, "es_src");
+        var esLen64 = netBuilder.BuildZExt(esLen, i64Type, "es_len64");
+        netBuilder.BuildCall2(memcpyType, memcpyFunc, new[] { esStr, esSrc, esLen64 }, "");
+
+        var esTermPtr = netBuilder.BuildGEP2(context.Int8Type, esStr, new[] { esLen64 }, "es_term");
+        netBuilder.BuildStore(LLVMValueRef.CreateConstInt(context.Int8Type, 0), esTermPtr);
+        netBuilder.BuildRet(esStr);
+
+        // 18. ecs_net_buffer_drain(buf: Vec<u8>, count: i32) -> Vec<u8>
+        var netDrainType = LLVMTypeRef.CreateFunction(vecU8Type, new[] { vecU8Type, i32Type }, false);
+        var netDrainFunc = module.AddFunction("ecs_net_buffer_drain", netDrainType);
+        var drEntryBB = netDrainFunc.AppendBasicBlock("entry");
+        var drShiftBB = netDrainFunc.AppendBasicBlock("shift");
+        var drClearBB = netDrainFunc.AppendBasicBlock("clear");
+        var drNopBB = netDrainFunc.AppendBasicBlock("nop");
+        netBuilder.PositionAtEnd(drEntryBB);
+
+        var drBuf = netDrainFunc.GetParam(0);
+        var drCount = netDrainFunc.GetParam(1);
+
+        var drData = netBuilder.BuildExtractValue(drBuf, 0, "dr_data");
+        var drLen = netBuilder.BuildExtractValue(drBuf, 1, "dr_len");
+        var drCap = netBuilder.BuildExtractValue(drBuf, 2, "dr_cap");
+
+        var countLeq0 = netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSLE, drCount, LLVMValueRef.CreateConstInt(i32Type, 0), "count_leq_0");
+        var drCheckClearBB = netDrainFunc.AppendBasicBlock("check_clear");
+        netBuilder.BuildCondBr(countLeq0, drNopBB, drCheckClearBB);
+
+        netBuilder.PositionAtEnd(drNopBB);
+        netBuilder.BuildRet(drBuf);
+
+        netBuilder.PositionAtEnd(drCheckClearBB);
+        var countGeqLen = netBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, drCount, drLen, "count_geq_len");
+        netBuilder.BuildCondBr(countGeqLen, drClearBB, drShiftBB);
+
+        netBuilder.PositionAtEnd(drClearBB);
+        var drClearRes = netBuilder.BuildInsertValue(drBuf, LLVMValueRef.CreateConstInt(i32Type, 0), 1, "dr_clear_res");
+        netBuilder.BuildRet(drClearRes);
+
+        netBuilder.PositionAtEnd(drShiftBB);
+        var drRemaining = netBuilder.BuildSub(drLen, drCount, "dr_rem");
+        var drSrc = netBuilder.BuildGEP2(context.Int8Type, drData, new[] { drCount }, "dr_src");
+        netBuilder.BuildCall2(memmoveType, memmoveFunc, new[] { drData, drSrc, netBuilder.BuildZExt(drRemaining, i64Type, "") }, "");
+        var drShiftRes = netBuilder.BuildInsertValue(drBuf, drRemaining, 1, "dr_shift_res");
+        netBuilder.BuildRet(drShiftRes);
     }
 }
 

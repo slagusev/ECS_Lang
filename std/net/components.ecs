@@ -13,6 +13,9 @@ component TcpConnection {
     peer_ip: string,
     peer_port: i32,
     is_connected: bool,
+    rx_buffer: Vec<u8>,
+    expected_len: i32,
+    current_offset: i32,
 }
 
 component UdpSocket {

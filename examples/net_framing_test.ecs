@@ -1,0 +1,148 @@
+// ========================================================================
+// ECSLang Example: TCP Framing & Length-Prefix Protocol Test
+// Demonstrates pure ECS network framing: 4-byte big-endian length prefix,
+// protection against sticky packets and fragmented streams, and native
+// buffer decoding with zero memory corruption.
+// ========================================================================
+
+import "std/net.ecs";
+
+component FramingClientTag {
+    sent: bool,
+}
+
+component FramingServerStats {
+    count: i32,
+    p1_ok: bool,
+    p2_ok: bool,
+    p3_ok: bool,
+}
+
+// System 1: Client sends 3 framed packets back-to-back in rapid succession
+system FramingSenderSystem {
+    query(mut tag: FramingClientTag, conn: TcpConnection) {
+        if !tag.sent {
+            tag.sent = true;
+            println($"[Client Sender] Queueing 3 framed packets on TCP fd={conn.fd}...");
+
+            world.emit_NetPacketSend(conn.fd, "PACKET_ALPHA: High-frequency order stream payload #1001");
+            world.emit_NetPacketSend(conn.fd, "PACKET_BETA: Entity state delta transform [x=42, y=88, z=128]");
+            world.emit_NetPacketSend(conn.fd, "PACKET_GAMMA: Finalize distributed transaction hash: 0xDEADBEEF");
+
+            println("[Client Sender] All 3 packets emitted to OutboundSendSystem.");
+        }
+    }
+}
+
+// System 2: Server receives and verifies that each frame is cleanly unpacked
+system FramingReceiverSystem {
+    read(packet: NetPacketReceived) {
+        if packet.payload == "PACKET_ALPHA: High-frequency order stream payload #1001" {
+            println($"[Server Receiver] Frame 1 cleanly unpacked: '{packet.payload}' (len={packet.payload.len()})");
+            world.set_name(world.spawn(), "p1_received");
+        }
+        if packet.payload == "PACKET_BETA: Entity state delta transform [x=42, y=88, z=128]" {
+            println($"[Server Receiver] Frame 2 cleanly unpacked: '{packet.payload}' (len={packet.payload.len()})");
+            world.set_name(world.spawn(), "p2_received");
+        }
+        if packet.payload == "PACKET_GAMMA: Finalize distributed transaction hash: 0xDEADBEEF" {
+            println($"[Server Receiver] Frame 3 cleanly unpacked: '{packet.payload}' (len={packet.payload.len()})");
+            world.set_name(world.spawn(), "p3_received");
+        }
+    }
+}
+
+pipeline NetFramingPipeline {
+    stage NetPoll {
+        NetPollThrottleSystem;
+        TcpListenerSystem;
+        TcpReceiverSystem;
+    }
+    stage BusinessLogic {
+        swap_events;
+        FramingSenderSystem;
+        FramingReceiverSystem;
+    }
+    stage NetFlush {
+        swap_events;
+        OutboundSendSystem;
+    }
+    stage NetCleanup {
+        apply_commands;
+        TcpConnectionDestructorSystem;
+        TcpListenerDestructorSystem;
+        apply_commands;
+    }
+}
+
+fn main(): i32 {
+    println("=================================================");
+    println("  ECSLang TCP Framing & Length-Prefix Protocol   ");
+    println("=================================================\n");
+
+    let init_res = net_start();
+    println($"1. Net subsystem initialized (code={init_res})");
+
+    let mut world = ecs::create_world();
+    let port = 48590;
+
+    // 1. Spawn TCP Listener
+    let mut srv_ent = 0;
+    match net_spawn_tcp_listener(world, port) {
+        Ok(ent) => {
+            srv_ent = ent;
+            println($"2. TCP Server listening on 127.0.0.1:{port} (entity={ent})");
+        }
+        Err(err) => {
+            println($"ERROR: {err}");
+            return 1;
+        }
+    }
+
+    // 2. Spawn TCP Client
+    let mut cl_ent = 0;
+    match net_spawn_tcp_client(world, "127.0.0.1", port) {
+        Ok(ent) => {
+            cl_ent = ent;
+            world.set_FramingClientTag(ent, false);
+            println($"3. TCP Client connected to 127.0.0.1:{port} (entity={ent})");
+        }
+        Err(err) => {
+            println($"ERROR: {err}");
+            return 1;
+        }
+    }
+
+    // 3. Execution loop
+    println("4. Running pipeline to send and unpack framed packets...");
+    let mut verified = false;
+    let mut ticks = 0;
+    while !verified && ticks < 200 {
+        NetFramingPipeline(world);
+        ticks += 1;
+
+        if world.has_name("p1_received") && world.has_name("p2_received") && world.has_name("p3_received") {
+            verified = true;
+        }
+    }
+
+    if !verified {
+        println($"ERROR: Timeout waiting for packet framing verification after {ticks} ticks!");
+        return 1;
+    }
+
+    println($"\n5. SUCCESS! All 3 framed packets unpacked deterministically in {ticks} ticks.");
+    println("   No packet gluing, no byte loss, exact payload integrity preserved.");
+
+    // 4. Cleanup
+    net_close_entity(world, srv_ent);
+    net_close_entity(world, cl_ent);
+    NetFramingPipeline(world);
+
+    net_stop();
+
+    println("\n[TCP Framing Test] SUCCESS: All framing tests passed cleanly!");
+    println("Press any key to exit...");
+    wait_key();
+    return 0;
+}

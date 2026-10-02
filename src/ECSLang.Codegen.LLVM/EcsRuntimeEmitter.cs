@@ -284,6 +284,14 @@ public sealed partial class EcsRuntimeEmitter
             }
         }
 
+        if ((typeName.StartsWith("Vec<") || typeName.StartsWith("List<")) && typeName.EndsWith(">"))
+        {
+            var inner = typeName.Substring(typeName.IndexOf('<') + 1, typeName.Length - typeName.IndexOf('<') - 2);
+            var elemType = MapType(inner.Trim());
+            var elemPtrType = LLVMTypeRef.CreatePointer(elemType, 0);
+            return _context.GetStructType(new[] { elemPtrType, _context.Int32Type, _context.Int32Type }, false);
+        }
+
         if ((typeName.StartsWith("Map<") || typeName.StartsWith("HashMap<")) && typeName.EndsWith(">"))
         {
             var i8Ptr = LLVMTypeRef.CreatePointer(_context.Int8Type, 0);
@@ -292,6 +300,8 @@ public sealed partial class EcsRuntimeEmitter
 
         return typeName switch
         {
+            "u8" or "i8" or "byte" => _context.Int8Type,
+            "u16" or "i16" or "short" => _context.Int16Type,
             "f32" or "float" => _context.FloatType,
             "f64" or "double" => _context.DoubleType,
             "i64" or "u64" => _context.Int64Type,

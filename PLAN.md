@@ -586,6 +586,20 @@ fn main(): i32 {
     * POSIX: наносекундный монотонный таймер `clock_gettime(CLOCK_MONOTONIC, &ts)`.
   - Поддержка синтаксиса `Result::Ok` и `Result::Err` в семантике и кодогене.
   - Честный сравнительный Big Data бенчмарк: `examples/io_benchmark.ecs` (атомарная запись 1 млн строк в файл и чтение целиком).
+- [x] Пункт 2.10 (5.4): Сетевой протокол TCP Framing и Length-Prefix (`std/net.ecs`):
+  - Расширение компонента `TcpConnection`: `rx_buffer: Vec<u8>`, `expected_len: i32` (по умолчанию `-1`), `current_offset: i32`.
+  - Модернизация `EcsRuntimeEmitter.MapType` для поддержки `Vec<T>` / `List<T>` (`{ i8*, i32, i32 }`) и примитивов `u8`, `i8`, `u16`, `i16` в архетипах и очереди команд.
+  - Нативные примитивы framing и буферизации в `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Net.cs`:
+    * `ecs_net_tcp_send_framed(fd: i32, payload: string) -> i32`: упаковка 4-байтового префикса длины в сетевом порядке байт (`htonl`) и атомарная отправка через сокет.
+    * `ecs_net_tcp_recv_append(fd: i32, buf: Vec<u8>, max_len: i32) -> Vec<u8>`: неблокирующее чтение сырых байт с авто-реаллокацией и добавлением в `rx_buffer`.
+    * `ecs_net_buffer_read_i32(buf: Vec<u8>, offset: i32) -> i32`: безопасное извлечение 32-битного целого с конвертацией из сетевого порядка байт (`ntohl`).
+    * `ecs_net_buffer_extract_str(buf: Vec<u8>, offset: i32, len: i32) -> string`: безопасное извлечение среза строки с завершающим `\0`.
+    * `ecs_net_buffer_drain(buf: Vec<u8>, count: i32) -> Vec<u8>`: `memmove`-сдвиг буфера с сохранением выделенной емкости без повторных аллокаций.
+  - Семантическая типизация в `TypeChecker.Expressions.cs` для built-in функций framing.
+  - Стандартная библиотека `std/net.ecs` и `std/net/systems.ecs`:
+    * `TcpReceiverSystem`: цикл распаковки пакетов в `rx_buffer` с защитой от склеивания (sticky packets) и фрагментации.
+    * `OutboundSendSystem`: автоматическая длина фрейма для TCP и прозрачная маршрутизация для UDP-дейтаграмм.
+  - Сквозной тест: `examples/net_framing_test.ecs` (проверка распаковки склеенных пакетов, код 0).
 
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.

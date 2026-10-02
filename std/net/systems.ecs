@@ -16,7 +16,8 @@ system TcpListenerSystem {
             let client_fd = net_tcp_accept(listener.fd);
             if client_fd > 0 {
                 let client_ent = cmd.spawn();
-                cmd.set_TcpConnection(client_ent, client_fd, "127.0.0.1", listener.port, true);
+                let buf = Vec<u8>();
+                cmd.set_TcpConnection(client_ent, client_fd, "127.0.0.1", listener.port, true, buf, -1, 0);
                 world.set_name(client_ent, $"net_fd_{client_fd}");
                 world.emit_NetEventConnected(client_fd, "127.0.0.1", listener.port);
             }
@@ -24,13 +25,33 @@ system TcpListenerSystem {
     }
 }
 
-// System 2: Poll TCP connections for incoming non-blocking data
+// System 2: Poll TCP connections for incoming non-blocking data with Length-Prefix Framing
 system TcpReceiverSystem {
     query(mut conn: TcpConnection) {
         if conn.is_connected {
-            let data = net_tcp_recv(conn.fd, 4096);
-            if data.len() > 0 {
-                world.emit_NetPacketReceived(conn.fd, data);
+            conn.rx_buffer = net_tcp_recv_append(conn.fd, conn.rx_buffer, 4096);
+
+            let mut keep_processing = true;
+            while keep_processing {
+                if conn.expected_len == -1 {
+                    if conn.rx_buffer.len() >= 4 {
+                        conn.expected_len = net_buffer_read_i32(conn.rx_buffer, 0);
+                    } else {
+                        keep_processing = false;
+                    }
+                }
+
+                if keep_processing && conn.expected_len >= 0 {
+                    let total_needed = 4 + conn.expected_len;
+                    if conn.rx_buffer.len() >= total_needed {
+                        let payload = net_buffer_extract_str(conn.rx_buffer, 4, conn.expected_len);
+                        world.emit_NetPacketReceived(conn.fd, payload);
+                        conn.rx_buffer = net_buffer_drain(conn.rx_buffer, total_needed);
+                        conn.expected_len = -1;
+                    } else {
+                        keep_processing = false;
+                    }
+                }
             }
         }
     }
@@ -52,7 +73,24 @@ system UdpReceiverSystem {
 system OutboundSendSystem {
     read(packet: NetPacketSend) {
         if packet.fd > 0 && packet.payload.len() > 0 {
-            let sent = net_tcp_send(packet.fd, packet.payload);
+            let mut is_udp = false;
+            let opt_ent = net_find_entity_by_fd(world, packet.fd);
+            match opt_ent {
+                Some(e) => {
+                    if world.has_UdpSocket(e) {
+                        is_udp = true;
+                    }
+                }
+                None => {}
+            }
+
+            let mut sent = 0;
+            if is_udp {
+                sent = net_tcp_send(packet.fd, packet.payload);
+            } else {
+                sent = net_tcp_send_framed(packet.fd, packet.payload);
+            }
+
             if sent < 0 {
                 world.emit_NetEventSendFailed(packet.fd, sent);
                 println($"[OutboundSendSystem] ERROR: Send failed on fd={packet.fd} with code={sent}");
