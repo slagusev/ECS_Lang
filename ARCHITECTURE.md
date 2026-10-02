@@ -1139,21 +1139,23 @@ flowchart TD
        - В пользовательской функции: конструирует `Err(e)` / `None` соответствующего типа возврата и немедленно делает `ret`.
     4. В блоке успеха (`try_success`): извлекает значение `val` (`ok_slot` / `some_slot`) и передает его дальше по SSA-графу инструкций.
 
-### 30.6. Файловый ввод-вывод общего назначения (File I/O)
-- **Цель**: Предоставить высокопроизводительный, кроссплатформенный и типобезопасный ввод-вывод общего назначения без привязки к тяжелым объектно-ориентированным абстракциям или GC.
+### 30.6. Промышленный файловый ввод-вывод (Big Data File I/O)
+- **Цель**: Предоставить высокопроизводительный, кроссплатформенный и типобезопасный ввод-вывод для терабайтных объемов данных (Big Data) без привязки к тяжелым объектно-ориентированным абстракциям или GC.
 - **Встроенные функции**:
   - `file_exists(path: string): bool` — проверка существования файла на диске.
   - `file_read_text(path: string): Result<string, string>` — чтение всего содержимого файла в UTF-8 строку.
   - `file_write_text(path: string, content: string): Result<bool, string>` — атомарная перезапись файла.
   - `file_append_text(path: string, content: string): Result<bool, string>` — дозапись строки в конец файла.
+  - `file_read_bin(path: string): Result<Vec<u8>, string>` — чтение сырых бинарных байт в динамический массив `Vec<u8>`.
+  - `file_write_bin(path: string, bytes: Vec<u8>): Result<bool, string>` — атомарная запись массива сырых байт на диск.
 - **Фронтенд и AST**:
-  - Модуль `Parser.Files.cs` распознает идентификаторы файловых примитивов (`file_exists`, `file_read_text`, `file_write_text`, `file_append_text`).
+  - Модуль `Parser.Files.cs` распознает встроенные идентификаторы (`file_exists`, `file_read_text`, `file_write_text`, `file_append_text`, `file_read_bin`, `file_write_bin`).
 - **Семантический анализ**:
-  - Модуль `TypeChecker.Files.cs` валидирует количество и типы аргументов, регистрирует типы возврата `TypeSymbol.Bool` и `TypeSymbol.Result(T, TypeSymbol.String)`.
-  - Бесшовная интеграция с оператором `?` (`let content = file_read_text("data.csv")?;`).
+  - Модуль `TypeChecker.Files.cs` валидирует количество и типы аргументов, регистрирует типы возврата `TypeSymbol.Bool`, `TypeSymbol.Result(TypeSymbol.String, TypeSymbol.String)`, `TypeSymbol.Result(TypeSymbol.Bool, TypeSymbol.String)` и `TypeSymbol.Result(TypeSymbol.FromName("Vec<u8>"), TypeSymbol.String)`.
+  - Бесшовная интеграция с оператором `?` (`let bytes = file_read_bin("data.bin")?;`).
 - **Низкоуровневая кодогенерация (C CRT ABI)**:
-  - Модуль `LlvmCodeGenerator.Files.cs` напрямую транслирует операции в стандартные функции Си-рантайма: `fopen`, `fclose`, `fseek`, `ftell`, `fread`, `fwrite`.
-  - Одинаково работает на Windows (`msvcrt`/`ucrt`) и POSIX-системах (`libc`) без платформозависимых веток.
-  - Точное определение размера файла через `fseek(SEEK_END)` и `ftell()`. Выделение буфера памяти ровно под размер файла через нативный `malloc`.
-  - Упаковка в нативную tagged-структуру `Result<T, string>` с кодом ошибки `0` (Ok) или `1` (Err). При ошибке `fopen` возвращается описательное строковое сообщение.
+  - Модуль `LlvmCodeGenerator.Files.cs` напрямую транслирует операции в стандартные функции Си-рантайма:
+    * **64-битные смещения (Big Data)**: на Windows `_fseeki64` и `_ftelli64` (`ucrt.lib`), на POSIX-системах `fseeko` и `ftello` (`libc`). Исключает 32-битное переполнение `long` на файлах более 2 ГБ.
+    * **Атомарная блокировка (Thread-Safe File Locking)**: вызовы `_lock_file` / `_unlock_file` на Windows и `flockfile` / `funlockfile` на POSIX предотвращают гонки данных и перемешивание строк при параллельной записи из независимых систем ECS.
+    * **Динамические массивы байт (`Vec<u8>`)**: выделение через `malloc`, упаковка в tagged-структуру `Result<{ i8* data, i32 len, i32 cap }, string>`.
 

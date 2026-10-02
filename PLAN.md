@@ -557,12 +557,16 @@ fn main(): i32 {
   - Семантическая валидация в `TypeChecker.Errors.cs`: строгая проверка `Result<T, E>` (с совпадением типа ошибки `E` в объемлющей функции или поддержкой `main()`) и `Option<T>`, распаковка результирующего типа в `T`.
   - Машинная генерация LLVM IR в `LlvmCodeGenerator.Errors.cs`: десугаризация в базовые блоки проверки дискриминанта (`Ok`/`Some` vs `Err`/`None`), ранний возврат `ret` с пробросом ошибки, а в `main()` автоматический вывод ошибки и `ret i32 1`.
   - Сквозной тест: `examples/error_propagation_test.ecs` (код 0).
-- [x] Пункт 2.7 (5.2): Файловый ввод-вывод общего назначения (File I/O: read, write, append, exists):
-  - Встроенные функции `file_exists(path)`, `file_read_text(path)`, `file_write_text(path, content)`, `file_append_text(path, content)`.
+- [x] Пункт 2.7 (5.2): Промышленный файловый ввод-вывод Big Data (File I/O: 64-bit offsets, atomic locking, binary Vec<u8>):
+  - Встроенные функции `file_exists(path)`, `file_read_text(path)`, `file_write_text(path, content)`, `file_append_text(path, content)`, `file_read_bin(path)`, `file_write_bin(path, bytes)`.
   - Модульный фронтенд в `Parser.Files.cs`.
-  - Семантическая валидация и типизация в `TypeChecker.Files.cs` с возвратом `bool` и `Result<T, string>`. Полная интеграция с оператором `?`.
-  - Низкоуровневая кроссплатформенная генерация C ABI CRT в `LlvmCodeGenerator.Files.cs`: нативные вызовы `fopen`, `fclose`, `fseek`, `ftell`, `fread`, `fwrite`, `strlen`, `malloc` и конструирование tagged-структур `Result<T, string>`.
-  - Сквозной тест: `examples/file_io_test.ecs` (код 0).
+  - Семантическая валидация и типизация в `TypeChecker.Files.cs` с возвратом `bool`, `Result<string, string>`, `Result<bool, string>` и `Result<Vec<u8>, string>`. Полная интеграция с оператором `?`.
+  - Поддержка примитивных типов `u8`/`i8` в `TypeSymbol.cs` и `LlvmCodeGenerator.cs` (`MapType`).
+  - Низкоуровневая кроссплатформенная генерация C ABI CRT в `LlvmCodeGenerator.Files.cs`:
+    * 64-битные смещения: `_fseeki64`/`_ftelli64` (Windows UCRT) и `fseeko`/`ftello` (POSIX) для файлов > 2 ГБ.
+    * Атомарная блокировка дескрипторов: `_lock_file`/`_unlock_file` (Windows) и `flockfile`/`funlockfile` (POSIX) для безопасной параллельной записи из систем ECS.
+    * Бинарный ввод-вывод: сырое чтение и запись массивов байт `Vec<u8>`.
+  - Сквозной тест: `examples/file_io_test.ecs` (проверка текста и бинарных данных, код 0).
 
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.

@@ -759,31 +759,44 @@ pipeline GamePipeline {
 > [!NOTE]
 > Компилятор автоматически внедряет печать `"Press Enter to exit..."` и вызов `getchar()` перед выходом из `main`, если в коде отсутствует явный вызов `wait_key()`. Это предотвращает преждевременное закрытие консольного окна в Windows.
 
-### 11.2. Файловый ввод-вывод (File I/O)
+### 11.2. Промышленный файловый ввод-вывод (Big Data File I/O)
 
-ECSLang включает высокопроизводительные кроссплатформенные функции для работы с файлами на диске через стандартный C ABI (CRT `fopen`, `fread`, `fwrite`, `fclose`, `fseek`, `ftell`). Функции возвращают результат в виде безопасных разметченных объединений `Result<T, string>` и поддерживают оператор распространения ошибок `?`:
+ECSLang включает высокопроизводительные кроссплатформенные функции для работы с файлами любого объема (включая терабайтные логи и бинарные дампы) через стандартный C ABI (CRT). Все операции ввода-вывода обладают следующими архитектурными гарантиями:
+- **64-битная адресация смещений**: на Windows используются нативные `_fseeki64` и `_ftelli64` из `ucrt.lib`, на Linux/macOS — `fseeko` и `ftello` (POSIX 64-bit offset). Файлы размером > 2 ГБ не вызывают переполнения.
+- **Атомарность записи (Thread-Safe File Locking)**: при записи и дозаписи дескриптор файла блокируется на уровне операционной системы (`_lock_file`/`_unlock_file` на Windows, `flockfile`/`funlockfile` на POSIX), что исключает перемешивание байт и строк при параллельной записи из нескольких систем ECS.
+- **Интеграция с `Result<T, string>` и оператором `?`**: безопасная обработка ошибок без падений и без сырых Си-кодов возврата.
 
 | Функция | Сигнатура | Возвращает | Описание |
 |---|---|---|---|
-| `file_exists(path)` | `(string): bool` | `bool` | Быстрая проверка наличия файла на диске. Возвращает `true`, если файл существует и доступен для чтения. |
-| `file_read_text(path)` | `(string): Result<string, string>` | `Result<string, string>` | Читает текстовый файл целиком в память. При успехе возвращает `Ok(content)`, при ошибке открытия — `Err(message)`. |
-| `file_write_text(path, content)` | `(string, string): Result<bool, string>` | `Result<bool, string>` | Записывает/перезаписывает текстовый файл. При успехе возвращает `Ok(true)`. |
-| `file_append_text(path, line)` | `(string, string): Result<bool, string>` | `Result<bool, string>` | Дописывает строку в конец существующего файла (или создает новый). Идеально для логирования. |
+| `file_exists(path)` | `(string): bool` | `bool` | Быстрая проверка наличия файла на диске. |
+| `file_read_text(path)` | `(string): Result<string, string>` | `Result<string, string>` | Читает текстовый файл целиком в память с блокировкой и 64-битным смещением. При успехе возвращает `Ok(content)`. |
+| `file_write_text(path, content)` | `(string, string): Result<bool, string>` | `Result<bool, string>` | Атомарно записывает/перезаписывает текстовый файл под эксклюзивным локом. При успехе возвращает `Ok(true)`. |
+| `file_append_text(path, line)` | `(string, string): Result<bool, string>` | `Result<bool, string>` | Атомарно дописывает строку в конец файла (режим `"ab"` под локом). Идеально для параллельного Big Data логирования. |
+| `file_read_bin(path)` | `(string): Result<Vec<u8>, string>` | `Result<Vec<u8>, string>` | Открывает файл в бинарном режиме (`"rb"`), считывает сырые байты в динамический массив `Vec<u8>`. |
+| `file_write_bin(path, bytes)` | `(string, Vec<u8>): Result<bool, string>` | `Result<bool, string>` | Атомарно записывает сырой массив байт `Vec<u8>` на диск в бинарном режиме (`"wb"`). |
 
-Пример использования с оператором `?`:
+#### Пример текстового I/O с оператором `?`:
 ```rust
 fn save_game_state(path: string, json: string): Result<bool, string> {
     file_write_text(path, json)?;
     file_append_text("game.log", "[LOG] Game state saved successfully\n")?;
     return Ok(true);
 }
+```
 
-fn load_game_state(path: string): Result<string, string> {
-    if !file_exists(path) {
-        return Err("Save file not found");
-    }
-    let data = file_read_text(path)?;
-    return Ok(data);
+#### Пример бинарного Big Data I/O (`Vec<u8>`):
+```rust
+fn dump_binary_payload(path: string): Result<bool, string> {
+    let mut payload = Vec<u8>();
+    payload.push(69 as u8);  // 'E'
+    payload.push(67 as u8);  // 'C'
+    payload.push(83 as u8);  // 'S'
+    payload.push(0 as u8);   // Бинарный ноль
+    file_write_bin(path, payload)?;
+
+    let bytes = file_read_bin(path)?;
+    println($"Считано {bytes.len()} байт. Первый байт: {bytes[0]}");
+    return Ok(true);
 }
 ```
 

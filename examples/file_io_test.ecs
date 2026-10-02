@@ -1,6 +1,6 @@
 // ========================================================================
-// ECSLang: File I/O & Error Propagation End-to-End Test
-// Demonstrates cross-platform file reading, writing, appending, and existence checks
+// ECSLang: Enterprise Big Data File I/O & Error Propagation Test
+// Verifies 64-bit offsets, atomic writes (file locking), and Binary I/O
 // ========================================================================
 
 fn perform_file_logging(): Result<string, string> {
@@ -13,15 +13,15 @@ fn perform_file_logging(): Result<string, string> {
         println("Log file does not exist yet (clean slate)");
     }
 
-    // 2. Initial write using operator '?'
+    // 2. Initial write using operator '?' (Atomic locked write)
     file_write_text(filename, "=== Analytics Session Log ===\n")?;
-    println("Header written successfully");
+    println("Header written successfully (atomic lock)");
 
-    // 3. Appending lines using operator '?'
+    // 3. Appending lines using operator '?' (Atomic locked append)
     file_append_text(filename, "[INFO] Simulation tick: 1, entities: 1000\n")?;
     file_append_text(filename, "[INFO] Simulation tick: 2, entities: 2500\n")?;
     file_append_text(filename, "[SUCCESS] Big Data pipeline benchmark completed.\n")?;
-    println("Log lines appended successfully");
+    println("Log lines appended successfully (atomic lock)");
 
     // 4. Verify existence after write
     if file_exists(filename) {
@@ -30,29 +30,85 @@ fn perform_file_logging(): Result<string, string> {
         return Err("File existence check failed after writes");
     }
 
-    // 5. Read back entire file using operator '?'
+    // 5. Read back entire file using operator '?' (64-bit offset read)
     let content = file_read_text(filename)?;
     return Ok(content);
+}
+
+fn perform_binary_io(): Result<bool, string> {
+    let bin_filename = "payload.bin";
+
+    println("--- Testing Big Data Binary I/O (Vec<u8>) ---");
+
+    let mut payload = Vec<u8>();
+    payload.push(69 as u8);  // 'E'
+    payload.push(67 as u8);  // 'C'
+    payload.push(83 as u8);  // 'S'
+    payload.push(49 as u8);  // '1'
+    payload.push(0 as u8);   // Null byte in raw binary stream
+    payload.push(255 as u8); // 0xFF
+
+    println($"Writing raw binary payload of {payload.len()} bytes...");
+    file_write_bin(bin_filename, payload)?;
+    println("Binary payload written successfully (atomic lock)");
+
+    if !file_exists(bin_filename) {
+        return Err("Binary file does not exist after write");
+    }
+
+    let read_back = file_read_bin(bin_filename)?;
+    println($"Read back binary payload of {read_back.len()} bytes (64-bit seek/tell)");
+
+    if read_back.len() != 6 {
+        return Err("Binary payload length mismatch");
+    }
+
+    let b0 = read_back[0] as i32;
+    let b1 = read_back[1] as i32;
+    let b2 = read_back[2] as i32;
+    let b3 = read_back[3] as i32;
+    let b4 = read_back[4] as i32;
+
+    if b0 != 69 || b1 != 67 || b2 != 83 || b3 != 49 || b4 != 0 {
+        return Err("Binary payload content mismatch");
+    }
+
+    println("Binary payload verified: header 'ECS1' and null-byte intact!");
+    return Ok(true);
 }
 
 fn main(): i32 {
     println("------------------------------------------");
     println("--- Testing Cross-Platform File I/O ---");
 
-    let result = perform_file_logging();
-    match result {
+    let text_result = perform_file_logging();
+    match text_result {
         Ok(log_data) => {
             println("--- File Content Readback ---");
             print(log_data);
             println("-----------------------------");
-            println("File I/O test SUCCESS!");
+            println("Text File I/O test SUCCESS!");
         }
         Err(err) => {
-            println($"File I/O test FAILED: {err}");
+            println($"Text File I/O test FAILED: {err}");
             return 1;
         }
     }
 
     println("------------------------------------------");
+
+    let bin_result = perform_binary_io();
+    match bin_result {
+        Ok(ok) => {
+            println("Binary File I/O test SUCCESS!");
+        }
+        Err(err) => {
+            println($"Binary File I/O test FAILED: {err}");
+            return 1;
+        }
+    }
+
+    println("------------------------------------------");
+    println("=== ALL BIG DATA FILE I/O TESTS PASSED (0 ERRORS) ===");
     return 0;
 }

@@ -11,6 +11,8 @@ public sealed partial class Parser
         "file_read_text",
         "file_write_text",
         "file_append_text",
+        "file_read_bin",
+        "file_write_bin",
         "file_exists"
     };
 

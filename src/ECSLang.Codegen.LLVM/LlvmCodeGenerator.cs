@@ -722,6 +722,7 @@ public sealed partial class LlvmCodeGenerator
             "f64" or "double" => context.DoubleType,
             "i64" or "u64" => context.Int64Type,
             "i32" or "u32" or "int" => context.Int32Type,
+            "i8" or "u8" or "byte" => context.Int8Type,
             "bool" => context.Int1Type,
             "string" or "str" => LLVMTypeRef.CreatePointer(context.Int8Type, 0),
             "World" or "world" => ecs != null ? LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0) : LLVMTypeRef.CreatePointer(context.Int8Type, 0),

@@ -13,12 +13,14 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
     public static readonly TypeSymbol Void = new("void");
     public static readonly TypeSymbol World = new("World", IsPrimitive: false);
     public static readonly TypeSymbol Commands = new("Commands", IsPrimitive: false);
+    public static readonly TypeSymbol U8 = new("u8");
+    public static readonly TypeSymbol I8 = new("i8");
     public static readonly TypeSymbol Entity = new("Entity", IsPrimitive: true);
     public static readonly TypeSymbol Unknown = new("<unknown>");
 
-    public bool IsNumeric => this == I32 || this == I64 || this == U32 || this == U64 || this == F32 || this == F64;
+    public bool IsNumeric => this == I32 || this == I64 || this == U32 || this == U64 || this == U8 || this == I8 || this == F32 || this == F64;
     public bool IsFloatingPoint => this == F32 || this == F64;
-    public bool IsInteger => this == I32 || this == I64 || this == U32 || this == U64 || this == Entity;
+    public bool IsInteger => this == I32 || this == I64 || this == U32 || this == U64 || this == U8 || this == I8 || this == Entity;
     public bool IsArray => Name.StartsWith("[") && Name.EndsWith("]");
     public bool IsFixedArray => IsArray && Name.Contains(";");
     public bool IsDynamicArray => IsArray && !Name.Contains(";");
@@ -307,6 +309,8 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
             "i64" => I64,
             "u32" => U32,
             "u64" => U64,
+            "u8" or "byte" => U8,
+            "i8" => I8,
             "f32" or "float" => F32,
             "f64" or "double" => F64,
             "bool" => Bool,
