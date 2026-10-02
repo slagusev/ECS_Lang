@@ -71,7 +71,7 @@ public sealed partial class Parser
                         } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
                     }
                     Match(TokenType.CloseParen, "Expected ')' after argument list.");
-                    expr = new MethodCallExpression(expr, memberTok.Text, args, expr.Span);
+                    expr = ParseResourceGetOrMethodCall(expr, memberTok.Text, args, expr.Span);
                 }
                 else
                 {

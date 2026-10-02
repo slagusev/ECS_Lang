@@ -544,6 +544,14 @@ fn main(): i32 {
   - LLVM инструкции кодогенерации в `LlvmCodeGenerator.Expressions.cs`: `BuildFPToSI`, `BuildSIToFP`, `BuildSExt`, `BuildZExt`, `BuildTrunc`, `BuildFPExt`, `BuildFPTrunc`.
   - Поддержка 64-битного форматирования `%lld` (`rt_to_string_i64`) в интерполяции строк.
   - Сквозной тест: `examples/cast_test.ecs` (код 0).
+- [x] Пункт 2.5: Ресурс-геттеры напрямую из `main` (`world.get_Resource()`):
+  - Синтаксис прямого вызова геттеров синглтон-ресурсов: `world.get_GameConfig()`.
+  - Модульный AST-узел `ResourceGetExpressionNode(Target, ResourceName, Span)`.
+  - Модульный парсинг в `Parser.Resources.cs`.
+  - Семантическая типизация `CheckResourceGetExpression()` в `TypeChecker.Resources.cs`: проверка `world: World`, поиск объявленного ресурса и возврат `TypeSymbol` структуры.
+  - Машинная генерация LLVM IR в `LlvmCodeGenerator.Resources.cs`: обращение к смещению ресурса в `%struct.EcsWorld` через `InBoundsGEP2` и прямая загрузка структуры без накладных расходов.
+  - Расширение `MapType` для структурных ресурсов и компонентов, а также безопасная адресация rvalue-структур при цепочечном доступе (`world.get_GameConfig().speed`).
+  - Сквозной тест: `examples/resource_main_test.ecs` (код 0).
 
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.

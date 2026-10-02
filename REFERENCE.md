@@ -559,6 +559,15 @@ let mut ui_world = ecs::create_world();
 // Установка значений ресурсов для конкретного мира
 game_world.set_Time(0.016);
 game_world.set_GameConfig(9.81, true);
+
+// Прямое чтение ресурса из мира:
+let cfg = game_world.get_GameConfig();
+println($"Gravity: {cfg.gravity}");
+
+// Цепочечный доступ к полям ресурса:
+if game_world.get_GameConfig().debug_mode {
+    println("Debug mode enabled");
+}
 ```
 
 ### Манипуляция сущностями

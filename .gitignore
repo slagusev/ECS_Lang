@@ -16,4 +16,5 @@
 *.ilk
 *.exp
 *.lib
-
+*.ll
+*.bc

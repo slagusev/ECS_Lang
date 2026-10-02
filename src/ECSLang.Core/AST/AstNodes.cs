@@ -279,6 +279,18 @@ public sealed record MethodCallExpression(
     SourceSpan Span
 ) : ExpressionNode(Span);
 
+public sealed record ResourceGetExpressionNode(
+    ExpressionNode Target,
+    string ResourceName,
+    SourceSpan Span
+) : ExpressionNode(Span)
+{
+    public ResourceGetExpressionNode(string resourceName, SourceSpan span)
+        : this(new IdentifierExpression("world", span), resourceName, span)
+    {
+    }
+}
+
 public sealed record IdentifierExpression(string Name, SourceSpan Span) : ExpressionNode(Span);
 
 public sealed record StringLiteralExpression(string Value, SourceSpan Span) : ExpressionNode(Span);

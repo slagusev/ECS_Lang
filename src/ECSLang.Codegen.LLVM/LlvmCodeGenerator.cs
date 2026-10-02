@@ -706,7 +706,7 @@ public sealed partial class LlvmCodeGenerator
             return context.GetStructType(new[] { i8Ptr, i8Ptr }, false);
         }
 
-        if (typeName != null && _typeChecker.Structs.ContainsKey(typeName) && ecs != null)
+        if (typeName != null && (_typeChecker.Structs.ContainsKey(typeName) || _typeChecker.Resources.ContainsKey(typeName) || _typeChecker.Components.ContainsKey(typeName)) && ecs != null)
         {
             return ecs.GetComponentStructType(typeName);
         }

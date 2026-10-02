@@ -1,0 +1,59 @@
+resource GameConfig {
+    max_connections: i32,
+    speed: f32,
+    tick_count: i32,
+}
+
+component ActiveWorker {
+    id: i32,
+}
+
+system ConfigUpdateSystem {
+    query(w: ActiveWorker, mut cfg: GameConfig) {
+        cfg.speed += 2.5;
+        cfg.tick_count += 1;
+    }
+}
+
+pipeline TestPipeline {
+    stage Update {
+        ConfigUpdateSystem;
+    }
+}
+
+fn main(): i32 {
+    println("--- Testing Resource Getters from main ---");
+    let mut world = ecs::create_world();
+
+    // Set initial resource state
+    world.set_GameConfig(10, 50.0, 0);
+
+    // Spawn an entity to drive the system query
+    let worker = world.spawn();
+    world.set_ActiveWorker(worker, 1);
+
+    // Initial read via direct getter
+    let initial_cfg = world.get_GameConfig();
+    println($"Initial config: max_conn={initial_cfg.max_connections}, speed={initial_cfg.speed:.2f}, ticks={initial_cfg.tick_count}");
+
+    // Run simulation loop in main and read mutated resource each iteration
+    let mut step = 0;
+    while step < 5 {
+        TestPipeline(world);
+        step += 1;
+
+        let current_cfg = world.get_GameConfig();
+        println($"Step {step}: speed={current_cfg.speed:.2f}, ticks={current_cfg.tick_count}");
+    }
+
+    // Final verification
+    let final_cfg = world.get_GameConfig();
+    if final_cfg.tick_count == 5 && final_cfg.speed > 60.0 {
+        println("Resource getter test SUCCESS!");
+    } else {
+        println("Resource getter test FAILED!");
+        return 1;
+    }
+
+    return 0;
+}

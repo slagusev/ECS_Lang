@@ -24,6 +24,7 @@ public sealed partial class TypeChecker
             LambdaExpression lambda => CheckLambdaExpression(lambda),
             IndirectCallExpression indCall => CheckIndirectCallExpression(indCall),
             CastExpressionNode castExpr => CheckCastExpression(castExpr),
+            ResourceGetExpressionNode resGet => CheckResourceGetExpression(resGet),
             _ => TypeSymbol.Unknown
         };
 

@@ -49,6 +49,9 @@ public sealed partial class LlvmCodeGenerator
             case CastExpressionNode cast:
                 return GenerateCastExpression(context, module, builder, function, cast, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
 
+            case ResourceGetExpressionNode resGet:
+                return GenerateResourceGetExpression(context, module, builder, function, resGet, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+
             case IdentifierExpression ident:
                 if (locals.TryGetValue(ident.Name, out var varPtr))
                 {
@@ -133,51 +136,73 @@ public sealed partial class LlvmCodeGenerator
                         return LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)mSym.Value, false);
                     }
                 }
-                if (mem.Target is IdentifierExpression targetId && locals.TryGetValue(targetId.Name, out var structPtr))
+                LLVMValueRef structPtr;
+                string? memStructTypeName = null;
+                string fieldPrefix = "mem";
+
+                if (mem.Target is IdentifierExpression targetId && locals.TryGetValue(targetId.Name, out var memTargetIdPtr))
                 {
-                    if (varTypes.TryGetValue(targetId.Name, out var structTypeName) &&
-                        (_typeChecker.Structs.ContainsKey(structTypeName) ||
-                         _typeChecker.Structs.ContainsKey(TypeSymbol.ToMonomorphizedIdentifier(structTypeName)) ||
-                         _typeChecker.Components.ContainsKey(structTypeName) ||
-                         _typeChecker.Components.ContainsKey(TypeSymbol.ToMonomorphizedIdentifier(structTypeName)) ||
-                         _typeChecker.Resources.ContainsKey(structTypeName) ||
-                         _typeChecker.Events.ContainsKey(structTypeName)))
+                    structPtr = memTargetIdPtr;
+                    if (varTypes.TryGetValue(targetId.Name, out var stName))
                     {
-                        var structType = ecs.GetComponentStructType(structTypeName);
-                        int offset = ecs.GetFieldOffset(structTypeName, mem.MemberName);
-                        var fieldGEP = builder.BuildStructGEP2(structType, structPtr, (uint)offset, $"{targetId.Name}_{mem.MemberName}");
-
-                        string? fieldTypeName = null;
-                        if (_typeChecker.Structs.TryGetValue(structTypeName, out var sSym) ||
-                            _typeChecker.Structs.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(structTypeName), out sSym))
-                        {
-                            var f = sSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
-                            if (f != null) fieldTypeName = f.Type.Name;
-                        }
-                        if (fieldTypeName == null && (_typeChecker.Components.TryGetValue(structTypeName, out var cSym) ||
-                            _typeChecker.Components.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(structTypeName), out cSym)))
-                        {
-                            var f = cSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
-                            if (f != null) fieldTypeName = f.Type.Name;
-                        }
-                        if (fieldTypeName == null && _typeChecker.Resources.TryGetValue(structTypeName, out var rSym))
-                        {
-                            var f = rSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
-                            if (f != null) fieldTypeName = f.Type.Name;
-                        }
-                        if (fieldTypeName == null && _typeChecker.Events.TryGetValue(structTypeName, out var evSym))
-                        {
-                            var f = evSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
-                            if (f != null) fieldTypeName = f.Type.Name;
-                        }
-                        if (fieldTypeName == null)
-                        {
-                            fieldTypeName = _typeChecker.GetNodeType(mem).Name;
-                        }
-
-                        var fieldType = MapType(context, fieldTypeName, ecs);
-                        return builder.BuildLoad2(fieldType, fieldGEP, $"{mem.MemberName}_val");
+                        memStructTypeName = stName;
                     }
+                    fieldPrefix = targetId.Name;
+                }
+                else
+                {
+                    var memTargetVal = CompileExpression(context, module, builder, function, mem.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var tSym = _typeChecker.GetNodeType(mem.Target);
+                    memStructTypeName = tSym.Name;
+                    var stType = ecs.GetComponentStructType(memStructTypeName);
+                    var tempAlloca = CreateEntryBlockAlloca(context, function, stType, "tmp_mem_target");
+                    builder.BuildStore(memTargetVal, tempAlloca);
+                    structPtr = tempAlloca;
+                    fieldPrefix = memStructTypeName;
+                }
+
+                if (memStructTypeName != null &&
+                    (_typeChecker.Structs.ContainsKey(memStructTypeName) ||
+                     _typeChecker.Structs.ContainsKey(TypeSymbol.ToMonomorphizedIdentifier(memStructTypeName)) ||
+                     _typeChecker.Components.ContainsKey(memStructTypeName) ||
+                     _typeChecker.Components.ContainsKey(TypeSymbol.ToMonomorphizedIdentifier(memStructTypeName)) ||
+                     _typeChecker.Resources.ContainsKey(memStructTypeName) ||
+                     _typeChecker.Events.ContainsKey(memStructTypeName)))
+                {
+                    var structType = ecs.GetComponentStructType(memStructTypeName);
+                    int offset = ecs.GetFieldOffset(memStructTypeName, mem.MemberName);
+                    var fieldGEP = builder.BuildStructGEP2(structType, structPtr, (uint)offset, $"{fieldPrefix}_{mem.MemberName}");
+
+                    string? fieldTypeName = null;
+                    if (_typeChecker.Structs.TryGetValue(memStructTypeName, out var sSym) ||
+                        _typeChecker.Structs.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(memStructTypeName), out sSym))
+                    {
+                        var f = sSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
+                        if (f != null) fieldTypeName = f.Type.Name;
+                    }
+                    if (fieldTypeName == null && (_typeChecker.Components.TryGetValue(memStructTypeName, out var cSym) ||
+                        _typeChecker.Components.TryGetValue(TypeSymbol.ToMonomorphizedIdentifier(memStructTypeName), out cSym)))
+                    {
+                        var f = cSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
+                        if (f != null) fieldTypeName = f.Type.Name;
+                    }
+                    if (fieldTypeName == null && _typeChecker.Resources.TryGetValue(memStructTypeName, out var rSym))
+                    {
+                        var f = rSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
+                        if (f != null) fieldTypeName = f.Type.Name;
+                    }
+                    if (fieldTypeName == null && _typeChecker.Events.TryGetValue(memStructTypeName, out var evSym))
+                    {
+                        var f = evSym.Fields.FirstOrDefault(x => x.Name == mem.MemberName);
+                        if (f != null) fieldTypeName = f.Type.Name;
+                    }
+                    if (fieldTypeName == null)
+                    {
+                        fieldTypeName = _typeChecker.GetNodeType(mem).Name;
+                    }
+
+                    var fieldType = MapType(context, fieldTypeName, ecs);
+                    return builder.BuildLoad2(fieldType, fieldGEP, $"{mem.MemberName}_val");
                 }
                 return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
 
