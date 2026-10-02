@@ -344,3 +344,7 @@ public sealed record CastExpressionNode(
     SourceSpan Span
 ) : ExpressionNode(Span);
 
+public sealed record ErrorPropagationExpressionNode(
+    ExpressionNode Expr,
+    SourceSpan Span
+) : ExpressionNode(Span);

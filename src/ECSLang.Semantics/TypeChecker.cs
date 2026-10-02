@@ -55,6 +55,7 @@ public sealed partial class TypeChecker
     private readonly List<PipelineDeclaration> _pipelines = new();
     private Scope _currentScope = new();
     private TypeSymbol? _currentExpectedReturnType;
+    private string? _currentFunctionName;
     private int _loopDepth = 0;
 
     public List<DeclarationNode> MonomorphizedDeclarations { get; } = new();

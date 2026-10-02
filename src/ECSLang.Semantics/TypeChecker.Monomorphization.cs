@@ -148,6 +148,9 @@ public sealed partial class TypeChecker
             case IndirectCallExpression ind:
                 return new IndirectCallExpression(SubstituteExpression(ind.Callee, typeMap), ind.Arguments.Select(a => SubstituteExpression(a, typeMap)).ToList(), ind.Span);
 
+            case ErrorPropagationExpressionNode tryExpr:
+                return new ErrorPropagationExpressionNode(SubstituteExpression(tryExpr.Expr, typeMap), tryExpr.Span);
+
             default:
                 return expr;
         }

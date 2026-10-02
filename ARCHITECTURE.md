@@ -45,9 +45,9 @@
 | Проект | Пространство имен | Назначение |
 |---|---|---|
 | **`ECSLang.Core`** | `ECSLang.Core.*` | Базовые абстракции, модели токенов, узлы AST (`AstNodes.cs`), структуры диагностик ошибок и исходных интервалов (`SourceSpan`), абстракция целевой платформы (`TargetPlatform.cs`). |
-| **`ECSLang.Frontend`** | `ECSLang.Frontend` | Лексический анализатор (`Lexer.cs`), модульный парсер рекурсивного спуска (`Parser.cs`, `Parser.Declarations.cs`, `Parser.Statements.cs`, `Parser.Expressions.cs`, `Parser.Casts.cs`, `Parser.Resources.cs`). Преобразует исходный текст `.ecs` в AST. |
-| **`ECSLang.Semantics`** | `ECSLang.Semantics` | Таблицы символов (`SymbolTable`), система типов (`TypeSymbol`), модульная проверка семантики (`TypeChecker.cs`, `TypeChecker.Declarations.cs`, `TypeChecker.Statements.cs`, `TypeChecker.Expressions.cs`, `TypeChecker.Casts.cs`, `TypeChecker.Resources.cs`). |
-| **`ECSLang.Codegen.LLVM`** | `ECSLang.Codegen.LLVM` | Модульный генератор LLVM IR (`LlvmCodeGenerator.cs`, `.Expressions.cs`, `.Statements.cs`, `.Casts.cs`, `.Resources.cs`, `.Ecs.cs`, `.Raylib.cs`) и эмиттер низкоуровневого рантайма SoA-архетипов (`EcsRuntimeEmitter.cs`, `.Archetypes.cs`, `.Profiler.cs`). Работает через `LLVMSharp 20.1.2`. |
+| **`ECSLang.Frontend`** | `ECSLang.Frontend` | Лексический анализатор (`Lexer.cs`), модульный парсер рекурсивного спуска (`Parser.cs`, `Parser.Declarations.cs`, `Parser.Statements.cs`, `Parser.Expressions.cs`, `Parser.Casts.cs`, `Parser.Resources.cs`, `Parser.Errors.cs`). Преобразует исходный текст `.ecs` в AST. |
+| **`ECSLang.Semantics`** | `ECSLang.Semantics` | Таблицы символов (`SymbolTable`), система типов (`TypeSymbol`), модульная проверка семантики (`TypeChecker.cs`, `TypeChecker.Declarations.cs`, `TypeChecker.Statements.cs`, `TypeChecker.Expressions.cs`, `TypeChecker.Casts.cs`, `TypeChecker.Resources.cs`, `TypeChecker.Errors.cs`). |
+| **`ECSLang.Codegen.LLVM`** | `ECSLang.Codegen.LLVM` | Модульный генератор LLVM IR (`LlvmCodeGenerator.cs`, `.Expressions.cs`, `.Statements.cs`, `.Casts.cs`, `.Resources.cs`, `.Errors.cs`, `.Ecs.cs`, `.Raylib.cs`) и эмиттер низкоуровневого рантайма SoA-архетипов (`EcsRuntimeEmitter.cs`, `.Archetypes.cs`, `.Profiler.cs`). Работает через `LLVMSharp 20.1.2`. |
 | **`ECSLang.Toolchain`** | `ECSLang.Toolchain` | Инфраструктура компоновщиков: кроссплатформенный интерфейс `ILinker`, реализации `MsvcLinker` (Windows MSVC SDK), `ClangGccLinker` (Linux, macOS, Clang/GCC/LLD) и фабрика `LinkerFactory`. |
 | **`ECSLang.CLI`** | `ECSLang.CLI` | Точка входа командной строки: аргументы `build`, `run`, флаги кросс-таргетинга `--target`, `--os`, компиляции объекта `-c, --emit-obj`, IR `--emit-ir`, уровни оптимизации `-O0`..`-O3`. |
 
@@ -1116,5 +1116,25 @@ flowchart TD
   - Модуль `LlvmCodeGenerator.Resources.cs` динамически определяет смещение структуры ресурса внутри `%struct.EcsWorld` через `ecs.GetResourceIndex(resName)`.
   - Инструкция `InBoundsGEP2` извлекает типизированный указатель на ресурс внутри памяти инстанса мира.
   - Значение ресурса загружается через `BuildLoad2` и возвращается как rvalue.
-  - В `LlvmCodeGenerator.cs` расширен `MapType` для корректного маппинга типов ресурсов и компонентов на их нативные LLVM-структуры `%struct.res.*`.
   - В `LlvmCodeGenerator.Expressions.cs` добавлена поддержка цепочечного чтения полей `world.get_Resource().field` через временное размещение на стеке (stack spill alloca).
+
+### 30.5. Оператор распространения ошибок и опциональных значений (`?`)
+- **Проблема**: Ранее любая работа с `Result<T, E>` и `Option<T>` при каскадных вызовах (парсинг пакетов, открытие соединений, математические проверки) требовала многословного ручного разбора через `match` на каждом шаге.
+- **Синтаксический анализ**:
+  - Токен `TokenType.Question` (`?`), лексер `Lexer.cs`.
+  - Модуль `Parser.Errors.cs` разбирает постфиксный оператор `?` над выражениями и формирует AST-узел `ErrorPropagationExpressionNode(Expr, Span)`.
+  - Поддерживает вызовы в цепочках (`a()?.b()?.c()`).
+- **Семантический анализ**:
+  - Модуль `TypeChecker.Errors.cs` строго валидирует:
+    1. Целевое выражение возвращает `Result<T, E>` или `Option<T>`.
+    2. Если это `Result<T, E>`, то объемлющая функция обязана возвращать `Result` с совпадающим типом ошибки `E` (либо быть функцией `main`).
+    3. Если это `Option<T>`, то объемлющая функция обязана возвращать `Option` (либо быть функцией `main`).
+    4. Результирующим типом узла становится внутренний распакованный тип значения `T`.
+- **Генерация LLVM IR**:
+  - Модуль `LlvmCodeGenerator.Errors.cs` десугаризирует `?` в условный переход:
+    1. Загружает дискриминант Tagged Union (`0` = Ok, `1` = Err для Result; `1` = Some, `0` = None для Option).
+    2. Генерирует условный переход `br i1 %is_success, label %try_success, label %try_fail`.
+    3. В блоке ошибки (`try_fail`):
+       - В функции `main()`: форматирует сообщение об ошибке в консоль через `printf`/`puts` и возвращает `ret i32 1`.
+       - В пользовательской функции: конструирует `Err(e)` / `None` соответствующего типа возврата и немедленно делает `ret`.
+    4. В блоке успеха (`try_success`): извлекает значение `val` (`ok_slot` / `some_slot`) и передает его дальше по SSA-графу инструкций.

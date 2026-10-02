@@ -52,6 +52,9 @@ public sealed partial class LlvmCodeGenerator
             case ResourceGetExpressionNode resGet:
                 return GenerateResourceGetExpression(context, module, builder, function, resGet, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
 
+            case ErrorPropagationExpressionNode tryExpr:
+                return GenerateErrorPropagationExpression(context, module, builder, function, tryExpr, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+
             case IdentifierExpression ident:
                 if (locals.TryGetValue(ident.Name, out var varPtr))
                 {

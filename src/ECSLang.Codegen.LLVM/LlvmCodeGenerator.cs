@@ -16,6 +16,7 @@ public sealed partial class LlvmCodeGenerator
     private LLVMMetadataRef _diCompileUnit;
     private LLVMMetadataRef _diFile;
     private LLVMMetadataRef? _currentSubprogram;
+    private FunctionDeclaration? _currentFunctionDecl;
     private LLVMTargetDataRef _dataLayout;
     private HashMapEmitter? _mapEmitter;
     private StringArenaEmitter? _arenaEmitter;
@@ -451,6 +452,7 @@ public sealed partial class LlvmCodeGenerator
         LLVMTypeRef printfType,
         LLVMValueRef printfFunc)
     {
+        _currentFunctionDecl = fnDecl;
         builder.CurrentDebugLocation = default;
         var returnType = MapType(context, fnDecl.ReturnType, ecs);
         var paramTypes = fnDecl.Parameters.Select(p => MapType(context, p.TypeName, ecs)).ToArray();
@@ -533,6 +535,7 @@ public sealed partial class LlvmCodeGenerator
 
         builder.CurrentDebugLocation = default;
         _currentSubprogram = null;
+        _currentFunctionDecl = null;
     }
 
     private unsafe void CompileMethod(
@@ -547,6 +550,7 @@ public sealed partial class LlvmCodeGenerator
         LLVMTypeRef printfType,
         LLVMValueRef printfFunc)
     {
+        _currentFunctionDecl = methodDecl;
         builder.CurrentDebugLocation = default;
         var mangledName = $"{structName}_{methodDecl.Name}";
         var function = module.GetNamedFunction(mangledName);
@@ -597,6 +601,7 @@ public sealed partial class LlvmCodeGenerator
         }
 
         builder.CurrentDebugLocation = default;
+        _currentFunctionDecl = null;
     }
 
     private static bool ContainsWaitKey(BlockStatement block)

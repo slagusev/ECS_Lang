@@ -439,11 +439,14 @@ public sealed partial class TypeChecker
         }
 
         var oldRet = _currentExpectedReturnType;
+        var oldFnName = _currentFunctionName;
+        _currentFunctionName = fn.Name;
         _currentExpectedReturnType = fn.ReturnType != null ? EnsureMonomorphizedType(fn.ReturnType, fn.Span) : TypeSymbol.Void;
 
         CheckBlock(fn.Body);
 
         _currentExpectedReturnType = oldRet;
+        _currentFunctionName = oldFnName;
         _currentScope = _currentScope.Parent!;
     }
 }

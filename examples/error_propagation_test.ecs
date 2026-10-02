@@ -1,0 +1,131 @@
+// ========================================================================
+// ECSLang: Error Propagation Operator '?' End-to-End Test
+// Demonstrates ergonomic error propagation for Result<T, E> and Option<T>
+// ========================================================================
+
+fn parse_packet_header(magic: i32): Result<i32, string> {
+    if magic != 42 {
+        return Err("Invalid packet magic number");
+    }
+    return Ok(100);
+}
+
+fn validate_payload_size(header_size: i32, payload_len: i32): Result<i32, string> {
+    if payload_len <= 0 {
+        return Err("Payload length must be positive");
+    }
+    if payload_len > 1000 {
+        return Err("Payload exceeds maximum size");
+    }
+    return Ok(header_size + payload_len);
+}
+
+fn verify_checksum(total_bytes: i32, checksum: i32): Result<i32, string> {
+    if checksum == 0 {
+        return Err("Zero checksum is not allowed");
+    }
+    return Ok(total_bytes + checksum);
+}
+
+// Cascaded verification using operator '?'
+fn process_network_packet(magic: i32, payload_len: i32, checksum: i32): Result<i32, string> {
+    let header_size = parse_packet_header(magic)?;
+    let total_size = validate_payload_size(header_size, payload_len)?;
+    let result_code = verify_checksum(total_size, checksum)?;
+    return Ok(result_code);
+}
+
+fn get_cached_port(service_id: i32): Option<i32> {
+    if service_id == 1 {
+        return Some(8080);
+    }
+    if service_id == 2 {
+        return Some(9090);
+    }
+    return None;
+}
+
+fn resolve_endpoint_port(service_id: i32): Option<i32> {
+    let port = get_cached_port(service_id)?;
+    return Some(port + 1);
+}
+
+fn main(): i32 {
+    println("------------------------------------------");
+    println("--- Testing Error Propagation Operator ? ---");
+
+    // 1. Successful Result propagation
+    let valid_packet = process_network_packet(42, 250, 7);
+    match valid_packet {
+        Ok(code) => {
+            println($"Valid packet processed: result_code = {code}");
+        }
+        Err(err) => {
+            println($"Unexpected error: {err}");
+            return 1;
+        }
+    }
+
+    // 2. Error at step 1 (magic)
+    let bad_magic = process_network_packet(99, 250, 7);
+    match bad_magic {
+        Ok(code) => {
+            println("Should not succeed!");
+            return 1;
+        }
+        Err(err) => {
+            println($"Step 1 error captured: {err}");
+        }
+    }
+
+    // 3. Error at step 2 (payload)
+    let bad_payload = process_network_packet(42, -5, 7);
+    match bad_payload {
+        Ok(code) => {
+            println("Should not succeed!");
+            return 1;
+        }
+        Err(err) => {
+            println($"Step 2 error captured: {err}");
+        }
+    }
+
+    // 4. Error at step 3 (checksum)
+    let bad_checksum = process_network_packet(42, 250, 0);
+    match bad_checksum {
+        Ok(code) => {
+            println("Should not succeed!");
+            return 1;
+        }
+        Err(err) => {
+            println($"Step 3 error captured: {err}");
+        }
+    }
+
+    // 5. Option propagation with '?'
+    let p1 = resolve_endpoint_port(1);
+    match p1 {
+        Some(port) => {
+            println($"Service 1 resolved port: {port}");
+        }
+        None => {
+            println("Service 1 should be Some!");
+            return 1;
+        }
+    }
+
+    let p9 = resolve_endpoint_port(9);
+    match p9 {
+        Some(port) => {
+            println("Service 9 should be None!");
+            return 1;
+        }
+        None => {
+            println("Service 9 successfully propagated None!");
+        }
+    }
+
+    println("Error propagation test SUCCESS!");
+    println("------------------------------------------");
+    return 0;
+}

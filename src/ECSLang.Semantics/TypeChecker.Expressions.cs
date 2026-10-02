@@ -25,6 +25,7 @@ public sealed partial class TypeChecker
             IndirectCallExpression indCall => CheckIndirectCallExpression(indCall),
             CastExpressionNode castExpr => CheckCastExpression(castExpr),
             ResourceGetExpressionNode resGet => CheckResourceGetExpression(resGet),
+            ErrorPropagationExpressionNode tryExpr => CheckErrorPropagationExpression(tryExpr),
             _ => TypeSymbol.Unknown
         };
 

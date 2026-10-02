@@ -90,6 +90,7 @@ public enum TokenType
     AmpAmp,       // &&
     PipePipe,     // ||
     Bang,         // !
+    Question,     // ?
 }
 
 public sealed record Token(TokenType Type, string Text, SourceSpan Span)

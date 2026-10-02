@@ -103,6 +103,10 @@ public sealed partial class Parser
             {
                 expr = ParseCastExpression(expr);
             }
+            else if (Check(TokenType.Question))
+            {
+                expr = ParseErrorPropagationExpression(expr);
+            }
             else
             {
                 break;
