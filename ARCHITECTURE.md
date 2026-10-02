@@ -45,9 +45,9 @@
 | Проект | Пространство имен | Назначение |
 |---|---|---|
 | **`ECSLang.Core`** | `ECSLang.Core.*` | Базовые абстракции, модели токенов, узлы AST (`AstNodes.cs`), структуры диагностик ошибок и исходных интервалов (`SourceSpan`), абстракция целевой платформы (`TargetPlatform.cs`). |
-| **`ECSLang.Frontend`** | `ECSLang.Frontend` | Лексический анализатор (`Lexer.cs`), модульный парсер рекурсивного спуска (`Parser.cs`, `Parser.Declarations.cs`, `Parser.Statements.cs`, `Parser.Expressions.cs`, `Parser.Casts.cs`, `Parser.Resources.cs`, `Parser.Errors.cs`, `Parser.Files.cs`, `Parser.Strings.cs`). Преобразует исходный текст `.ecs` в AST. |
-| **`ECSLang.Semantics`** | `ECSLang.Semantics` | Таблицы символов (`SymbolTable`), система типов (`TypeSymbol`), модульная проверка семантики (`TypeChecker.cs`, `TypeChecker.Declarations.cs`, `TypeChecker.Statements.cs`, `TypeChecker.Expressions.cs`, `TypeChecker.Casts.cs`, `TypeChecker.Resources.cs`, `TypeChecker.Errors.cs`, `TypeChecker.Files.cs`, `TypeChecker.Strings.cs`). |
-| **`ECSLang.Codegen.LLVM`** | `ECSLang.Codegen.LLVM` | Модульный генератор LLVM IR (`LlvmCodeGenerator.cs`, `.Expressions.cs`, `.Statements.cs`, `.Casts.cs`, `.Resources.cs`, `.Errors.cs`, `.Files.cs`, `.Strings.cs`, `.Ecs.cs`, `.Raylib.cs`) и эмиттер низкоуровневого рантайма SoA-архетипов (`EcsRuntimeEmitter.cs`, `.Archetypes.cs`, `.Profiler.cs`). Работает через `LLVMSharp 20.1.2`. |
+| **`ECSLang.Frontend`** | `ECSLang.Frontend` | Лексический анализатор (`Lexer.cs`), модульный парсер рекурсивного спуска (`Parser.cs`, `Parser.Declarations.cs`, `Parser.Statements.cs`, `Parser.Expressions.cs`, `Parser.Casts.cs`, `Parser.Resources.cs`, `Parser.Errors.cs`, `Parser.Files.cs`, `Parser.Strings.cs`, `Parser.Time.cs`). Преобразует исходный текст `.ecs` в AST. |
+| **`ECSLang.Semantics`** | `ECSLang.Semantics` | Таблицы символов (`SymbolTable`), система типов (`TypeSymbol`), модульная проверка семантики (`TypeChecker.cs`, `TypeChecker.Declarations.cs`, `TypeChecker.Statements.cs`, `TypeChecker.Expressions.cs`, `TypeChecker.Casts.cs`, `TypeChecker.Resources.cs`, `TypeChecker.Errors.cs`, `TypeChecker.Files.cs`, `TypeChecker.Strings.cs`, `TypeChecker.Time.cs`). |
+| **`ECSLang.Codegen.LLVM`** | `ECSLang.Codegen.LLVM` | Модульный генератор LLVM IR (`LlvmCodeGenerator.cs`, `.Expressions.cs`, `.Statements.cs`, `.Casts.cs`, `.Resources.cs`, `.Errors.cs`, `.Files.cs`, `.Strings.cs`, `.Time.cs`, `.Ecs.cs`, `.Raylib.cs`) и эмиттер низкоуровневого рантайма SoA-архетипов (`EcsRuntimeEmitter.cs`, `.Archetypes.cs`, `.Profiler.cs`). Работает через `LLVMSharp 20.1.2`. |
 | **`ECSLang.Toolchain`** | `ECSLang.Toolchain` | Инфраструктура компоновщиков: кроссплатформенный интерфейс `ILinker`, реализации `MsvcLinker` (Windows MSVC SDK), `ClangGccLinker` (Linux, macOS, Clang/GCC/LLD) и фабрика `LinkerFactory`. |
 | **`ECSLang.CLI`** | `ECSLang.CLI` | Точка входа командной строки: аргументы `build`, `run`, флаги кросс-таргетинга `--target`, `--os`, компиляции объекта `-c, --emit-obj`, IR `--emit-ir`, уровни оптимизации `-O0`..`-O3`. |
 
@@ -1180,4 +1180,18 @@ flowchart TD
     * `ends_with`: проверка `sLen >= sufLen`, расчет адреса суффикса через `InBoundsGEP2(target + sLen - sufLen)` и вызов `strcmp == 0`.
     * `index_of`: вызов `strstr`, branchless вычисление смещения через `ptrtoint` + `sub` + `trunc` и инструкцию `select` (возвращает `-1`, если `null`).
     * `substring`: безопасное зажатие отрицательных и превышающих длину индексов (`start` в `[0, sLen]`, `len` в `[0, sLen - start]`), выделение памяти через ECS String Arena (`_arenaEmitter.GetOrCreateArenaAlloc`) или fallback `malloc`, копирование байт через нативный `llvm.memcpy` и установка терминального нуля `\0`.
+
+### 30.8. Высокоточные интринсики времени (Zero-Cost Profiling & Benchmarking)
+- **Цель**: Предоставить прецизионный замер времени без погрешностей виртуальных машин и оверхеда сборщика мусора для стресс-тестирования ECS-систем и честных Big Data бенчмарков.
+- **Встроенные функции**:
+  - `stopwatch_start(): i64` — возвращает стартовый аппаратный тик таймера высокого разрешения.
+  - `stopwatch_ms(start: i64): f32` — рассчитывает чистые прошедшие миллисекунды как `f32`.
+- **Фронтенд и AST**:
+  - Модуль `Parser.Time.cs` регистрирует встроенные идентификаторы времени (`TimeBuiltinNames`).
+- **Семантический анализ**:
+  - Модуль `TypeChecker.Time.cs` (`TryCheckTimeCall`) проверяет отсутствие параметров у `stopwatch_start` (возвращает `TypeSymbol.I64`) и наличие одного целочисленного аргумента у `stopwatch_ms` (возвращает `TypeSymbol.F32`).
+- **Машинная генерация LLVM IR**:
+  - Модуль `LlvmCodeGenerator.Time.cs`:
+    * **Windows (MSVC Target)**: использует нативные вызовы `QueryPerformanceCounter` и `QueryPerformanceFrequency` из `kernel32.lib`. Расчет прошедшего времени `(now - start) * 1000.0 / freq` с приведением к `f32`.
+    * **POSIX (Linux/macOS)**: использует монотонный системный таймер `clock_gettime(CLOCK_MONOTONIC, &ts)`. Расчет наносекунд `sec * 1e9 + nsec` и деление на `1e6` для получения миллисекунд.
 

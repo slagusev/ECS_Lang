@@ -409,7 +409,7 @@ public sealed partial class TypeChecker
             return new TypeSymbol("None", IsPrimitive: false);
         }
 
-        if (call.Callee == "Ok")
+        if (call.Callee is "Ok" or "Result::Ok")
         {
             if (call.Arguments.Count != 1)
             {
@@ -420,7 +420,7 @@ public sealed partial class TypeChecker
             return TypeSymbol.CreateResult(argType, TypeSymbol.String);
         }
 
-        if (call.Callee == "Err")
+        if (call.Callee is "Err" or "Result::Err")
         {
             if (call.Arguments.Count != 1)
             {
@@ -543,6 +543,12 @@ public sealed partial class TypeChecker
         if (TryCheckFileIoCall(call, out var fileIoType))
         {
             return fileIoType;
+        }
+
+        // High-precision Time / Stopwatch built-ins
+        if (TryCheckTimeCall(call, out var timeType))
+        {
+            return timeType;
         }
 
         // Networking built-ins

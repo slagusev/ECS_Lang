@@ -577,6 +577,15 @@ fn main(): i32 {
     * Зажатие границ (clamping) в `substring` против out-of-bounds и отрицательных смещений.
     * Выделение памяти под срез через ECS String Arena (`_arenaEmitter.GetOrCreateArenaAlloc`) с fallback на CRT `malloc`.
   - Сквозной тест: `examples/string_ops_test.ecs` (парсинг логов web-сервера, код 0).
+- [x] Пункт 2.9 (9.4): Высокоточные интринсики времени и честный бенчмарк Big Data I/O (stopwatch_start, stopwatch_ms, io_benchmark.ecs):
+  - Встроенные zero-cost интринсики таймера: `stopwatch_start(): i64` и `stopwatch_ms(start: i64): f32`.
+  - Модульный фронтенд в `src/ECSLang.Frontend/Parser.Time.cs`.
+  - Модульный семантический анализ в `src/ECSLang.Semantics/TypeChecker.Time.cs` (`TryCheckTimeCall`).
+  - Низкоуровневая машинная кодогенерация в `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Time.cs`:
+    * Windows: нативные вызовы `QueryPerformanceCounter` и `QueryPerformanceFrequency` (`kernel32.lib`).
+    * POSIX: наносекундный монотонный таймер `clock_gettime(CLOCK_MONOTONIC, &ts)`.
+  - Поддержка синтаксиса `Result::Ok` и `Result::Err` в семантике и кодогене.
+  - Честный сравнительный Big Data бенчмарк: `examples/io_benchmark.ecs` (атомарная запись 1 млн строк в файл и чтение целиком).
 
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.

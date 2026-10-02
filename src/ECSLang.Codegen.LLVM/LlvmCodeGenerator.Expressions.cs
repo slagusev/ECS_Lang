@@ -1642,6 +1642,11 @@ public sealed partial class LlvmCodeGenerator
                     return fileIoRes;
                 }
 
+                if (TryGenerateTimeCall(context, module, builder, function, call, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, out var timeRes))
+                {
+                    return timeRes;
+                }
+
                 if (call.Callee == "Some" || (call.Callee.StartsWith("Option<") && call.Callee.EndsWith("::Some")))
                 {
                     var optType = _typeChecker.GetNodeType(call);
@@ -1677,7 +1682,7 @@ public sealed partial class LlvmCodeGenerator
                     return builder.BuildLoad2(optStructType, optAlloca, "none_val");
                 }
 
-                if (call.Callee == "Ok" || (call.Callee.StartsWith("Result<") && call.Callee.EndsWith("::Ok")))
+                if (call.Callee is "Ok" or "Result::Ok" || (call.Callee.StartsWith("Result<") && call.Callee.EndsWith("::Ok")))
                 {
                     var resType = _typeChecker.GetNodeType(call);
                     resType.TryGetResultInfo(out var okSym, out var errSym);
@@ -1698,7 +1703,7 @@ public sealed partial class LlvmCodeGenerator
                     return builder.BuildLoad2(resStructType, resAlloca, "ok_val");
                 }
 
-                if (call.Callee == "Err" || (call.Callee.StartsWith("Result<") && call.Callee.EndsWith("::Err")))
+                if (call.Callee is "Err" or "Result::Err" || (call.Callee.StartsWith("Result<") && call.Callee.EndsWith("::Err")))
                 {
                     var resType = _typeChecker.GetNodeType(call);
                     resType.TryGetResultInfo(out var okSym, out var errSym);
@@ -1854,6 +1859,11 @@ public sealed partial class LlvmCodeGenerator
                 }
                 else if (call.Callee == "wait_key")
                 {
+                    if (_options.NoWaitOnExit)
+                    {
+                        return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
+                    }
+
                     if (_options.Target.IsWindows)
                     {
                         var getchFunc = module.GetNamedFunction("_getch");
