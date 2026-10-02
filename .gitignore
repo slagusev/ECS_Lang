@@ -18,3 +18,7 @@
 *.lib
 *.ll
 *.bc
+dist/
+test_publish/
+test_aot/
+*.log

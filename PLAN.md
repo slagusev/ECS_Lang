@@ -660,6 +660,17 @@ fn main(): i32 {
   - Преобразование `str_view.to_string(): string` и прямая поддержка интерполяции строк (`$"..."`) с авто-нультерминацией при явном форматировании.
   - Полноценная интеграция `str_view` как гражданина первого класса в ECS: поддержка в компонентах (`component LogTimestamp { time: str_view }`) и колоночных SoA-чанк таблицах архетипов.
   - Ликвидация 250 000 промежуточных аллокаций памяти кучи при инжесте Big Data логов в флагманском In-Memory OLAP движке.
+- [x] Пункт 2.16: Официальный релиз SDK v0.1.0 alpha и упаковка дистрибутива:
+  - Автоматизированный скрипт сборки SDK (`publish_sdk.bat`):
+    * Вызов `dotnet publish src/ECSLang.CLI` в конфигурации Release с флагом Native AOT (`-r win-x64 --self-contained /p:PublishAot=true`).
+    * Генерация компактного (3.6 МБ) нативного машинного бинарника `ECSLang.CLI.exe` и алиасов `ecslang.exe`, `ecs.exe` с `libLLVM.dll` без зависимостей от сторонних рантаймов.
+    * Упаковка стандартной библиотеки в `dist/ecslang-sdk/std/` (строго файлы `.ecs`).
+    * Упаковка проверенных золотых примеров и бенчмарков (`examples/io_benchmark_precise.ecs`, `examples/olap_bigdata_analyzer.ecs`, `examples/01_hello_world.ecs`, `examples/14_pure_dod_network.ecs`, `examples/18_arcade_void_defender.ecs`).
+  - Витрина репозитория GitHub (`README.md`):
+    * Позиционирование языка: Pure ECS/DOD, бэкенд LLVM 20.1, 0% GC, 0% OOP overhead, нативная скорость.
+    * Таблица результатов честного Apples-to-Apples бенчмарка против C# (.NET 9) на старом железе Sandy Bridge (1.7x быстрее на записи, 2.6x на чтении, 78x меньший оверхед памяти).
+    * Сводка In-Memory OLAP архитектуры: 136+ млн записей/сек, 0 миграций памяти, zero-copy `str_view`.
+    * Лаконичные демонстрационные листинги кода и руководство Quick Start.
 
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.
