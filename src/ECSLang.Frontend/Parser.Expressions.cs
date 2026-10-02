@@ -101,9 +101,7 @@ public sealed partial class Parser
             }
             else if (Check(TokenType.As))
             {
-                Advance(); // as
-                var targetType = ParseTypeAnnotation();
-                expr = new CastExpressionNode(expr, targetType, expr.Span);
+                expr = ParseCastExpression(expr);
             }
             else
             {

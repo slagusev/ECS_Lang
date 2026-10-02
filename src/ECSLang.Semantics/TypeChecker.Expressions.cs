@@ -188,27 +188,6 @@ public sealed partial class TypeChecker
         }
     }
 
-    private TypeSymbol CheckCastExpression(CastExpressionNode cast)
-    {
-        var srcType = CheckExpression(cast.Expr);
-        var targetType = TypeSymbol.FromName(cast.TargetTypeName);
-
-        if (srcType == TypeSymbol.Unknown || targetType == TypeSymbol.Unknown)
-        {
-            return targetType;
-        }
-
-        bool srcIsNumeric = srcType.IsInteger || srcType.IsFloatingPoint || srcType == TypeSymbol.Bool || srcType == TypeSymbol.Entity;
-        bool targetIsNumeric = targetType.IsInteger || targetType.IsFloatingPoint || targetType == TypeSymbol.Bool || targetType == TypeSymbol.Entity;
-
-        if (srcType == targetType || (srcIsNumeric && targetIsNumeric))
-        {
-            return targetType;
-        }
-
-        _diagnostics.ReportError($"Cannot cast expression of type '{srcType.Name}' to '{targetType.Name}'.", cast.Span);
-        return targetType;
-    }
 
     private void CheckCaptureCandidate(string name, Scope lambdaScope, HashSet<string> captures)
     {
