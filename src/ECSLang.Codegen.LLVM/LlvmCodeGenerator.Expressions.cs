@@ -1864,18 +1864,7 @@ public sealed partial class LlvmCodeGenerator
                         return LLVMValueRef.CreateConstInt(context.Int32Type, 0, false);
                     }
 
-                    if (_options.Target.IsWindows)
-                    {
-                        var getchFunc = module.GetNamedFunction("_getch");
-                        var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
-                        return builder.BuildCall2(getchType, getchFunc, Array.Empty<LLVMValueRef>(), "key_input");
-                    }
-                    else
-                    {
-                        var getcharFunc = module.GetNamedFunction("getchar");
-                        var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
-                        return builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), "key_input");
-                    }
+                    return EmitWaitKey(context, module, builder, "key_input");
                 }
                 else if (call.Callee == "readln")
                 {

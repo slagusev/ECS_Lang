@@ -509,6 +509,10 @@ public sealed partial class LlvmCodeGenerator
             var setConsoleOutputCpFunc = GetOrDeclareCrtFunc(module, "SetConsoleOutputCP", context.Int32Type, new[] { context.Int32Type });
             var setConsoleOutputCpType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(setConsoleOutputCpFunc);
             builder.BuildCall2(setConsoleOutputCpType, setConsoleOutputCpFunc, new[] { LLVMValueRef.CreateConstInt(context.Int32Type, 65001) }, "");
+
+            var setConsoleCpFunc = GetOrDeclareCrtFunc(module, "SetConsoleCP", context.Int32Type, new[] { context.Int32Type });
+            var setConsoleCpType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(setConsoleCpFunc);
+            builder.BuildCall2(setConsoleCpType, setConsoleCpFunc, new[] { LLVMValueRef.CreateConstInt(context.Int32Type, 65001) }, "");
         }
 
         CompileBlock(context, module, builder, function, fnDecl.Body, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, isMain, hasWaitKey);
@@ -521,18 +525,7 @@ public sealed partial class LlvmCodeGenerator
             {
                 var msg = builder.BuildGlobalStringPtr("Press any key to exit...", "prompt_exit");
                 builder.BuildCall2(putsType, putsFunc, new[] { msg }, "puts_exit");
-                if (_options.Target.IsWindows)
-                {
-                    var getchFunc = module.GetNamedFunction("_getch");
-                    var getchType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
-                    builder.BuildCall2(getchType, getchFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
-                }
-                else
-                {
-                    var getcharFunc = module.GetNamedFunction("getchar");
-                    var getcharType = LLVMTypeRef.CreateFunction(context.Int32Type, Array.Empty<LLVMTypeRef>(), false);
-                    builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), "auto_wait_key");
-                }
+                EmitWaitKey(context, module, builder, "auto_wait_key");
             }
             if (returnType == context.VoidType)
                 builder.BuildRetVoid();
@@ -1067,4 +1060,32 @@ public sealed partial class LlvmCodeGenerator
         return val;
     }
 
+    private unsafe LLVMValueRef EmitWaitKey(LLVMContextRef context, LLVMModuleRef module, LLVMBuilderRef builder, string name = "key_input")
+    {
+        if (_options.Target.IsWindows)
+        {
+            var i8PtrType = LLVMTypeRef.CreatePointer(context.Int8Type, 0);
+
+            var getStdHandleFunc = GetOrDeclareCrtFunc(module, "GetStdHandle", i8PtrType, new[] { context.Int32Type });
+            var getStdHandleType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(getStdHandleFunc);
+
+            var flushFunc = GetOrDeclareCrtFunc(module, "FlushConsoleInputBuffer", context.Int32Type, new[] { i8PtrType });
+            var flushType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(flushFunc);
+
+            // STD_INPUT_HANDLE = -10 (0xFFFFFFF6)
+            var stdInputHandleVal = LLVMValueRef.CreateConstInt(context.Int32Type, unchecked((ulong)(long)-10), true);
+            var hInput = builder.BuildCall2(getStdHandleType, getStdHandleFunc, new[] { stdInputHandleVal }, "h_stdin");
+            builder.BuildCall2(flushType, flushFunc, new[] { hInput }, "");
+
+            var getchFunc = GetOrDeclareCrtFunc(module, "_getch", context.Int32Type, Array.Empty<LLVMTypeRef>());
+            var getchType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(getchFunc);
+            return builder.BuildCall2(getchType, getchFunc, Array.Empty<LLVMValueRef>(), name);
+        }
+        else
+        {
+            var getcharFunc = GetOrDeclareCrtFunc(module, "getchar", context.Int32Type, Array.Empty<LLVMTypeRef>());
+            var getcharType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(getcharFunc);
+            return builder.BuildCall2(getcharType, getcharFunc, Array.Empty<LLVMValueRef>(), name);
+        }
+    }
 }
