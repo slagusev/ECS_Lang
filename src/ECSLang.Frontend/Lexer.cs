@@ -23,6 +23,7 @@ public sealed class Lexer
         ["pipeline"] = TokenType.Pipeline,
         ["stage"] = TokenType.Stage,
         ["parallel"] = TokenType.Parallel,
+        ["auto"] = TokenType.Auto,
         ["sync"] = TokenType.Sync,
         ["sort_hierarchy"] = TokenType.SortHierarchy,
         ["let"] = TokenType.Let,

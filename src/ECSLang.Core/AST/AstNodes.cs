@@ -139,6 +139,8 @@ public sealed record SystemCallAction(string SystemName, SourceSpan Span) : Stag
 
 public sealed record ParallelAction(IReadOnlyList<SystemCallAction> Systems, SourceSpan Span) : StageAction(Span);
 
+public sealed record ParallelAutoBlockNode(IReadOnlyList<SystemCallAction> Systems, SourceSpan Span) : StageAction(Span);
+
 public sealed record SyncAction(SourceSpan Span) : StageAction(Span);
 
 public sealed record SortHierarchyAction(SourceSpan Span) : StageAction(Span);

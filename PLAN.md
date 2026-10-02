@@ -601,6 +601,19 @@ fn main(): i32 {
     * `OutboundSendSystem`: автоматическая длина фрейма для TCP и прозрачная маршрутизация для UDP-дейтаграмм.
   - Сквозной тест: `examples/net_framing_test.ecs` (проверка распаковки склеенных пакетов, код 0).
 
+- [x] Пункт 2.11 (9.1): Автопланировщик пула потоков `parallel auto` внутри стадий конвейеров (Topological DAG System Scheduler):
+  - Ключевое слово `auto`, токен `TokenType.Auto`, AST-узел `ParallelAutoBlockNode(IReadOnlyList<SystemCallAction> Systems, SourceSpan Span)`.
+  - Модульный фронтенд в `src/ECSLang.Frontend/Parser.Pipelines.cs`: парсинг `parallel auto { System1; System2; ... }` внутри стадий `stage Name { ... }`.
+  - Модульный семантический анализ в `src/ECSLang.Semantics/TypeChecker.Pipelines.cs`:
+    * Построение топологического графа зависимостей (DAG) между системами на основе конфликтов `write-write`, `write-read` и `read-write` для компонентов и ресурсов (`SystemSymbol.HasConflictWith`).
+    * Автоматическое разбиение систем на независимые параллельные слои (батчи): $\text{Layer}(i) = \max_{j < i, \text{conflict}(j, i)} (\text{Layer}(j) + 1)$.
+    * Гарантия Data-Race Free исполнения без необходимости ручной расстановки барьеров `sync;`.
+  - Низкоуровневая машинная кодогенерация в `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Pipelines.cs`:
+    * Параллельная подача задач каждого батча в Win32 ThreadPool (`CreateThreadpoolWork`, `SubmitThreadpoolWork`).
+    * Аппаратный барьер ожидания завершения слоя (`WaitForThreadpoolWorkCallbacks`, `CloseThreadpoolWork`) перед переходом к следующему батчу.
+    * Оптимизация одиночных систем в батче с прямым вызовом `@system_*` без оверхеда пула потоков.
+  - Сквозной тест: `examples/parallel_auto_test.ecs` (5 систем с зависимостями и независимыми ветками, код 0).
+
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.
 - [ ] GUI-приложение: редактор уровней или инспектор сцены на ECS GUI компонентах.

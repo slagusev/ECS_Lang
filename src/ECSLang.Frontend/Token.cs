@@ -26,6 +26,7 @@ public enum TokenType
     Pipeline,
     Stage,
     Parallel,
+    Auto,
     Sync,
     SortHierarchy,
     Let,

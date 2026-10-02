@@ -419,6 +419,10 @@ public sealed partial class TypeChecker
                         }
                     }
                 }
+                else if (action is ParallelAutoBlockNode autoBlock)
+                {
+                    CheckParallelAutoBlock(autoBlock, stage);
+                }
             }
         }
     }
