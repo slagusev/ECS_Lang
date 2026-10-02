@@ -45,9 +45,9 @@
 | Проект | Пространство имен | Назначение |
 |---|---|---|
 | **`ECSLang.Core`** | `ECSLang.Core.*` | Базовые абстракции, модели токенов, узлы AST (`AstNodes.cs`), структуры диагностик ошибок и исходных интервалов (`SourceSpan`), абстракция целевой платформы (`TargetPlatform.cs`). |
-| **`ECSLang.Frontend`** | `ECSLang.Frontend` | Лексический анализатор (`Lexer.cs`), модульный парсер рекурсивного спуска (`Parser.cs`, `Parser.Declarations.cs`, `Parser.Statements.cs`, `Parser.Expressions.cs`, `Parser.Casts.cs`, `Parser.Resources.cs`, `Parser.Errors.cs`). Преобразует исходный текст `.ecs` в AST. |
-| **`ECSLang.Semantics`** | `ECSLang.Semantics` | Таблицы символов (`SymbolTable`), система типов (`TypeSymbol`), модульная проверка семантики (`TypeChecker.cs`, `TypeChecker.Declarations.cs`, `TypeChecker.Statements.cs`, `TypeChecker.Expressions.cs`, `TypeChecker.Casts.cs`, `TypeChecker.Resources.cs`, `TypeChecker.Errors.cs`). |
-| **`ECSLang.Codegen.LLVM`** | `ECSLang.Codegen.LLVM` | Модульный генератор LLVM IR (`LlvmCodeGenerator.cs`, `.Expressions.cs`, `.Statements.cs`, `.Casts.cs`, `.Resources.cs`, `.Errors.cs`, `.Ecs.cs`, `.Raylib.cs`) и эмиттер низкоуровневого рантайма SoA-архетипов (`EcsRuntimeEmitter.cs`, `.Archetypes.cs`, `.Profiler.cs`). Работает через `LLVMSharp 20.1.2`. |
+| **`ECSLang.Frontend`** | `ECSLang.Frontend` | Лексический анализатор (`Lexer.cs`), модульный парсер рекурсивного спуска (`Parser.cs`, `Parser.Declarations.cs`, `Parser.Statements.cs`, `Parser.Expressions.cs`, `Parser.Casts.cs`, `Parser.Resources.cs`, `Parser.Errors.cs`, `Parser.Files.cs`). Преобразует исходный текст `.ecs` в AST. |
+| **`ECSLang.Semantics`** | `ECSLang.Semantics` | Таблицы символов (`SymbolTable`), система типов (`TypeSymbol`), модульная проверка семантики (`TypeChecker.cs`, `TypeChecker.Declarations.cs`, `TypeChecker.Statements.cs`, `TypeChecker.Expressions.cs`, `TypeChecker.Casts.cs`, `TypeChecker.Resources.cs`, `TypeChecker.Errors.cs`, `TypeChecker.Files.cs`). |
+| **`ECSLang.Codegen.LLVM`** | `ECSLang.Codegen.LLVM` | Модульный генератор LLVM IR (`LlvmCodeGenerator.cs`, `.Expressions.cs`, `.Statements.cs`, `.Casts.cs`, `.Resources.cs`, `.Errors.cs`, `.Files.cs`, `.Ecs.cs`, `.Raylib.cs`) и эмиттер низкоуровневого рантайма SoA-архетипов (`EcsRuntimeEmitter.cs`, `.Archetypes.cs`, `.Profiler.cs`). Работает через `LLVMSharp 20.1.2`. |
 | **`ECSLang.Toolchain`** | `ECSLang.Toolchain` | Инфраструктура компоновщиков: кроссплатформенный интерфейс `ILinker`, реализации `MsvcLinker` (Windows MSVC SDK), `ClangGccLinker` (Linux, macOS, Clang/GCC/LLD) и фабрика `LinkerFactory`. |
 | **`ECSLang.CLI`** | `ECSLang.CLI` | Точка входа командной строки: аргументы `build`, `run`, флаги кросс-таргетинга `--target`, `--os`, компиляции объекта `-c, --emit-obj`, IR `--emit-ir`, уровни оптимизации `-O0`..`-O3`. |
 
@@ -1138,3 +1138,22 @@ flowchart TD
        - В функции `main()`: форматирует сообщение об ошибке в консоль через `printf`/`puts` и возвращает `ret i32 1`.
        - В пользовательской функции: конструирует `Err(e)` / `None` соответствующего типа возврата и немедленно делает `ret`.
     4. В блоке успеха (`try_success`): извлекает значение `val` (`ok_slot` / `some_slot`) и передает его дальше по SSA-графу инструкций.
+
+### 30.6. Файловый ввод-вывод общего назначения (File I/O)
+- **Цель**: Предоставить высокопроизводительный, кроссплатформенный и типобезопасный ввод-вывод общего назначения без привязки к тяжелым объектно-ориентированным абстракциям или GC.
+- **Встроенные функции**:
+  - `file_exists(path: string): bool` — проверка существования файла на диске.
+  - `file_read_text(path: string): Result<string, string>` — чтение всего содержимого файла в UTF-8 строку.
+  - `file_write_text(path: string, content: string): Result<bool, string>` — атомарная перезапись файла.
+  - `file_append_text(path: string, content: string): Result<bool, string>` — дозапись строки в конец файла.
+- **Фронтенд и AST**:
+  - Модуль `Parser.Files.cs` распознает идентификаторы файловых примитивов (`file_exists`, `file_read_text`, `file_write_text`, `file_append_text`).
+- **Семантический анализ**:
+  - Модуль `TypeChecker.Files.cs` валидирует количество и типы аргументов, регистрирует типы возврата `TypeSymbol.Bool` и `TypeSymbol.Result(T, TypeSymbol.String)`.
+  - Бесшовная интеграция с оператором `?` (`let content = file_read_text("data.csv")?;`).
+- **Низкоуровневая кодогенерация (C CRT ABI)**:
+  - Модуль `LlvmCodeGenerator.Files.cs` напрямую транслирует операции в стандартные функции Си-рантайма: `fopen`, `fclose`, `fseek`, `ftell`, `fread`, `fwrite`.
+  - Одинаково работает на Windows (`msvcrt`/`ucrt`) и POSIX-системах (`libc`) без платформозависимых веток.
+  - Точное определение размера файла через `fseek(SEEK_END)` и `ftell()`. Выделение буфера памяти ровно под размер файла через нативный `malloc`.
+  - Упаковка в нативную tagged-структуру `Result<T, string>` с кодом ошибки `0` (Ok) или `1` (Err). При ошибке `fopen` возвращается описательное строковое сообщение.
+

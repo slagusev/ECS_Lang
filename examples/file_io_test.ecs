@@ -1,0 +1,58 @@
+// ========================================================================
+// ECSLang: File I/O & Error Propagation End-to-End Test
+// Demonstrates cross-platform file reading, writing, appending, and existence checks
+// ========================================================================
+
+fn perform_file_logging(): Result<string, string> {
+    let filename = "analytics.log";
+
+    // 1. Initial existence check
+    if file_exists(filename) {
+        println("Log file already exists from previous run");
+    } else {
+        println("Log file does not exist yet (clean slate)");
+    }
+
+    // 2. Initial write using operator '?'
+    file_write_text(filename, "=== Analytics Session Log ===\n")?;
+    println("Header written successfully");
+
+    // 3. Appending lines using operator '?'
+    file_append_text(filename, "[INFO] Simulation tick: 1, entities: 1000\n")?;
+    file_append_text(filename, "[INFO] Simulation tick: 2, entities: 2500\n")?;
+    file_append_text(filename, "[SUCCESS] Big Data pipeline benchmark completed.\n")?;
+    println("Log lines appended successfully");
+
+    // 4. Verify existence after write
+    if file_exists(filename) {
+        println("Verified: Log file exists on disk");
+    } else {
+        return Err("File existence check failed after writes");
+    }
+
+    // 5. Read back entire file using operator '?'
+    let content = file_read_text(filename)?;
+    return Ok(content);
+}
+
+fn main(): i32 {
+    println("------------------------------------------");
+    println("--- Testing Cross-Platform File I/O ---");
+
+    let result = perform_file_logging();
+    match result {
+        Ok(log_data) => {
+            println("--- File Content Readback ---");
+            print(log_data);
+            println("-----------------------------");
+            println("File I/O test SUCCESS!");
+        }
+        Err(err) => {
+            println($"File I/O test FAILED: {err}");
+            return 1;
+        }
+    }
+
+    println("------------------------------------------");
+    return 0;
+}

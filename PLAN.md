@@ -557,6 +557,12 @@ fn main(): i32 {
   - Семантическая валидация в `TypeChecker.Errors.cs`: строгая проверка `Result<T, E>` (с совпадением типа ошибки `E` в объемлющей функции или поддержкой `main()`) и `Option<T>`, распаковка результирующего типа в `T`.
   - Машинная генерация LLVM IR в `LlvmCodeGenerator.Errors.cs`: десугаризация в базовые блоки проверки дискриминанта (`Ok`/`Some` vs `Err`/`None`), ранний возврат `ret` с пробросом ошибки, а в `main()` автоматический вывод ошибки и `ret i32 1`.
   - Сквозной тест: `examples/error_propagation_test.ecs` (код 0).
+- [x] Пункт 2.7 (5.2): Файловый ввод-вывод общего назначения (File I/O: read, write, append, exists):
+  - Встроенные функции `file_exists(path)`, `file_read_text(path)`, `file_write_text(path, content)`, `file_append_text(path, content)`.
+  - Модульный фронтенд в `Parser.Files.cs`.
+  - Семантическая валидация и типизация в `TypeChecker.Files.cs` с возвратом `bool` и `Result<T, string>`. Полная интеграция с оператором `?`.
+  - Низкоуровневая кроссплатформенная генерация C ABI CRT в `LlvmCodeGenerator.Files.cs`: нативные вызовы `fopen`, `fclose`, `fseek`, `ftell`, `fread`, `fwrite`, `strlen`, `malloc` и конструирование tagged-структур `Result<T, string>`.
+  - Сквозной тест: `examples/file_io_test.ecs` (код 0).
 
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.

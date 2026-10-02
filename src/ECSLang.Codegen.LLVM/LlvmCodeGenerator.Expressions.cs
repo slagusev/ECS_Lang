@@ -1640,6 +1640,11 @@ public sealed partial class LlvmCodeGenerator
                     return builder.BuildCall2(cSignature, cTypedFn, cCallArgs.ToArray(), cCallName);
                 }
 
+                if (TryGenerateFileIoCall(context, module, builder, function, call, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, out var fileIoRes))
+                {
+                    return fileIoRes;
+                }
+
                 if (call.Callee == "Some" || (call.Callee.StartsWith("Option<") && call.Callee.EndsWith("::Some")))
                 {
                     var optType = _typeChecker.GetNodeType(call);

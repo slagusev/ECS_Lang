@@ -539,6 +539,12 @@ public sealed partial class TypeChecker
             return TypeSymbol.I32;
         }
 
+        // File I/O built-ins
+        if (TryCheckFileIoCall(call, out var fileIoType))
+        {
+            return fileIoType;
+        }
+
         // Networking built-ins
         if (call.Callee.StartsWith("raw_net_") ||
             (call.Callee.StartsWith("net_") && !_functions.ContainsKey(call.Callee)))

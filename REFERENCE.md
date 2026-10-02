@@ -759,6 +759,34 @@ pipeline GamePipeline {
 > [!NOTE]
 > Компилятор автоматически внедряет печать `"Press Enter to exit..."` и вызов `getchar()` перед выходом из `main`, если в коде отсутствует явный вызов `wait_key()`. Это предотвращает преждевременное закрытие консольного окна в Windows.
 
+### 11.2. Файловый ввод-вывод (File I/O)
+
+ECSLang включает высокопроизводительные кроссплатформенные функции для работы с файлами на диске через стандартный C ABI (CRT `fopen`, `fread`, `fwrite`, `fclose`, `fseek`, `ftell`). Функции возвращают результат в виде безопасных разметченных объединений `Result<T, string>` и поддерживают оператор распространения ошибок `?`:
+
+| Функция | Сигнатура | Возвращает | Описание |
+|---|---|---|---|
+| `file_exists(path)` | `(string): bool` | `bool` | Быстрая проверка наличия файла на диске. Возвращает `true`, если файл существует и доступен для чтения. |
+| `file_read_text(path)` | `(string): Result<string, string>` | `Result<string, string>` | Читает текстовый файл целиком в память. При успехе возвращает `Ok(content)`, при ошибке открытия — `Err(message)`. |
+| `file_write_text(path, content)` | `(string, string): Result<bool, string>` | `Result<bool, string>` | Записывает/перезаписывает текстовый файл. При успехе возвращает `Ok(true)`. |
+| `file_append_text(path, line)` | `(string, string): Result<bool, string>` | `Result<bool, string>` | Дописывает строку в конец существующего файла (или создает новый). Идеально для логирования. |
+
+Пример использования с оператором `?`:
+```rust
+fn save_game_state(path: string, json: string): Result<bool, string> {
+    file_write_text(path, json)?;
+    file_append_text("game.log", "[LOG] Game state saved successfully\n")?;
+    return Ok(true);
+}
+
+fn load_game_state(path: string): Result<string, string> {
+    if !file_exists(path) {
+        return Err("Save file not found");
+    }
+    let data = file_read_text(path)?;
+    return Ok(data);
+}
+```
+
 ---
 
 ## 12. Графика, окно и ввод (Raylib)
