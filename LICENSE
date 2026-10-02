@@ -1,21 +1,28 @@
-MIT License
+ECSLANG COMMUNITY & COMMERCIAL DUAL LICENSE (WINRAR-STYLE MODEL)
 
-Copyright (c) 2026 ECSLang Contributors
+Copyright (c) 2026 ECSLang Systems & Contributors. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. GRANT OF LICENSE (INDIVIDUALS & INDIE DEVELOPERS):
+Permission is hereby granted, free of charge, to any individual, researcher, student, hobbyist,
+or organization with gross annual revenue and external funding under $100,000 USD, to use, copy,
+modify, and distribute binaries compiled with this software without restriction, subject to the
+conditions that the copyright notice appears in all copies.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. COMMERCIAL ENTERPRISE USE (REVENUE >= $100,000 USD):
+Commercial entities, businesses, and corporate users whose annual revenue or funding exceeds
+$100,000 USD must acquire a valid ECSLang Commercial Enterprise License for each developer
+workstation and production server deployment running ECSLang or proprietary enterprise clustering
+modules.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. OPEN-CORE MODEL:
+The core compiler and basic standard library are provided under Community terms. Advanced
+enterprise distributed cluster modules, AI synchronization nodes, and mission-critical
+telemetry extensions are part of the proprietary ECSLang Enterprise Edition.
+
+4. DISCLAIMER:
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE
+FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+DEALINGS IN THE SOFTWARE.

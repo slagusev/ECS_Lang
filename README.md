@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/Paradigm-Pure_ECS_&_DOD-red.svg?style=for-the-badge" alt="Pure ECS" />
   <img src="https://img.shields.io/badge/GC-0%25_Zero_Cost-brightgreen.svg?style=for-the-badge" alt="Zero GC" />
   <img src="https://img.shields.io/badge/Platform-Windows_|_Linux_|_macOS-blueviolet.svg?style=for-the-badge" alt="Cross-Platform" />
-  <img src="https://img.shields.io/badge/License-MIT-orange.svg?style=for-the-badge" alt="License" />
+  <img src="https://img.shields.io/badge/License-Dual_Open--Core_|_WinRAR--Style-orange.svg?style=for-the-badge" alt="License" />
 </p>
 
 ---
@@ -218,33 +218,44 @@ ECSLang/
 └── PLAN.md / ARCHITECTURE.md   # Complete technical specifications & design docs
 ```
 
----
+## 📄 License & Commercial Terms
 
-## 📄 License
+ECSLang is distributed under a **Dual Open-Core & Fair-Use License (WinRAR-style Model)**:
 
-ECSLang is an open-source project licensed under the terms of the **MIT License**.
+### 1. 🟢 Free Community & Indie License (100% Free Forever)
+- **Eligibility**: Individuals, independent developers, hobbyists, students, academic researchers, non-profit open-source projects, and small businesses / startups with **annual gross revenue and external funding under $100,000 USD**.
+- **Rights**: You are granted a free, perpetual, non-exclusive license to use, compile, distribute, and develop software with ECSLang for both non-commercial and commercial projects with **zero royalty fees**.
+
+### 2. 🏢 Commercial Enterprise License
+- **Eligibility**: Any business entity, corporation, or organization with **annual gross revenue or external funding exceeding $100,000 USD**.
+- **Requirement**: A paid Commercial Enterprise License is required for each developer workstation and production server deployment running ECSLang or proprietary enterprise clustering modules.
+- **Enterprise Features**: Access to closed-source high-throughput distributed AI cluster synchronization, distributed SoA archetypes, 24/7 SLA enterprise support, and custom LLVM optimization passes.
 
 ```text
-MIT License
+ECSLANG COMMUNITY & COMMERCIAL DUAL LICENSE (WINRAR-STYLE MODEL)
 
-Copyright (c) 2026 ECSLang Contributors
+Copyright (c) 2026 ECSLang Systems & Contributors. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. GRANT OF LICENSE (INDIVIDUALS & INDIE DEVELOPERS):
+Permission is hereby granted, free of charge, to any individual, researcher, or organization
+with gross annual revenue under $100,000 USD, to use, copy, modify, and distribute binaries
+compiled with this software without restriction, subject to the conditions that the copyright
+notice appears in all copies.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+2. COMMERCIAL ENTERPRISE USE (REVENUE >= $100,000 USD):
+Commercial entities and corporate users whose annual revenue or external funding exceeds
+$100,000 USD must acquire a valid ECSLang Commercial Enterprise License for each developer
+seat and server instance.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+3. OPEN-CORE MODEL:
+The core compiler and basic standard library are provided under Community terms. Advanced
+enterprise distributed cluster modules, AI synchronization nodes, and mission-critical
+telemetry extensions are part of the proprietary ECSLang Enterprise Edition.
+
+4. DISCLAIMER:
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
+PURPOSE AND NONINFRINGEMENT.
 ```
+
 
