@@ -928,12 +928,9 @@ public sealed partial class LlvmCodeGenerator
                     return EmitToString(context, module, builder, targetVal, targetType, i8PtrType, ecs, worldPtr);
                 }
 
-                if (methodCall.MethodName is "len" or "length")
+                if (targetType == TypeSymbol.String && TryGenerateStringMethodCall(context, module, builder, function, methodCall, targetVal, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc, out var strMethodRes))
                 {
-                    var strlenFunc = module.GetNamedFunction("strlen");
-                    var strlenType = LLVMTypeRef.CreateFunction(context.Int64Type, new[] { i8PtrType }, false);
-                    var len64 = builder.BuildCall2(strlenType, strlenFunc, new[] { targetVal }, "slen64");
-                    return builder.BuildTrunc(len64, context.Int32Type, "slen32");
+                    return strMethodRes;
                 }
 
                 if (targetType.IsOption)

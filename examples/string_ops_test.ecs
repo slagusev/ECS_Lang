@@ -1,0 +1,102 @@
+// ========================================================================
+// ECSLang: String Operations Tier 1 End-to-End Test
+// Verifies len, contains, starts_with, ends_with, index_of, substring
+// Simulates Big Data Web Server Access Log Analytics Parsing
+// ========================================================================
+
+fn parse_and_validate_log_entry(raw_log: string): bool {
+    println($"Raw log entry: {raw_log}");
+
+    // 1. Length verification
+    let total_len = raw_log.len();
+    println($"Total log length: {total_len} chars");
+    if total_len <= 0 {
+        return false;
+    }
+
+    // 2. Starts with date check
+    if !raw_log.starts_with("2026-10-02") {
+        println("[FAIL] Log does not start with expected timestamp!");
+        return false;
+    }
+    println("[PASS] starts_with('2026-10-02') confirmed");
+
+    // 3. Contains log level check
+    if !raw_log.contains("[INFO]") {
+        println("[FAIL] Expected [INFO] log level!");
+        return false;
+    }
+    println("[PASS] contains('[INFO]') confirmed");
+
+    // 4. Ends with status code check
+    if !raw_log.ends_with("200") {
+        println("[FAIL] Expected status code 200 at end of line!");
+        return false;
+    }
+    println("[PASS] ends_with('200') confirmed");
+
+    // 5. Index of substring slicing
+    let info_idx = raw_log.index_of("[INFO]");
+    println($"Index of '[INFO]': {info_idx}");
+    if info_idx != 11 {
+        println($"[FAIL] Expected index 11 for [INFO], but got {info_idx}");
+        return false;
+    }
+
+    let uri_idx = raw_log.index_of("/api/v1/metrics");
+    println($"Index of '/api/v1/metrics': {uri_idx}");
+    if uri_idx < 0 {
+        println("[FAIL] URI not found!");
+        return false;
+    }
+
+    // 6. Substring extraction (Timestamp, Level, Method, Endpoint, Status)
+    let timestamp = raw_log.substring(0, 10);
+    println($"Extracted Timestamp: '{timestamp}'");
+    if timestamp.len() != 10 {
+        return false;
+    }
+
+    let log_level = raw_log.substring(info_idx, 6);
+    println($"Extracted Log Level: '{log_level}'");
+
+    let method_idx = raw_log.index_of("GET");
+    let method = raw_log.substring(method_idx, 3);
+    println($"Extracted HTTP Method: '{method}'");
+
+    let uri = raw_log.substring(uri_idx, 15);
+    println($"Extracted API Endpoint: '{uri}'");
+
+    let status_idx = raw_log.index_of("200");
+    let status = raw_log.substring(status_idx, 3);
+    println($"Extracted Status Code: '{status}'");
+
+    // 7. Verify out-of-bounds safety in substring
+    let empty_sub = raw_log.substring(1000, 50);
+    println($"Out-of-bounds substring len: {empty_sub.len()} (safe clamped)");
+    if empty_sub.len() != 0 {
+        return false;
+    }
+
+    return true;
+}
+
+fn main(): i32 {
+    println("------------------------------------------");
+    println("--- Testing String Operations (Tier 1) ---");
+
+    let log_line = "2026-10-02 [INFO] GET /api/v1/metrics HTTP/1.1 200";
+
+    let success = parse_and_validate_log_entry(log_line);
+    if !success {
+        println("String Operations test FAILED!");
+        return 1;
+    }
+
+    println("------------------------------------------");
+    println("=== ALL STRING OPERATIONS TESTS PASSED (0 ERRORS) ===");
+    println("------------------------------------------");
+
+    wait_key();
+    return 0;
+}

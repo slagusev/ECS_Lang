@@ -45,9 +45,9 @@
 | Проект | Пространство имен | Назначение |
 |---|---|---|
 | **`ECSLang.Core`** | `ECSLang.Core.*` | Базовые абстракции, модели токенов, узлы AST (`AstNodes.cs`), структуры диагностик ошибок и исходных интервалов (`SourceSpan`), абстракция целевой платформы (`TargetPlatform.cs`). |
-| **`ECSLang.Frontend`** | `ECSLang.Frontend` | Лексический анализатор (`Lexer.cs`), модульный парсер рекурсивного спуска (`Parser.cs`, `Parser.Declarations.cs`, `Parser.Statements.cs`, `Parser.Expressions.cs`, `Parser.Casts.cs`, `Parser.Resources.cs`, `Parser.Errors.cs`, `Parser.Files.cs`). Преобразует исходный текст `.ecs` в AST. |
-| **`ECSLang.Semantics`** | `ECSLang.Semantics` | Таблицы символов (`SymbolTable`), система типов (`TypeSymbol`), модульная проверка семантики (`TypeChecker.cs`, `TypeChecker.Declarations.cs`, `TypeChecker.Statements.cs`, `TypeChecker.Expressions.cs`, `TypeChecker.Casts.cs`, `TypeChecker.Resources.cs`, `TypeChecker.Errors.cs`, `TypeChecker.Files.cs`). |
-| **`ECSLang.Codegen.LLVM`** | `ECSLang.Codegen.LLVM` | Модульный генератор LLVM IR (`LlvmCodeGenerator.cs`, `.Expressions.cs`, `.Statements.cs`, `.Casts.cs`, `.Resources.cs`, `.Errors.cs`, `.Files.cs`, `.Ecs.cs`, `.Raylib.cs`) и эмиттер низкоуровневого рантайма SoA-архетипов (`EcsRuntimeEmitter.cs`, `.Archetypes.cs`, `.Profiler.cs`). Работает через `LLVMSharp 20.1.2`. |
+| **`ECSLang.Frontend`** | `ECSLang.Frontend` | Лексический анализатор (`Lexer.cs`), модульный парсер рекурсивного спуска (`Parser.cs`, `Parser.Declarations.cs`, `Parser.Statements.cs`, `Parser.Expressions.cs`, `Parser.Casts.cs`, `Parser.Resources.cs`, `Parser.Errors.cs`, `Parser.Files.cs`, `Parser.Strings.cs`). Преобразует исходный текст `.ecs` в AST. |
+| **`ECSLang.Semantics`** | `ECSLang.Semantics` | Таблицы символов (`SymbolTable`), система типов (`TypeSymbol`), модульная проверка семантики (`TypeChecker.cs`, `TypeChecker.Declarations.cs`, `TypeChecker.Statements.cs`, `TypeChecker.Expressions.cs`, `TypeChecker.Casts.cs`, `TypeChecker.Resources.cs`, `TypeChecker.Errors.cs`, `TypeChecker.Files.cs`, `TypeChecker.Strings.cs`). |
+| **`ECSLang.Codegen.LLVM`** | `ECSLang.Codegen.LLVM` | Модульный генератор LLVM IR (`LlvmCodeGenerator.cs`, `.Expressions.cs`, `.Statements.cs`, `.Casts.cs`, `.Resources.cs`, `.Errors.cs`, `.Files.cs`, `.Strings.cs`, `.Ecs.cs`, `.Raylib.cs`) и эмиттер низкоуровневого рантайма SoA-архетипов (`EcsRuntimeEmitter.cs`, `.Archetypes.cs`, `.Profiler.cs`). Работает через `LLVMSharp 20.1.2`. |
 | **`ECSLang.Toolchain`** | `ECSLang.Toolchain` | Инфраструктура компоновщиков: кроссплатформенный интерфейс `ILinker`, реализации `MsvcLinker` (Windows MSVC SDK), `ClangGccLinker` (Linux, macOS, Clang/GCC/LLD) и фабрика `LinkerFactory`. |
 | **`ECSLang.CLI`** | `ECSLang.CLI` | Точка входа командной строки: аргументы `build`, `run`, флаги кросс-таргетинга `--target`, `--os`, компиляции объекта `-c, --emit-obj`, IR `--emit-ir`, уровни оптимизации `-O0`..`-O3`. |
 
@@ -1158,4 +1158,26 @@ flowchart TD
     * **64-битные смещения (Big Data)**: на Windows `_fseeki64` и `_ftelli64` (`ucrt.lib`), на POSIX-системах `fseeko` и `ftello` (`libc`). Исключает 32-битное переполнение `long` на файлах более 2 ГБ.
     * **Атомарная блокировка (Thread-Safe File Locking)**: вызовы `_lock_file` / `_unlock_file` на Windows и `flockfile` / `funlockfile` на POSIX предотвращают гонки данных и перемешивание строк при параллельной записи из независимых систем ECS.
     * **Динамические массивы байт (`Vec<u8>`)**: выделение через `malloc`, упаковка в tagged-структуру `Result<{ i8* data, i32 len, i32 cap }, string>`.
+
+### 30.7. Строковые операции Tier 1 (C CRT Lowering & String Arena)
+- **Цель**: Предоставить zero-cost операции работы со строками без тяжелого ООП-оверхеда или сборщика мусора, необходимые для парсинга Big Data логов, текстовых протоколов и симуляций.
+- **Поддерживаемые методы**:
+  - `s.len()` / `s.length()`: `i32` — длина строки.
+  - `s.contains(sub: string)`: `bool` — проверка наличия подстроки.
+  - `s.starts_with(prefix: string)`: `bool` — проверка префикса.
+  - `s.ends_with(suffix: string)`: `bool` — проверка суффикса.
+  - `s.index_of(sub: string)`: `i32` — поиск первого вхождения подстроки (`-1`, если не найдена).
+  - `s.substring(start: i32, len: i32)`: `string` — выделение подстроки с безопасным зажатием границ (clamping).
+- **Фронтенд и AST**:
+  - Модуль `Parser.Strings.cs` определяет набор допустимых строковых методов (`StringMethodNames`). Разбор осуществляется в рамках стандартного узла `MethodCallExpression`.
+- **Семантический анализ**:
+  - Модуль `TypeChecker.Strings.cs` (`TryCheckStringMethod`) выполняет строгую проверку типов аргументов и валидирует типы возврата (`i32`, `bool`, `string`), интегрируясь в общий диспатч методов `TypeChecker.Expressions.cs`.
+- **Низкоуровневая кодогенерация (C CRT ABI)**:
+  - Модуль `LlvmCodeGenerator.Strings.cs` напрямую транслирует вызовы методов в быстрые процессорные инструкции и CRT вызовы:
+    * `len` / `length`: вызов `strlen` с усечением `trunc i64 to i32`.
+    * `contains`: вызов `strstr(target, sub)` и сравнение указателя с `null` (`icmp ne`).
+    * `starts_with`: вызов `strncmp(target, prefix, strlen(prefix))` со сравнением результата с `0`.
+    * `ends_with`: проверка `sLen >= sufLen`, расчет адреса суффикса через `InBoundsGEP2(target + sLen - sufLen)` и вызов `strcmp == 0`.
+    * `index_of`: вызов `strstr`, branchless вычисление смещения через `ptrtoint` + `sub` + `trunc` и инструкцию `select` (возвращает `-1`, если `null`).
+    * `substring`: безопасное зажатие отрицательных и превышающих длину индексов (`start` в `[0, sLen]`, `len` в `[0, sLen - start]`), выделение памяти через ECS String Arena (`_arenaEmitter.GetOrCreateArenaAlloc`) или fallback `malloc`, копирование байт через нативный `llvm.memcpy` и установка терминального нуля `\0`.
 

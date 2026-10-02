@@ -567,6 +567,16 @@ fn main(): i32 {
     * Атомарная блокировка дескрипторов: `_lock_file`/`_unlock_file` (Windows) и `flockfile`/`funlockfile` (POSIX) для безопасной параллельной записи из систем ECS.
     * Бинарный ввод-вывод: сырое чтение и запись массивов байт `Vec<u8>`.
   - Сквозной тест: `examples/file_io_test.ecs` (проверка текста и бинарных данных, код 0).
+- [x] Пункт 2.8 (5.3): Строковые операции Tier 1 (len, contains, starts_with, ends_with, index_of, substring):
+  - Встроенные zero-cost строковые методы на базе C CRT ABI: `s.len()`, `s.length()`, `s.contains(sub)`, `s.starts_with(prefix)`, `s.ends_with(suffix)`, `s.index_of(sub)`, `s.substring(start, len)`.
+  - Модульный фронтенд в `src/ECSLang.Frontend/Parser.Strings.cs`.
+  - Модульный семантический анализ в `src/ECSLang.Semantics/TypeChecker.Strings.cs` (`TryCheckStringMethod`).
+  - Низкоуровневая машинная кодогенерация в `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Strings.cs`:
+    * Вызовы `strlen`, `strstr`, `strncmp`, `strcmp`, `llvm.memcpy`.
+    * Branchless вычисление смещения `index_of` через `ptrtoint` + `sub` + `select`.
+    * Зажатие границ (clamping) в `substring` против out-of-bounds и отрицательных смещений.
+    * Выделение памяти под срез через ECS String Arena (`_arenaEmitter.GetOrCreateArenaAlloc`) с fallback на CRT `malloc`.
+  - Сквозной тест: `examples/string_ops_test.ecs` (парсинг логов web-сервера, код 0).
 
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.

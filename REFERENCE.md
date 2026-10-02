@@ -800,6 +800,30 @@ fn dump_binary_payload(path: string): Result<bool, string> {
 }
 ```
 
+### 11.3. Строковые операции Tier 1
+
+ECSLang предоставляет высокоэффективные встроенные методы работы со строками через точечную нотацию (`s.method(...)`). На машинном уровне вызовы транслируются напрямую в низкоуровневые функции C ABI CRT (`strlen`, `strstr`, `strncmp`, `strcmp`, `memcpy`) без оверхеда промежуточных объектов-оберток:
+
+| Метод | Сигнатура | Возвращает | Описание |
+|---|---|---|---|
+| `s.len()` / `s.length()` | `(): i32` | `i32` | Возвращает длину строки в символах (`strlen`). |
+| `s.contains(sub)` | `(string): bool` | `bool` | Проверяет наличие подстроки в строке (`strstr != null`). |
+| `s.starts_with(prefix)` | `(string): bool` | `bool` | Проверяет, начинается ли строка с указанного префикса (`strncmp == 0`). |
+| `s.ends_with(suffix)` | `(string): bool` | `bool` | Проверяет, заканчивается ли строка указанным суффиксом (сравнение смещения указателя через `strcmp`). |
+| `s.index_of(sub)` | `(string): i32` | `i32` | Возвращает 0-индексированную позицию первого вхождения подстроки или `-1`, если не найдено. |
+| `s.substring(start, len)` | `(i32, i32): string` | `string` | Вырезает подстроку с автоматической защитой от выхода за границы (out-of-bounds safety) и выделением в String Arena. |
+
+#### Пример анализа логов Big Data:
+```rust
+let log = "2026-10-02 [INFO] GET /api/v1/metrics HTTP/1.1 200";
+
+if log.starts_with("2026-10-02") && log.contains("[INFO]") && log.ends_with("200") {
+    let uri_start = log.index_of("/api/");
+    let uri = log.substring(uri_start, 15);
+    println($"Parsed URI: {uri}");
+}
+```
+
 ---
 
 ## 12. Графика, окно и ввод (Raylib)

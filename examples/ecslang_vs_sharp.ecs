@@ -1,0 +1,91 @@
+// ========================================================================
+// ECSLang: Enterprise Big Data File I/O & High-Precision Performance Test
+// Mirror-equivalent to C# (.NET 9) Apples-to-Apples Fair Atomic Benchmark
+// ========================================================================
+
+fn run_precise_benchmark(): Result<bool, string> {
+    let log_path = "bench_ecslang.log";
+    let lines_count: i32 = 1000000;
+    let log_line = "[INFO] 2026-10-02 12:00:00 - Parallel System Data Pipeline Processing Tick\n";
+
+    // 1. Предварительные математические расчеты
+    // .len() возвращает байты. Кастуем типы через 'as' во избежание переполнений
+    let line_size_bytes = log_line.len() as i64;
+    let total_bytes = line_size_bytes * (lines_count as i64);
+    let total_mb = (total_bytes as f32) / (1024.0 * 1024.0);
+
+    println("=== ECSLang Big Data I/O Benchmark ===");
+    println($"Target: {lines_count} lines, ~{total_mb:.2f} MB total\n");
+
+    // Очищаем / инициализируем чистый файл перед началом
+    file_write_text(log_path, "")?;
+
+    // ====================================================================
+    // 1. ТЕСТ ЗАПИСИ (Атомарный open -> lock -> write -> close кадра)
+    // ====================================================================
+    let sw_write = stopwatch_start();
+    for i in 0..lines_count {
+        file_append_text(log_path, log_line)?;
+    }
+    let write_ms = stopwatch_ms(sw_write);
+
+    // Расчет скоростей для записи
+    let write_seconds = write_ms / 1000.0;
+    let write_lines_per_sec = (lines_count as f32) / write_seconds;
+    let write_mb_per_sec = total_mb / write_seconds;
+
+    // ====================================================================
+    // 2. ТЕСТ ЧТЕНИЯ (64-битный fseeko/ftello без оверхеда памяти)
+    // ====================================================================
+    let sw_read = stopwatch_start();
+    let content = file_read_text(log_path)?;
+    let read_ms = stopwatch_ms(sw_read);
+
+    // Расчет скоростей для чтения
+    let file_size_bytes = content.len() as i64;
+    let file_size_mb = (file_size_bytes as f32) / (1024.0 * 1024.0);
+    let read_seconds = read_ms / 1000.0;
+    let read_mb_per_sec = file_size_mb / read_seconds;
+
+    // ====================================================================
+    // 3. КРАСИВЫЙ ПСЕВДОГРАФИЧЕСКИЙ ВЫВОД РЕЗУЛЬТАТОВ
+    // ====================================================================
+    println("┌─────────────────────────────────────────────────────────┐");
+    println("│              РЕЗУЛЬТАТЫ БЕНЧМАРКА                       │");
+    println("├─────────────────────────────────────────────────────────┤");
+    println("│ Тест                  │ Время      │ Скорость           │");
+    println("├─────────────────────────────────────────────────────────┤");
+    println($"│ Запись {lines_count} строк │ {write_ms:.2f} мс │ {write_lines_per_sec:.0f} стр/с │");
+    println($"│                       │            │ {write_mb_per_sec:.2f} МБ/с     │");
+    println("├─────────────────────────────────────────────────────────┤");
+    println($"│ Чтение {file_size_mb:.2f} МБ      │ {read_ms:.2f} мс │ {read_mb_per_sec:.2f} МБ/с     │");
+    println("└─────────────────────────────────────────────────────────┘");
+
+    println("");
+    let total_time_ms = write_ms + read_ms;
+    println($"Итоговый размер файла: {file_size_bytes} байт ({file_size_mb:.2f} МБ)");
+    println($"Общее время бенчмарка: {total_time_ms:.2f} мс");
+
+    // ====================================================================
+    // 4. ОЧИСТКА
+    // ====================================================================
+    if file_exists(log_path) {
+        // Мы пока не возвращаем Result из удаления, поэтому просто закрываем хэндл деструктором
+        // или пересоздаем пустой файл. Для удаления вызовем нативный Си-клинап в будущем.
+        file_write_text(log_path, "")?; 
+        println($"Файл {log_path} успешно очищен на диске.");
+    }
+
+    return Ok(true);
+}
+
+fn main(): i32 {
+    // Безопасный запуск через оператор проброса ошибок ?
+    run_precise_benchmark()?;
+
+    println("");
+    println("───────────────────────────────────────────────────────────");
+    println("Нажмите любую клавишу для выхода...");
+    wait_key();
+    return 0;
+}

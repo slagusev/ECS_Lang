@@ -852,9 +852,10 @@ public sealed partial class TypeChecker
             return TypeSymbol.String;
         }
 
-        if (targetType == TypeSymbol.String && methodCall.MethodName is "len" or "length")
+        if (targetType == TypeSymbol.String && TryCheckStringMethod(methodCall, targetType, out var strMethodType))
         {
-            return TypeSymbol.I32;
+            _nodeTypes[methodCall] = strMethodType;
+            return strMethodType;
         }
 
         if (targetType.IsDynamicArray)
@@ -1158,18 +1159,6 @@ public sealed partial class TypeChecker
             }
         }
 
-        if (targetType == TypeSymbol.String)
-        {
-            if (methodCall.MethodName is "len" or "length")
-            {
-                if (methodCall.Arguments.Count != 0)
-                {
-                    _diagnostics.ReportError($"Method '{methodCall.MethodName}' expects 0 arguments.", methodCall.Span);
-                }
-                _nodeTypes[methodCall] = TypeSymbol.I32;
-                return TypeSymbol.I32;
-            }
-        }
 
         if (targetType.IsOption)
         {
