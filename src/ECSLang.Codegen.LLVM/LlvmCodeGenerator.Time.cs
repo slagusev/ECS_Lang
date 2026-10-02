@@ -26,6 +26,7 @@ public sealed partial class LlvmCodeGenerator
         switch (call.Callee)
         {
             case "stopwatch_start":
+            case "sys_time_ticks":
             {
                 if (_options.Target.IsWindows)
                 {

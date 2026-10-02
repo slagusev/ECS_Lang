@@ -104,10 +104,21 @@ public sealed partial class LlvmCodeGenerator
             case "index_of":
             {
                 var subVal = CompileExpression(context, module, builder, function, methodCall.Arguments[0], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                var searchStart = targetVal;
+                if (methodCall.Arguments.Count == 2)
+                {
+                    var startArg = CompileExpression(context, module, builder, function, methodCall.Arguments[1], locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+                    var start32 = CoerceValue(builder, context, startArg, context.Int32Type);
+                    var zero = LLVMValueRef.CreateConstInt(context.Int32Type, 0);
+                    var isNeg = builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, start32, zero, "is_neg");
+                    var clampedOffset = builder.BuildSelect(isNeg, zero, start32, "clamped_offset");
+                    searchStart = builder.BuildInBoundsGEP2(context.Int8Type, targetVal, new[] { clampedOffset }, "search_start");
+                }
+
                 var strstrFunc = GetOrDeclareCrtFunc(module, "strstr", i8PtrType, new[] { i8PtrType, i8PtrType });
                 var strstrType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(strstrFunc);
 
-                var foundPtr = builder.BuildCall2(strstrType, strstrFunc, new[] { targetVal, subVal }, "strstr_idx");
+                var foundPtr = builder.BuildCall2(strstrType, strstrFunc, new[] { searchStart, subVal }, "strstr_idx");
                 var nullPtr = LLVMValueRef.CreateConstPointerNull(i8PtrType);
                 var isFound = builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, foundPtr, nullPtr, "is_found");
 

@@ -72,9 +72,9 @@ public sealed partial class TypeChecker
                 return true;
 
             case "index_of":
-                if (methodCall.Arguments.Count != 1)
+                if (methodCall.Arguments.Count != 1 && methodCall.Arguments.Count != 2)
                 {
-                    _diagnostics.ReportError("Method 'index_of' on string expects exactly 1 argument (sub: string).", methodCall.Span);
+                    _diagnostics.ReportError("Method 'index_of' on string expects 1 or 2 arguments: (sub: string) or (sub: string, start_index: i32).", methodCall.Span);
                 }
                 else
                 {
@@ -82,6 +82,14 @@ public sealed partial class TypeChecker
                     if (argType != TypeSymbol.String)
                     {
                         _diagnostics.ReportError($"Method 'index_of' expects 'string' argument, but got '{argType.Name}'.", methodCall.Arguments[0].Span);
+                    }
+                    if (methodCall.Arguments.Count == 2)
+                    {
+                        var startType = CheckExpression(methodCall.Arguments[1]);
+                        if (!startType.IsInteger)
+                        {
+                            _diagnostics.ReportError($"Method 'index_of' expects integer 'start_index', but got '{startType.Name}'.", methodCall.Arguments[1].Span);
+                        }
                     }
                 }
                 returnType = TypeSymbol.I32;

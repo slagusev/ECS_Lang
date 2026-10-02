@@ -11,6 +11,7 @@ public sealed partial class TypeChecker
         switch (call.Callee)
         {
             case "stopwatch_start":
+            case "sys_time_ticks":
                 if (call.Arguments.Count != 0)
                 {
                     _diagnostics.ReportError("Function 'stopwatch_start' expects 0 arguments.", call.Span);
