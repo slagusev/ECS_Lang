@@ -218,34 +218,38 @@ ECSLang/
 └── PLAN.md / ARCHITECTURE.md   # Complete technical specifications & design docs
 ```
 
-## 📄 License & Commercial Terms
+## 📄 License & Commercial Terms / Лицензирование и коммерческие условия
 
-ECSLang is distributed under a **Dual Open-Core & Fair-Use License (WinRAR-style Model)**:
+ECSLang is distributed under a **Dual Open-Core & Fair-Use License (WinRAR-style Model)** adapted for both global and Russian IT markets:
 
-### 1. 🟢 Free Community & Indie License (100% Free Forever)
-- **Eligibility**: Individuals, independent developers, hobbyists, students, academic researchers, non-profit open-source projects, and small businesses / startups with **annual gross revenue and external funding under $100,000 USD**.
-- **Rights**: You are granted a free, perpetual, non-exclusive license to use, compile, distribute, and develop software with ECSLang for both non-commercial and commercial projects with **zero royalty fees**.
+---
 
-### 2. 🏢 Commercial Enterprise License
-- **Eligibility**: Any business entity, corporation, or organization with **annual gross revenue or external funding exceeding $100,000 USD**.
-- **Requirement**: A paid Commercial Enterprise License is required for each developer workstation and production server deployment running ECSLang or proprietary enterprise clustering modules.
-- **Enterprise Features**: Access to closed-source high-throughput distributed AI cluster synchronization, distributed SoA archetypes, 24/7 SLA enterprise support, and custom LLVM optimization passes.
+### 🇬🇧 English Version
+
+#### 1. 🟢 Free Community & Indie License (100% Free Forever)
+- **Eligibility**: Individuals, independent developers, students, researchers, hobbyists, non-profit organizations, and small businesses whose **annual gross revenue and external funding do not exceed \$25,000 USD (or 2,000,000 RUB)**.
+- **Rights**: Fully free, perpetual, non-exclusive license to use, compile, distribute, and build applications with ECSLang with **zero royalties**.
+
+#### 2. 🏢 Commercial Enterprise License
+- **Eligibility**: Any legal entity, business, or organization whose **annual gross revenue or external funding exceeds \$25,000 USD (or 2,000,000 RUB)**.
+- **Requirement**: A valid commercial license is required per active developer workstation and production server deployment running ECSLang or proprietary enterprise clustering modules.
+- **Enterprise Features**: Access to closed-source distributed AI cluster synchronization, multi-node RDMA SoA archetypes, dedicated 24/7 SLA support, and proprietary LLVM optimization passes.
 
 ```text
 ECSLANG COMMUNITY & COMMERCIAL DUAL LICENSE (WINRAR-STYLE MODEL)
 
 Copyright (c) 2026 ECSLang Systems & Contributors. All rights reserved.
 
-1. GRANT OF LICENSE (INDIVIDUALS & INDIE DEVELOPERS):
-Permission is hereby granted, free of charge, to any individual, researcher, or organization
-with gross annual revenue under $100,000 USD, to use, copy, modify, and distribute binaries
-compiled with this software without restriction, subject to the conditions that the copyright
-notice appears in all copies.
+1. GRANT OF FREE LICENSE (INDIVIDUALS & INDIE DEVELOPERS):
+Permission is hereby granted, free of charge, to any individual, researcher, student, hobbyist,
+or organization with gross annual revenue and funding under $25,000 USD (or 2,000,000 RUB),
+to use, copy, modify, and distribute binaries compiled with this software without restriction,
+subject to the condition that the copyright notice appears in all copies.
 
-2. COMMERCIAL ENTERPRISE USE (REVENUE >= $100,000 USD):
-Commercial entities and corporate users whose annual revenue or external funding exceeds
-$100,000 USD must acquire a valid ECSLang Commercial Enterprise License for each developer
-seat and server instance.
+2. COMMERCIAL ENTERPRISE USE (REVENUE >= $25,000 USD / 2,000,000 RUB):
+Commercial entities and corporate users whose annual gross revenue or funding exceeds
+$25,000 USD (or 2,000,000 RUB) must acquire a valid ECSLang Commercial Enterprise License
+for each developer seat and production server instance.
 
 3. OPEN-CORE MODEL:
 The core compiler and basic standard library are provided under Community terms. Advanced
@@ -257,5 +261,19 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
 PURPOSE AND NONINFRINGEMENT.
 ```
+
+---
+
+### 🇷🇺 Русская версия (Условия лицензирования)
+
+#### 1. 🟢 Бесплатная Community & Indie лицензия (Бессрочно и бесплатно)
+- **Для кого**: Физические лица, независимые разработчики (инди), студенты, ученые, опенсорс-сообщество и стартапы с **годовым валовым доходом и инвестициями до 2 000 000 рублей (или \$25,000 USD)**.
+- **Права**: Полное, бессрочное, неэксклюзивное право на разработку, компиляцию, коммерческий и некоммерческий релиз любых продуктов без роялти и отчислений.
+
+#### 2. 🏢 Корпоративная коммерческая лицензия (Enterprise)
+- **Для кого**: Любые юридические лица, компании и корпорации с **годовым оборотом или привлеченным финансированием свыше 2 000 000 рублей (или \$25,000 USD)**.
+- **Условия**: Обязательное приобретение коммерческой лицензии на каждое рабочее место штатного разработчика и каждый рабочий сервер в продакшене.
+- **Enterprise-возможности**: Доступ к закрытым модулям распределенной синхронизации кластеров ИИ, репликации SoA-архетипов по высокоскоростным сетям (RDMA), круглосуточной техподдержке по SLA и кастомным проходам оптимизации LLVM.
+
 
 

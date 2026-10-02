@@ -2,17 +2,17 @@ ECSLANG COMMUNITY & COMMERCIAL DUAL LICENSE (WINRAR-STYLE MODEL)
 
 Copyright (c) 2026 ECSLang Systems & Contributors. All rights reserved.
 
-1. GRANT OF LICENSE (INDIVIDUALS & INDIE DEVELOPERS):
+1. GRANT OF FREE LICENSE (INDIVIDUALS & INDIE DEVELOPERS):
 Permission is hereby granted, free of charge, to any individual, researcher, student, hobbyist,
-or organization with gross annual revenue and external funding under $100,000 USD, to use, copy,
-modify, and distribute binaries compiled with this software without restriction, subject to the
-conditions that the copyright notice appears in all copies.
+or organization with gross annual revenue and funding under $25,000 USD (or 2,000,000 RUB),
+to use, copy, modify, and distribute binaries compiled with this software without restriction,
+subject to the condition that the copyright notice appears in all copies.
 
-2. COMMERCIAL ENTERPRISE USE (REVENUE >= $100,000 USD):
-Commercial entities, businesses, and corporate users whose annual revenue or funding exceeds
-$100,000 USD must acquire a valid ECSLang Commercial Enterprise License for each developer
-workstation and production server deployment running ECSLang or proprietary enterprise clustering
-modules.
+2. COMMERCIAL ENTERPRISE USE (REVENUE >= $25,000 USD / 2,000,000 RUB):
+Commercial entities, businesses, and corporate users whose annual gross revenue or funding
+exceeds $25,000 USD (or 2,000,000 RUB) must acquire a valid ECSLang Commercial Enterprise
+License for each developer workstation and production server deployment running ECSLang or
+proprietary enterprise clustering modules.
 
 3. OPEN-CORE MODEL:
 The core compiler and basic standard library are provided under Community terms. Advanced
