@@ -1,0 +1,23 @@
+component Position {
+    x: f32,
+    y: f32,
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+    let e = world.spawn();
+    world.set_Position(e, 10.0, 20.0);
+    println("Entity spawned and initialized.");
+
+    // Despawn entity
+    world.despawn(e);
+    println("Entity despawned.");
+
+    // Attempting to set component on dead entity: MUST ABORT with error message
+    println("Attempting to resurrect entity via set_Position...");
+    world.set_Position(e, 99.0, 99.0);
+
+    // If it reaches here, the invariant failed!
+    println("INVARIANT VIOLATION: Dead entity was resurrected!");
+    return 0;
+}

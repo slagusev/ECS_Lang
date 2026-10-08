@@ -616,16 +616,31 @@ public sealed partial class EcsRuntimeEmitter
                 var curArchIdxRaw = _builder.BuildLoad2(_context.Int32Type, entArchSlot, "cur_arch_idx_raw");
 
                 var isNegArch = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curArchIdxRaw, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_neg_arch");
-                var assignA0BB = setFunc.AppendBasicBlock("set_assign_a0");
+                var deadEntBB = setFunc.AppendBasicBlock("set_dead_entity_error");
                 var contSetBB = setFunc.AppendBasicBlock("set_cont");
-                _builder.BuildCondBr(isNegArch, assignA0BB, contSetBB);
+                _builder.BuildCondBr(isNegArch, deadEntBB, contSetBB);
 
-                _builder.PositionAtEnd(assignA0BB);
-                _builder.BuildCall2(assignA0Type, assignA0Func, new[] { worldParamSet, eParam }, "");
-                _builder.BuildBr(contSetBB);
+                _builder.PositionAtEnd(deadEntBB);
+                var putsFunc = _module.GetNamedFunction("puts");
+                var putsType = LLVMTypeRef.CreateFunction(_context.Int32Type, new[] { i8PtrType }, false);
+                if (putsFunc.Handle == IntPtr.Zero)
+                {
+                    putsFunc = _module.AddFunction("puts", putsType);
+                }
+                var errStr = _builder.BuildGlobalStringPtr($"[ECS Error] Attempted to mutate despawned or dead entity with {prefix}{compName}.", "ecs_err_dead_entity");
+                _builder.BuildCall2(putsType, putsFunc, new[] { errStr }, "");
+
+                var exitFunc = _module.GetNamedFunction("exit");
+                var exitType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { _context.Int32Type }, false);
+                if (exitFunc.Handle == IntPtr.Zero)
+                {
+                    exitFunc = _module.AddFunction("exit", exitType);
+                }
+                _builder.BuildCall2(exitType, exitFunc, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 1) }, "");
+                _builder.BuildUnreachable();
 
                 _builder.PositionAtEnd(contSetBB);
-                var curArchIdx = _builder.BuildLoad2(_context.Int32Type, entArchSlot, "cur_arch_idx");
+                var curArchIdx = curArchIdxRaw;
 
                 var rowArr = _builder.BuildLoad2(i32PtrType, entRowSlotSet, "row_arr");
                 var entRowSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArr, new[] { eParam }, "ent_row_slot");
@@ -853,6 +868,32 @@ public sealed partial class EcsRuntimeEmitter
             var archArrRem = _builder.BuildLoad2(i32PtrType, entArchSlotRem, "arch_arr_rem");
             var remArchSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrRem, new[] { remE }, "rem_arch_slot");
             var curArchIdxRem = _builder.BuildLoad2(_context.Int32Type, remArchSlot, "cur_arch_rem");
+
+            var isDeadRem = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curArchIdxRem, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_dead_rem");
+            var deadRemBB = remFunc.AppendBasicBlock("rem_dead_entity_error");
+            var contRemBB = remFunc.AppendBasicBlock("rem_cont");
+            _builder.BuildCondBr(isDeadRem, deadRemBB, contRemBB);
+
+            _builder.PositionAtEnd(deadRemBB);
+            var putsFuncRem = _module.GetNamedFunction("puts");
+            var putsTypeRem = LLVMTypeRef.CreateFunction(_context.Int32Type, new[] { i8PtrType }, false);
+            if (putsFuncRem.Handle == IntPtr.Zero)
+            {
+                putsFuncRem = _module.AddFunction("puts", putsTypeRem);
+            }
+            var errStrRem = _builder.BuildGlobalStringPtr($"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_{compName}.", "ecs_err_dead_rem");
+            _builder.BuildCall2(putsTypeRem, putsFuncRem, new[] { errStrRem }, "");
+
+            var exitFuncRem = _module.GetNamedFunction("exit");
+            var exitTypeRem = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { _context.Int32Type }, false);
+            if (exitFuncRem.Handle == IntPtr.Zero)
+            {
+                exitFuncRem = _module.AddFunction("exit", exitTypeRem);
+            }
+            _builder.BuildCall2(exitTypeRem, exitFuncRem, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 1) }, "");
+            _builder.BuildUnreachable();
+
+            _builder.PositionAtEnd(contRemBB);
 
             var rowArrRem = _builder.BuildLoad2(i32PtrType, entRowSlotRem, "row_arr_rem");
             var remRowSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrRem, new[] { remE }, "rem_row_slot");
