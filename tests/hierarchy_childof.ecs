@@ -1,0 +1,43 @@
+// Test for ChildOf hierarchy sorting (world_sort_hierarchy)
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component NameTag {
+    id: i32,
+}
+
+pipeline HierarchyPipeline {
+    stage Sort {
+        sort_hierarchy;
+    }
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+
+    // Spawn parent (id 0)
+    let parent = world.spawn();
+    world.set_Position(parent, 0.0, 0.0);
+    world.set_NameTag(parent, 100);
+
+    // Spawn child (id 1) with ChildOf pointing to parent
+    let child = world.spawn();
+    world.set_Position(child, 10.0, 10.0);
+    world.set_NameTag(child, 200);
+    world.set_ChildOf(child, parent);
+
+    // Spawn grandchild (id 2) with ChildOf pointing to child
+    let grandchild = world.spawn();
+    world.set_Position(grandchild, 20.0, 20.0);
+    world.set_NameTag(grandchild, 300);
+    world.set_ChildOf(grandchild, child);
+
+    // Execute pipeline containing sort_hierarchy
+    HierarchyPipeline(world);
+
+    println("Hierarchy sorting executed successfully.");
+    return 0;
+}

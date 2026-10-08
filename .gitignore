@@ -17,6 +17,7 @@
 *.exp
 *.lib
 *.ll
+!tests/golden_ir/*.ll
 *.bc
 dist/
 test_publish/

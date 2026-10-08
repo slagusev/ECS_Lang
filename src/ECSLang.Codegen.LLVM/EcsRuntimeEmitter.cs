@@ -121,10 +121,18 @@ public sealed partial class EcsRuntimeEmitter
         var i8PtrType = LLVMTypeRef.CreatePointer(_context.Int8Type, 0);
         var i32PtrType = LLVMTypeRef.CreatePointer(_context.Int32Type, 0);
 
-        // 1. Assign Component IDs and create Struct Types
+        // 1. Assign Component IDs and create Struct Types in deterministic order:
+        // "ChildOf" is always first (if present), followed by other components sorted by Ordinal name
+        var orderedComps = _typeChecker.Components.Values
+            .Distinct()
+            .OrderBy(c => c.Name == "ChildOf" ? 0 : 1)
+            .ThenBy(c => TypeSymbol.ToMonomorphizedIdentifier(c.Name), StringComparer.Ordinal)
+            .ToList();
+
         int compIndex = 0;
-        foreach (var (compName, compSym) in _typeChecker.Components)
+        foreach (var compSym in orderedComps)
         {
+            var compName = compSym.Name;
             if (_compStructTypes.ContainsKey(compName)) continue;
             var cleanName = TypeSymbol.ToMonomorphizedIdentifier(compName);
             if (_compStructTypes.TryGetValue(cleanName, out var existingType))

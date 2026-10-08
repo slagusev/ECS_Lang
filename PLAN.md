@@ -719,6 +719,15 @@ fn main(): i32 {
     * `tests/a2_max_64_components_limit.ecs`: объявление 65 компонентов завершается отказом компиляции с точной диагностикой превышения лимита.
     * Граничный тест на ровно 64 компонента (63 пользовательских + 1 ChildOf): успешная компиляция и выполнение (Exit Code 0).
   - Сборка `dotnet build` (0 errors, 0 warnings) и полный прогон всех примеров `examples/` (40 из 40 успешно).
+- [x] Пункт 2.23: Снятие предела 64 компонентов (Шаг 0 — Детерминизация порядка регистрации компонентов и D1 Golden IR эталоны):
+  - Детерминизация порядка компонентов в `EcsRuntimeEmitter.cs`:
+    * Исключена недетерминированная итерация по C# `Dictionary` в `EmitEcsDeclarations`. Внедрена строгая сортировка `orderedComps`: `ChildOf` гарантированно первый (id 0), остальные компоненты упорядочены по `StringComparer.Ordinal`.
+  - Построение инфраструктуры D1 Golden IR:
+    * Созданы тесты покрытия: `tests/hierarchy_childof.ecs` (`ChildOf` + `sort_hierarchy`) и `tests/bulk_spawn_test.ecs` (`spawn_with` / bulk spawn).
+    * Сгенерированы 6 эталонных файлов LLVM IR в `tests/golden_ir/` (`08_ecs_basics.ll`, `09_ecs_command_buffer.ll`, `11_ecs_archetypes_and_filters.ll`, `cast_test.ll`, `hierarchy_childof.ll`, `bulk_spawn_test.ll`).
+    * Разработан инструмент верификации `tests/verify_golden_ir.ps1` с поддержкой режимов `-Mode strict` (точное посимвольное совпадение) и `-Mode refactor` (классификация хунков по 4 легальным архитектурным категориям).
+    * Обновлен `.gitignore` с исключением `!tests/golden_ir/*.ll`.
+    * Успешная сборка `dotnet build` (0 errors, 0 warnings) и прохождение верификации `tests/verify_golden_ir.ps1 -Mode strict` (6/6 EXACT MATCH).
 
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.

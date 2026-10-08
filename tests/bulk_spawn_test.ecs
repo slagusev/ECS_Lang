@@ -1,0 +1,35 @@
+// Test program for zero-migration bulk spawn (spawn_with)
+
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+system PrintEntities {
+    query(pos: Position, vel: Velocity) {
+        println($"Entity at pos=({pos.x}, {pos.y}) vel=({vel.vx}, {vel.vy})");
+    }
+}
+
+pipeline MainPipeline {
+    stage Update {
+        PrintEntities;
+    }
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+
+    // Spawn entity directly into archetype [Position, Velocity] without migration
+    let e1 = world.spawn_with(Position(10.0, 20.0), Velocity(1.0, 2.0));
+    let e2 = world.spawn_with(Position(30.0, 40.0), Velocity(3.0, 4.0));
+
+    MainPipeline(world);
+    println("Bulk spawn executed successfully.");
+    return 0;
+}
