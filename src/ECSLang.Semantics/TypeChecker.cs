@@ -180,6 +180,22 @@ public sealed partial class TypeChecker
                 CheckPipeline(pipe);
             }
         }
+
+        // Pass 3: Validate component limit (maximum 64 components due to 64-bit archetype bitmask)
+        ValidateComponentLimit();
+    }
+
+    private void ValidateComponentLimit()
+    {
+        var distinctComps = _components.Values.Distinct().ToList();
+        if (distinctComps.Count > 64)
+        {
+            var overflowingComp = distinctComps.Skip(64).FirstOrDefault();
+            var span = overflowingComp?.Span ?? SourceSpan.None;
+            _diagnostics.ReportError(
+                $"Maximum component limit of 64 exceeded (project has {distinctComps.Count} components, limit is 64). 64-bit archetype bitmask overflow.",
+                span);
+        }
     }
 
     private static bool AreTypesCompatible(TypeSymbol expected, TypeSymbol actual)

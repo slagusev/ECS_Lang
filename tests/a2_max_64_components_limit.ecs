@@ -1,0 +1,74 @@
+// Test invariant A2: Explicit limit of 64 components
+// Declaring 65 components must fail compilation with a diagnostic error message.
+
+component C1 { v: i32 }
+component C2 { v: i32 }
+component C3 { v: i32 }
+component C4 { v: i32 }
+component C5 { v: i32 }
+component C6 { v: i32 }
+component C7 { v: i32 }
+component C8 { v: i32 }
+component C9 { v: i32 }
+component C10 { v: i32 }
+component C11 { v: i32 }
+component C12 { v: i32 }
+component C13 { v: i32 }
+component C14 { v: i32 }
+component C15 { v: i32 }
+component C16 { v: i32 }
+component C17 { v: i32 }
+component C18 { v: i32 }
+component C19 { v: i32 }
+component C20 { v: i32 }
+component C21 { v: i32 }
+component C22 { v: i32 }
+component C23 { v: i32 }
+component C24 { v: i32 }
+component C25 { v: i32 }
+component C26 { v: i32 }
+component C27 { v: i32 }
+component C28 { v: i32 }
+component C29 { v: i32 }
+component C30 { v: i32 }
+component C31 { v: i32 }
+component C32 { v: i32 }
+component C33 { v: i32 }
+component C34 { v: i32 }
+component C35 { v: i32 }
+component C36 { v: i32 }
+component C37 { v: i32 }
+component C38 { v: i32 }
+component C39 { v: i32 }
+component C40 { v: i32 }
+component C41 { v: i32 }
+component C42 { v: i32 }
+component C43 { v: i32 }
+component C44 { v: i32 }
+component C45 { v: i32 }
+component C46 { v: i32 }
+component C47 { v: i32 }
+component C48 { v: i32 }
+component C49 { v: i32 }
+component C50 { v: i32 }
+component C51 { v: i32 }
+component C52 { v: i32 }
+component C53 { v: i32 }
+component C54 { v: i32 }
+component C55 { v: i32 }
+component C56 { v: i32 }
+component C57 { v: i32 }
+component C58 { v: i32 }
+component C59 { v: i32 }
+component C60 { v: i32 }
+component C61 { v: i32 }
+component C62 { v: i32 }
+component C63 { v: i32 }
+component C64 { v: i32 }
+component C65 { v: i32 }
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+    println("This should never compile.");
+    return 0;
+}

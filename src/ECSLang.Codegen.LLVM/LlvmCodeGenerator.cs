@@ -260,6 +260,10 @@ public sealed partial class LlvmCodeGenerator
         // Initialize ECS Multi-Archetype Runtime declarations
         var ecsEmitter = new EcsRuntimeEmitter(context, module, builder, _typeChecker, _diagnostics, _options);
         ecsEmitter.EmitEcsDeclarations(dataLayout);
+        if (_diagnostics.HasErrors)
+        {
+            return false;
+        }
 
         // Emit Multi-Archetype Runtime (spawn, add, remove, has, setters, sort)
         ecsEmitter.EmitMultiArchetypeRuntime(dataLayout, reallocType, reallocFunc, memcpyType, memcpyFunc, memsetType, memsetFunc, mallocType, mallocFunc, freeType, freeFunc);

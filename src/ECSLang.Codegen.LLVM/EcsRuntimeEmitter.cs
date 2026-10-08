@@ -67,7 +67,7 @@ public sealed partial class EcsRuntimeEmitter
     public ulong GetComponentMask(string compName)
     {
         int id = GetComponentId(compName);
-        return id >= 0 ? 1UL << id : 0UL;
+        return (id >= 0 && id < 64) ? (1UL << id) : 0UL;
     }
 
     public LLVMTypeRef GetArchetypeStructType() => _archStructType;
@@ -133,6 +133,15 @@ public sealed partial class EcsRuntimeEmitter
                 _compIds[compName] = _compIds[cleanName];
                 _compSizes[compName] = _compSizes[cleanName];
                 continue;
+            }
+
+            if (compIndex >= 64)
+            {
+                int totalCount = _typeChecker.Components.Values.Distinct().Count();
+                _diagnostics.ReportError(
+                    $"Maximum component limit of 64 exceeded (project has {totalCount} components, limit is 64). 64-bit archetype bitmask overflow.",
+                    compSym.Span);
+                return;
             }
 
             var fieldTypes = compSym.Fields.Select(f => MapType(f.Type.Name)).ToArray();
