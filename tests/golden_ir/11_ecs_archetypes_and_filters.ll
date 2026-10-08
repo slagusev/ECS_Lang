@@ -15,24 +15,42 @@ target triple = "x86_64-pc-windows-msvc"
 
 @NvOptimusEnablement = dllexport global i32 1
 @AmdPowerXpressRequestHighPerformance = dllexport global i32 1
-@ecs_err_dead_entity = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_ChildOf.\00", align 1
-@ecs_err_dead_entity.1 = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_ChildOf.\00", align 1
-@ecs_err_dead_rem = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_ChildOf.\00", align 1
-@ecs_err_dead_entity.2 = private unnamed_addr constant [80 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Frozen.\00", align 1
-@ecs_err_dead_entity.3 = private unnamed_addr constant [80 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Frozen.\00", align 1
-@ecs_err_dead_rem.4 = private unnamed_addr constant [83 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Frozen.\00", align 1
-@ecs_err_dead_entity.5 = private unnamed_addr constant [83 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_PlayerTag.\00", align 1
-@ecs_err_dead_entity.6 = private unnamed_addr constant [83 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_PlayerTag.\00", align 1
-@ecs_err_dead_rem.7 = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_PlayerTag.\00", align 1
-@ecs_err_dead_entity.8 = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Position.\00", align 1
-@ecs_err_dead_entity.9 = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Position.\00", align 1
-@ecs_err_dead_rem.10 = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Position.\00", align 1
-@ecs_err_dead_entity.11 = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_StunnedTag.\00", align 1
-@ecs_err_dead_entity.12 = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_StunnedTag.\00", align 1
-@ecs_err_dead_rem.13 = private unnamed_addr constant [87 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_StunnedTag.\00", align 1
-@ecs_err_dead_entity.14 = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Velocity.\00", align 1
-@ecs_err_dead_entity.15 = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Velocity.\00", align 1
-@ecs_err_dead_rem.16 = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Velocity.\00", align 1
+@ecs_err_dead_world_set_ChildOf = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_ChildOf.\00", align 1
+@ecs_err_pending_world_set_ChildOf = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_ChildOf.\00", align 1
+@ecs_err_dead_world_add_ChildOf = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_ChildOf.\00", align 1
+@ecs_err_pending_world_add_ChildOf = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_ChildOf.\00", align 1
+@ecs_err_dead_rem_ChildOf = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_ChildOf.\00", align 1
+@ecs_err_pending_rem_ChildOf = private unnamed_addr constant [88 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_ChildOf.\00", align 1
+@ecs_err_dead_world_set_Frozen = private unnamed_addr constant [80 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Frozen.\00", align 1
+@ecs_err_pending_world_set_Frozen = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_Frozen.\00", align 1
+@ecs_err_dead_world_add_Frozen = private unnamed_addr constant [80 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Frozen.\00", align 1
+@ecs_err_pending_world_add_Frozen = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_Frozen.\00", align 1
+@ecs_err_dead_rem_Frozen = private unnamed_addr constant [83 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Frozen.\00", align 1
+@ecs_err_pending_rem_Frozen = private unnamed_addr constant [87 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_Frozen.\00", align 1
+@ecs_err_dead_world_set_PlayerTag = private unnamed_addr constant [83 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_PlayerTag.\00", align 1
+@ecs_err_pending_world_set_PlayerTag = private unnamed_addr constant [87 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_PlayerTag.\00", align 1
+@ecs_err_dead_world_add_PlayerTag = private unnamed_addr constant [83 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_PlayerTag.\00", align 1
+@ecs_err_pending_world_add_PlayerTag = private unnamed_addr constant [87 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_PlayerTag.\00", align 1
+@ecs_err_dead_rem_PlayerTag = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_PlayerTag.\00", align 1
+@ecs_err_pending_rem_PlayerTag = private unnamed_addr constant [90 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_PlayerTag.\00", align 1
+@ecs_err_dead_world_set_Position = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Position.\00", align 1
+@ecs_err_pending_world_set_Position = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_Position.\00", align 1
+@ecs_err_dead_world_add_Position = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Position.\00", align 1
+@ecs_err_pending_world_add_Position = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_Position.\00", align 1
+@ecs_err_dead_rem_Position = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Position.\00", align 1
+@ecs_err_pending_rem_Position = private unnamed_addr constant [89 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_Position.\00", align 1
+@ecs_err_dead_world_set_StunnedTag = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_StunnedTag.\00", align 1
+@ecs_err_pending_world_set_StunnedTag = private unnamed_addr constant [88 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_StunnedTag.\00", align 1
+@ecs_err_dead_world_add_StunnedTag = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_StunnedTag.\00", align 1
+@ecs_err_pending_world_add_StunnedTag = private unnamed_addr constant [88 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_StunnedTag.\00", align 1
+@ecs_err_dead_rem_StunnedTag = private unnamed_addr constant [87 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_StunnedTag.\00", align 1
+@ecs_err_pending_rem_StunnedTag = private unnamed_addr constant [91 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_StunnedTag.\00", align 1
+@ecs_err_dead_world_set_Velocity = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Velocity.\00", align 1
+@ecs_err_pending_world_set_Velocity = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_Velocity.\00", align 1
+@ecs_err_dead_world_add_Velocity = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Velocity.\00", align 1
+@ecs_err_pending_world_add_Velocity = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_Velocity.\00", align 1
+@ecs_err_dead_rem_Velocity = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Velocity.\00", align 1
+@ecs_err_pending_rem_Velocity = private unnamed_addr constant [89 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_Velocity.\00", align 1
 @g_ecs_profiler_visible = internal global i32 0
 @p_title = private unnamed_addr constant [44 x i8] c"[ ECS ARCHETYPE PROFILER & INSPECTOR (F1) ]\00", align 1
 @fps_fmt = private unnamed_addr constant [38 x i8] c"Performance: %d FPS (%.2f ms / frame)\00", align 1
@@ -44,33 +62,33 @@ target triple = "x86_64-pc-windows-msvc"
 @net_extract_empty = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 @str_lit = private unnamed_addr constant [26 x i8] c"   MoveUnfrozen: Entity #\00", align 1
 @fmt_d = private unnamed_addr constant [3 x i8] c"%d\00", align 1
-@str_lit.17 = private unnamed_addr constant [12 x i8] c" moved to (\00", align 1
+@str_lit.1 = private unnamed_addr constant [12 x i8] c" moved to (\00", align 1
 @fmt_f = private unnamed_addr constant [5 x i8] c"%.2f\00", align 1
-@str_lit.18 = private unnamed_addr constant [3 x i8] c", \00", align 1
-@str_lit.19 = private unnamed_addr constant [2 x i8] c")\00", align 1
-@str_lit.20 = private unnamed_addr constant [24 x i8] c"   ThawSystem: Frozen #\00", align 1
-@str_lit.21 = private unnamed_addr constant [22 x i8] c" remaining duration: \00", align 1
-@str_lit.22 = private unnamed_addr constant [2 x i8] c"s\00", align 1
-@str_lit.23 = private unnamed_addr constant [32 x i8] c"   ThawSystem: Thawing entity #\00", align 1
-@str_lit.24 = private unnamed_addr constant [30 x i8] c" (removing Frozen component)!\00", align 1
-@str_lit.25 = private unnamed_addr constant [41 x i8] c"   PlayerAura: Emitting glow from Hero #\00", align 1
-@str_lit.26 = private unnamed_addr constant [6 x i8] c" at (\00", align 1
-@str_lit.27 = private unnamed_addr constant [3 x i8] c", \00", align 1
-@str_lit.28 = private unnamed_addr constant [2 x i8] c")\00", align 1
-@str_lit.29 = private unnamed_addr constant [50 x i8] c"=================================================\00", align 1
-@str_lit.30 = private unnamed_addr constant [50 x i8] c"  ECSLang Example 11: Archetypes & Query Filters \00", align 1
-@str_lit.31 = private unnamed_addr constant [51 x i8] c"=================================================\0A\00", align 1
-@str_lit.32 = private unnamed_addr constant [21 x i8] c"Initial state: NPC #\00", align 1
-@str_lit.33 = private unnamed_addr constant [14 x i8] c" has Frozen: \00", align 1
+@str_lit.2 = private unnamed_addr constant [3 x i8] c", \00", align 1
+@str_lit.3 = private unnamed_addr constant [2 x i8] c")\00", align 1
+@str_lit.4 = private unnamed_addr constant [24 x i8] c"   ThawSystem: Frozen #\00", align 1
+@str_lit.5 = private unnamed_addr constant [22 x i8] c" remaining duration: \00", align 1
+@str_lit.6 = private unnamed_addr constant [2 x i8] c"s\00", align 1
+@str_lit.7 = private unnamed_addr constant [32 x i8] c"   ThawSystem: Thawing entity #\00", align 1
+@str_lit.8 = private unnamed_addr constant [30 x i8] c" (removing Frozen component)!\00", align 1
+@str_lit.9 = private unnamed_addr constant [41 x i8] c"   PlayerAura: Emitting glow from Hero #\00", align 1
+@str_lit.10 = private unnamed_addr constant [6 x i8] c" at (\00", align 1
+@str_lit.11 = private unnamed_addr constant [3 x i8] c", \00", align 1
+@str_lit.12 = private unnamed_addr constant [2 x i8] c")\00", align 1
+@str_lit.13 = private unnamed_addr constant [50 x i8] c"=================================================\00", align 1
+@str_lit.14 = private unnamed_addr constant [50 x i8] c"  ECSLang Example 11: Archetypes & Query Filters \00", align 1
+@str_lit.15 = private unnamed_addr constant [51 x i8] c"=================================================\0A\00", align 1
+@str_lit.16 = private unnamed_addr constant [21 x i8] c"Initial state: NPC #\00", align 1
+@str_lit.17 = private unnamed_addr constant [14 x i8] c" has Frozen: \00", align 1
 @str_true = private unnamed_addr constant [5 x i8] c"true\00", align 1
 @str_false = private unnamed_addr constant [6 x i8] c"false\00", align 1
-@str_lit.34 = private unnamed_addr constant [22 x i8] c"Initial state: Hero #\00", align 1
-@str_lit.35 = private unnamed_addr constant [14 x i8] c" has Frozen: \00", align 1
-@str_lit.36 = private unnamed_addr constant [72 x i8] c"\0A--- Tick 1: Hero is Frozen, should NOT move via MoveUnfrozenSystem ---\00", align 1
-@str_lit.37 = private unnamed_addr constant [33 x i8] c"\0AAfter Tick 1: Hero has Frozen: \00", align 1
-@str_lit.38 = private unnamed_addr constant [56 x i8] c"\0A--- Tick 2: Hero is now thawed and moves normally! ---\00", align 1
-@str_lit.39 = private unnamed_addr constant [71 x i8] c"\0AQuery filters and dynamic archetype migrations verified successfully!\00", align 1
-@str_lit.40 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
+@str_lit.18 = private unnamed_addr constant [22 x i8] c"Initial state: Hero #\00", align 1
+@str_lit.19 = private unnamed_addr constant [14 x i8] c" has Frozen: \00", align 1
+@str_lit.20 = private unnamed_addr constant [72 x i8] c"\0A--- Tick 1: Hero is Frozen, should NOT move via MoveUnfrozenSystem ---\00", align 1
+@str_lit.21 = private unnamed_addr constant [33 x i8] c"\0AAfter Tick 1: Hero has Frozen: \00", align 1
+@str_lit.22 = private unnamed_addr constant [56 x i8] c"\0A--- Tick 2: Hero is now thawed and moves normally! ---\00", align 1
+@str_lit.23 = private unnamed_addr constant [71 x i8] c"\0AQuery filters and dynamic archetype migrations verified successfully!\00", align 1
+@str_lit.24 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -398,6 +416,15 @@ declare void @AcquireSRWLockExclusive(ptr)
 
 declare void @ReleaseSRWLockExclusive(ptr)
 
+define internal void @rt_panic(ptr %0) {
+entry:
+  %1 = call i32 @puts(ptr %0)
+  call void @exit(i32 1)
+  unreachable
+}
+
+declare void @exit(i32)
+
 define i32 @world_alloc_entity(ptr %0) {
 entry:
   %ent_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
@@ -442,7 +469,7 @@ entry:
   %arch_arr_a0 = load ptr, ptr %arch_arr_a0_slot, align 8
   %e_arch_slot_a0 = getelementptr inbounds i32, ptr %arch_arr_a0, i32 %1
   %cur_arch_val_a0 = load i32, ptr %e_arch_slot_a0, align 4
-  %is_unassigned = icmp slt i32 %cur_arch_val_a0, 0
+  %is_unassigned = icmp eq i32 %cur_arch_val_a0, -1
   br i1 %is_unassigned, label %do_assign, label %exit_a0
 
 do_assign:                                        ; preds = %entry
@@ -542,8 +569,8 @@ do_swap_ds:                                       ; preds = %do_despawn
   br i1 %is_has_sw_ds_ChildOf, label %swap_ds_ChildOf, label %skip_sw_ds_ChildOf
 
 after_swap_ds:                                    ; preds = %skip_sw_ds_Velocity, %do_despawn
-  store i32 -1, ptr %e_arch_slot_ds_inst, align 4
-  store i32 -1, ptr %e_row_slot_ds_inst, align 4
+  store i32 -2, ptr %e_arch_slot_ds_inst, align 4
+  store i32 -2, ptr %e_row_slot_ds_inst, align 4
   br label %ds_exit
 
 swap_ds_ChildOf:                                  ; preds = %do_swap_ds
@@ -707,12 +734,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %3 = call i32 @puts(ptr @ecs_err_dead_entity)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -726,6 +752,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 1
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_set_ChildOf)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_set_ChildOf)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -791,7 +825,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -806,7 +840,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -821,7 +855,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -836,7 +870,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -851,7 +885,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %7 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -866,7 +900,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %8 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -904,7 +938,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -917,7 +951,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -930,7 +964,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -943,7 +977,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -956,7 +990,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %13 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -969,7 +1003,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %14 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -978,8 +1012,6 @@ skip_sw_Velocity:                                 ; preds = %swap_Velocity, %ski
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 }
-
-declare void @exit(i32)
 
 define void @world_add_ChildOf(ptr %0, i32 %1, i32 %2) {
 entry:
@@ -992,12 +1024,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %3 = call i32 @puts(ptr @ecs_err_dead_entity.1)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -1011,6 +1042,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 1
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_add_ChildOf)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_add_ChildOf)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -1076,7 +1115,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -1091,7 +1130,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -1106,7 +1145,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -1121,7 +1160,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -1136,7 +1175,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %7 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -1151,7 +1190,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %8 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -1189,7 +1228,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -1202,7 +1241,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -1215,7 +1254,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -1228,7 +1267,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -1241,7 +1280,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %13 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -1254,7 +1293,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %14 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -1272,13 +1311,12 @@ entry:
   %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
-  %is_dead_rem = icmp slt i32 %cur_arch_rem, 0
-  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_cont
+  %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
+  br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
 
-rem_dead_entity_error:                            ; preds = %entry
-  %2 = call i32 @puts(ptr @ecs_err_dead_rem)
-  call void @exit(i32 1)
-  unreachable
+rem_err_entity:                                   ; preds = %entry
+  %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
+  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
 rem_cont:                                         ; preds = %entry
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
@@ -1292,6 +1330,14 @@ rem_cont:                                         ; preds = %entry
   %rem_has_bit = and i64 %cur_mask_val_rem, 1
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
+
+rem_dead_entity_error:                            ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_rem_ChildOf)
+  unreachable
+
+rem_pending_entity_error:                         ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_rem_ChildOf)
+  unreachable
 
 do_remove:                                        ; preds = %rem_cont
   %new_mask_rem = and i64 %cur_mask_val_rem, -2
@@ -1342,7 +1388,7 @@ copy_rem_Frozen:                                  ; preds = %after_grow_rem_arch
   %rem_dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 1
   %rem_dst_raw_Frozen = load ptr, ptr %rem_dst_col_Frozen, align 8
   %rem_dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_dst_raw_Frozen, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
+  %2 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
   br label %skip_rem_Frozen
 
 skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %after_grow_rem_arch
@@ -1357,7 +1403,7 @@ copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
   %rem_dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 2
   %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
   %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
+  %3 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
   br label %skip_rem_PlayerTag
 
 skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
@@ -1372,7 +1418,7 @@ copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
   %rem_dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 3
   %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
   %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
+  %4 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
@@ -1387,7 +1433,7 @@ copy_rem_StunnedTag:                              ; preds = %skip_rem_Position
   %rem_dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 4
   %rem_dst_raw_StunnedTag = load ptr, ptr %rem_dst_col_StunnedTag, align 8
   %rem_dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_dst_raw_StunnedTag, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
+  %5 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
   br label %skip_rem_StunnedTag
 
 skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_Position
@@ -1402,7 +1448,7 @@ copy_rem_Velocity:                                ; preds = %skip_rem_StunnedTag
   %rem_dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 5
   %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
   %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %7 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
+  %6 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
   br label %skip_rem_Velocity
 
 skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_StunnedTag
@@ -1438,7 +1484,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -1451,7 +1497,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -1464,7 +1510,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -1477,7 +1523,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -1490,7 +1536,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -1503,7 +1549,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %13 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag
@@ -1622,12 +1668,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %3 = call i32 @puts(ptr @ecs_err_dead_entity.2)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -1641,6 +1686,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 2
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_set_Frozen)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_set_Frozen)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -1706,7 +1759,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -1721,7 +1774,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -1736,7 +1789,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -1751,7 +1804,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -1766,7 +1819,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %7 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -1781,7 +1834,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %8 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -1819,7 +1872,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -1832,7 +1885,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -1845,7 +1898,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -1858,7 +1911,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -1871,7 +1924,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %13 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -1884,7 +1937,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %14 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -1905,12 +1958,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %3 = call i32 @puts(ptr @ecs_err_dead_entity.3)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -1924,6 +1976,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 2
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_add_Frozen)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_add_Frozen)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -1989,7 +2049,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -2004,7 +2064,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -2019,7 +2079,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -2034,7 +2094,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -2049,7 +2109,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %7 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -2064,7 +2124,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %8 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -2102,7 +2162,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -2115,7 +2175,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -2128,7 +2188,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -2141,7 +2201,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -2154,7 +2214,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %13 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -2167,7 +2227,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %14 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -2185,13 +2245,12 @@ entry:
   %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
-  %is_dead_rem = icmp slt i32 %cur_arch_rem, 0
-  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_cont
+  %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
+  br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
 
-rem_dead_entity_error:                            ; preds = %entry
-  %2 = call i32 @puts(ptr @ecs_err_dead_rem.4)
-  call void @exit(i32 1)
-  unreachable
+rem_err_entity:                                   ; preds = %entry
+  %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
+  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
 rem_cont:                                         ; preds = %entry
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
@@ -2205,6 +2264,14 @@ rem_cont:                                         ; preds = %entry
   %rem_has_bit = and i64 %cur_mask_val_rem, 2
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
+
+rem_dead_entity_error:                            ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_rem_Frozen)
+  unreachable
+
+rem_pending_entity_error:                         ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_rem_Frozen)
+  unreachable
 
 do_remove:                                        ; preds = %rem_cont
   %new_mask_rem = and i64 %cur_mask_val_rem, -3
@@ -2255,7 +2322,7 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   %rem_dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 0
   %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
   %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
@@ -2270,7 +2337,7 @@ copy_rem_PlayerTag:                               ; preds = %skip_rem_ChildOf
   %rem_dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 2
   %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
   %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
+  %3 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
   br label %skip_rem_PlayerTag
 
 skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_ChildOf
@@ -2285,7 +2352,7 @@ copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
   %rem_dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 3
   %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
   %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
+  %4 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
@@ -2300,7 +2367,7 @@ copy_rem_StunnedTag:                              ; preds = %skip_rem_Position
   %rem_dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 4
   %rem_dst_raw_StunnedTag = load ptr, ptr %rem_dst_col_StunnedTag, align 8
   %rem_dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_dst_raw_StunnedTag, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
+  %5 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
   br label %skip_rem_StunnedTag
 
 skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_Position
@@ -2315,7 +2382,7 @@ copy_rem_Velocity:                                ; preds = %skip_rem_StunnedTag
   %rem_dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 5
   %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
   %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %7 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
+  %6 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
   br label %skip_rem_Velocity
 
 skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_StunnedTag
@@ -2351,7 +2418,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -2364,7 +2431,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -2377,7 +2444,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -2390,7 +2457,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -2403,7 +2470,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -2416,7 +2483,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %13 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag
@@ -2535,12 +2602,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %3 = call i32 @puts(ptr @ecs_err_dead_entity.5)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -2554,6 +2620,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 4
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_set_PlayerTag)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_set_PlayerTag)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -2619,7 +2693,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -2634,7 +2708,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -2649,7 +2723,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -2664,7 +2738,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -2679,7 +2753,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %7 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -2694,7 +2768,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %8 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -2732,7 +2806,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -2745,7 +2819,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -2758,7 +2832,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -2771,7 +2845,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -2784,7 +2858,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %13 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -2797,7 +2871,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %14 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -2818,12 +2892,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %3 = call i32 @puts(ptr @ecs_err_dead_entity.6)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -2837,6 +2910,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 4
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_add_PlayerTag)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_add_PlayerTag)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -2902,7 +2983,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -2917,7 +2998,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -2932,7 +3013,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -2947,7 +3028,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -2962,7 +3043,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %7 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -2977,7 +3058,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %8 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -3015,7 +3096,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -3028,7 +3109,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -3041,7 +3122,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -3054,7 +3135,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -3067,7 +3148,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %13 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -3080,7 +3161,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %14 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -3098,13 +3179,12 @@ entry:
   %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
-  %is_dead_rem = icmp slt i32 %cur_arch_rem, 0
-  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_cont
+  %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
+  br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
 
-rem_dead_entity_error:                            ; preds = %entry
-  %2 = call i32 @puts(ptr @ecs_err_dead_rem.7)
-  call void @exit(i32 1)
-  unreachable
+rem_err_entity:                                   ; preds = %entry
+  %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
+  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
 rem_cont:                                         ; preds = %entry
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
@@ -3118,6 +3198,14 @@ rem_cont:                                         ; preds = %entry
   %rem_has_bit = and i64 %cur_mask_val_rem, 4
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
+
+rem_dead_entity_error:                            ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_rem_PlayerTag)
+  unreachable
+
+rem_pending_entity_error:                         ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_rem_PlayerTag)
+  unreachable
 
 do_remove:                                        ; preds = %rem_cont
   %new_mask_rem = and i64 %cur_mask_val_rem, -5
@@ -3168,7 +3256,7 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   %rem_dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 0
   %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
   %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
@@ -3183,7 +3271,7 @@ copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
   %rem_dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 1
   %rem_dst_raw_Frozen = load ptr, ptr %rem_dst_col_Frozen, align 8
   %rem_dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_dst_raw_Frozen, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
+  %3 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
   br label %skip_rem_Frozen
 
 skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
@@ -3198,7 +3286,7 @@ copy_rem_Position:                                ; preds = %skip_rem_Frozen
   %rem_dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 3
   %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
   %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
+  %4 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_Frozen
@@ -3213,7 +3301,7 @@ copy_rem_StunnedTag:                              ; preds = %skip_rem_Position
   %rem_dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 4
   %rem_dst_raw_StunnedTag = load ptr, ptr %rem_dst_col_StunnedTag, align 8
   %rem_dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_dst_raw_StunnedTag, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
+  %5 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
   br label %skip_rem_StunnedTag
 
 skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_Position
@@ -3228,7 +3316,7 @@ copy_rem_Velocity:                                ; preds = %skip_rem_StunnedTag
   %rem_dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 5
   %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
   %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %7 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
+  %6 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
   br label %skip_rem_Velocity
 
 skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_StunnedTag
@@ -3264,7 +3352,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -3277,7 +3365,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -3290,7 +3378,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -3303,7 +3391,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -3316,7 +3404,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -3329,7 +3417,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %13 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag
@@ -3448,12 +3536,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %4 = call i32 @puts(ptr @ecs_err_dead_entity.8)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -3467,6 +3554,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 8
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_set_Position)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_set_Position)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -3534,7 +3629,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -3549,7 +3644,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -3564,7 +3659,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -3579,7 +3674,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -3594,7 +3689,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -3609,7 +3704,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %10 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -3647,7 +3742,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -3660,7 +3755,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -3673,7 +3768,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -3686,7 +3781,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -3699,7 +3794,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -3712,7 +3807,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %16 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -3733,12 +3828,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %4 = call i32 @puts(ptr @ecs_err_dead_entity.9)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -3752,6 +3846,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 8
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_add_Position)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_add_Position)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -3819,7 +3921,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -3834,7 +3936,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -3849,7 +3951,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -3864,7 +3966,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -3879,7 +3981,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -3894,7 +3996,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %10 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -3932,7 +4034,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -3945,7 +4047,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -3958,7 +4060,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -3971,7 +4073,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -3984,7 +4086,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -3997,7 +4099,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %16 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -4015,13 +4117,12 @@ entry:
   %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
-  %is_dead_rem = icmp slt i32 %cur_arch_rem, 0
-  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_cont
+  %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
+  br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
 
-rem_dead_entity_error:                            ; preds = %entry
-  %2 = call i32 @puts(ptr @ecs_err_dead_rem.10)
-  call void @exit(i32 1)
-  unreachable
+rem_err_entity:                                   ; preds = %entry
+  %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
+  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
 rem_cont:                                         ; preds = %entry
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
@@ -4035,6 +4136,14 @@ rem_cont:                                         ; preds = %entry
   %rem_has_bit = and i64 %cur_mask_val_rem, 8
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
+
+rem_dead_entity_error:                            ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_rem_Position)
+  unreachable
+
+rem_pending_entity_error:                         ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_rem_Position)
+  unreachable
 
 do_remove:                                        ; preds = %rem_cont
   %new_mask_rem = and i64 %cur_mask_val_rem, -9
@@ -4085,7 +4194,7 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   %rem_dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 0
   %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
   %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
@@ -4100,7 +4209,7 @@ copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
   %rem_dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 1
   %rem_dst_raw_Frozen = load ptr, ptr %rem_dst_col_Frozen, align 8
   %rem_dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_dst_raw_Frozen, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
+  %3 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
   br label %skip_rem_Frozen
 
 skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
@@ -4115,7 +4224,7 @@ copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
   %rem_dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 2
   %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
   %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
+  %4 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
   br label %skip_rem_PlayerTag
 
 skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
@@ -4130,7 +4239,7 @@ copy_rem_StunnedTag:                              ; preds = %skip_rem_PlayerTag
   %rem_dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 4
   %rem_dst_raw_StunnedTag = load ptr, ptr %rem_dst_col_StunnedTag, align 8
   %rem_dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_dst_raw_StunnedTag, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
+  %5 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
   br label %skip_rem_StunnedTag
 
 skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_PlayerTag
@@ -4145,7 +4254,7 @@ copy_rem_Velocity:                                ; preds = %skip_rem_StunnedTag
   %rem_dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 5
   %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
   %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %7 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
+  %6 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
   br label %skip_rem_Velocity
 
 skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_StunnedTag
@@ -4181,7 +4290,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -4194,7 +4303,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -4207,7 +4316,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -4220,7 +4329,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -4233,7 +4342,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -4246,7 +4355,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %13 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag
@@ -4369,12 +4478,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %3 = call i32 @puts(ptr @ecs_err_dead_entity.11)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -4388,6 +4496,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 16
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_set_StunnedTag)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_set_StunnedTag)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -4453,7 +4569,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -4468,7 +4584,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -4483,7 +4599,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -4498,7 +4614,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -4513,7 +4629,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %7 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -4528,7 +4644,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %8 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -4566,7 +4682,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -4579,7 +4695,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -4592,7 +4708,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -4605,7 +4721,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -4618,7 +4734,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %13 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -4631,7 +4747,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %14 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -4652,12 +4768,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %3 = call i32 @puts(ptr @ecs_err_dead_entity.12)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -4671,6 +4786,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 16
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_add_StunnedTag)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_add_StunnedTag)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -4736,7 +4859,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %3 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -4751,7 +4874,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -4766,7 +4889,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -4781,7 +4904,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %6 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -4796,7 +4919,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %7 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -4811,7 +4934,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %8 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -4849,7 +4972,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -4862,7 +4985,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -4875,7 +4998,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -4888,7 +5011,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -4901,7 +5024,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %13 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -4914,7 +5037,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %14 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -4932,13 +5055,12 @@ entry:
   %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
-  %is_dead_rem = icmp slt i32 %cur_arch_rem, 0
-  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_cont
+  %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
+  br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
 
-rem_dead_entity_error:                            ; preds = %entry
-  %2 = call i32 @puts(ptr @ecs_err_dead_rem.13)
-  call void @exit(i32 1)
-  unreachable
+rem_err_entity:                                   ; preds = %entry
+  %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
+  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
 rem_cont:                                         ; preds = %entry
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
@@ -4952,6 +5074,14 @@ rem_cont:                                         ; preds = %entry
   %rem_has_bit = and i64 %cur_mask_val_rem, 16
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
+
+rem_dead_entity_error:                            ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_rem_StunnedTag)
+  unreachable
+
+rem_pending_entity_error:                         ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_rem_StunnedTag)
+  unreachable
 
 do_remove:                                        ; preds = %rem_cont
   %new_mask_rem = and i64 %cur_mask_val_rem, -17
@@ -5002,7 +5132,7 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   %rem_dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 0
   %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
   %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
@@ -5017,7 +5147,7 @@ copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
   %rem_dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 1
   %rem_dst_raw_Frozen = load ptr, ptr %rem_dst_col_Frozen, align 8
   %rem_dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_dst_raw_Frozen, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
+  %3 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
   br label %skip_rem_Frozen
 
 skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
@@ -5032,7 +5162,7 @@ copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
   %rem_dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 2
   %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
   %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
+  %4 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
   br label %skip_rem_PlayerTag
 
 skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
@@ -5047,7 +5177,7 @@ copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
   %rem_dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 3
   %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
   %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
+  %5 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
@@ -5062,7 +5192,7 @@ copy_rem_Velocity:                                ; preds = %skip_rem_Position
   %rem_dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 5
   %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
   %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %7 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
+  %6 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
   br label %skip_rem_Velocity
 
 skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_Position
@@ -5098,7 +5228,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -5111,7 +5241,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -5124,7 +5254,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -5137,7 +5267,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -5150,7 +5280,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -5163,7 +5293,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %13 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag
@@ -5282,12 +5412,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %4 = call i32 @puts(ptr @ecs_err_dead_entity.14)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -5301,6 +5430,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 32
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_set_Velocity)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_set_Velocity)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -5368,7 +5505,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -5383,7 +5520,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -5398,7 +5535,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -5413,7 +5550,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -5428,7 +5565,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -5443,7 +5580,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %10 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -5481,7 +5618,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -5494,7 +5631,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -5507,7 +5644,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -5520,7 +5657,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -5533,7 +5670,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -5546,7 +5683,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %16 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -5567,12 +5704,11 @@ entry:
   %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_dead_entity_error, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_dead_entity_error:                            ; preds = %entry
-  %4 = call i32 @puts(ptr @ecs_err_dead_entity.15)
-  call void @exit(i32 1)
-  unreachable
+set_err_entity:                                   ; preds = %entry
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 set_cont:                                         ; preds = %entry
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
@@ -5586,6 +5722,14 @@ set_cont:                                         ; preds = %entry
   %has_bit = and i64 %cur_mask, 32
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_add_Velocity)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_add_Velocity)
+  unreachable
 
 in_place_update:                                  ; preds = %set_cont
   store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
@@ -5653,7 +5797,7 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   %dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 0
   %dst_raw_ChildOf = load ptr, ptr %dst_col_ChildOf, align 8
   %dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %dst_raw_ChildOf, i32 %new_row
-  %5 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
+  %4 = call ptr @memcpy(ptr %dst_elem_ChildOf, ptr %src_elem_ChildOf, i64 4)
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
@@ -5668,7 +5812,7 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   %dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 1
   %dst_raw_Frozen = load ptr, ptr %dst_col_Frozen, align 8
   %dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %dst_raw_Frozen, i32 %new_row
-  %6 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
+  %5 = call ptr @memcpy(ptr %dst_elem_Frozen, ptr %src_elem_Frozen, i64 4)
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
@@ -5683,7 +5827,7 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   %dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 2
   %dst_raw_PlayerTag = load ptr, ptr %dst_col_PlayerTag, align 8
   %dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %dst_raw_PlayerTag, i32 %new_row
-  %7 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
+  %6 = call ptr @memcpy(ptr %dst_elem_PlayerTag, ptr %src_elem_PlayerTag, i64 4)
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
@@ -5698,7 +5842,7 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   %dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 3
   %dst_raw_Position = load ptr, ptr %dst_col_Position, align 8
   %dst_elem_Position = getelementptr inbounds %struct.Position, ptr %dst_raw_Position, i32 %new_row
-  %8 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
+  %7 = call ptr @memcpy(ptr %dst_elem_Position, ptr %src_elem_Position, i64 8)
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
@@ -5713,7 +5857,7 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   %dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 4
   %dst_raw_StunnedTag = load ptr, ptr %dst_col_StunnedTag, align 8
   %dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %dst_raw_StunnedTag, i32 %new_row
-  %9 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
+  %8 = call ptr @memcpy(ptr %dst_elem_StunnedTag, ptr %src_elem_StunnedTag, i64 4)
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
@@ -5728,7 +5872,7 @@ copy_Velocity:                                    ; preds = %skip_StunnedTag
   %dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_arr, i32 0, i32 5
   %dst_raw_Velocity = load ptr, ptr %dst_col_Velocity, align 8
   %dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %dst_raw_Velocity, i32 %new_row
-  %10 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
+  %9 = call ptr @memcpy(ptr %dst_elem_Velocity, ptr %src_elem_Velocity, i64 8)
   br label %skip_Velocity
 
 skip_Velocity:                                    ; preds = %copy_Velocity, %skip_StunnedTag
@@ -5766,7 +5910,7 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   %sw_raw_ChildOf = load ptr, ptr %sw_col_ChildOf, align 8
   %sw_src_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %last_row
   %sw_dst_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_ChildOf, i32 %cur_row
-  %11 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
+  %10 = call ptr @memcpy(ptr %sw_dst_ChildOf, ptr %sw_src_ChildOf, i64 4)
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
@@ -5779,7 +5923,7 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   %sw_raw_Frozen = load ptr, ptr %sw_col_Frozen, align 8
   %sw_src_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %last_row
   %sw_dst_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_Frozen, i32 %cur_row
-  %12 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_Frozen, ptr %sw_src_Frozen, i64 4)
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
@@ -5792,7 +5936,7 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   %sw_raw_PlayerTag = load ptr, ptr %sw_col_PlayerTag, align 8
   %sw_src_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %last_row
   %sw_dst_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_PlayerTag, i32 %cur_row
-  %13 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
+  %12 = call ptr @memcpy(ptr %sw_dst_PlayerTag, ptr %sw_src_PlayerTag, i64 4)
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
@@ -5805,7 +5949,7 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   %sw_raw_Position = load ptr, ptr %sw_col_Position, align 8
   %sw_src_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %last_row
   %sw_dst_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_Position, i32 %cur_row
-  %14 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
+  %13 = call ptr @memcpy(ptr %sw_dst_Position, ptr %sw_src_Position, i64 8)
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
@@ -5818,7 +5962,7 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   %sw_raw_StunnedTag = load ptr, ptr %sw_col_StunnedTag, align 8
   %sw_src_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %last_row
   %sw_dst_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_StunnedTag, i32 %cur_row
-  %15 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
+  %14 = call ptr @memcpy(ptr %sw_dst_StunnedTag, ptr %sw_src_StunnedTag, i64 4)
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
@@ -5831,7 +5975,7 @@ swap_Velocity:                                    ; preds = %skip_sw_StunnedTag
   %sw_raw_Velocity = load ptr, ptr %sw_col_Velocity, align 8
   %sw_src_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %last_row
   %sw_dst_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_Velocity, i32 %cur_row
-  %16 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
+  %15 = call ptr @memcpy(ptr %sw_dst_Velocity, ptr %sw_src_Velocity, i64 8)
   br label %skip_sw_Velocity
 
 skip_sw_Velocity:                                 ; preds = %swap_Velocity, %skip_sw_StunnedTag
@@ -5849,13 +5993,12 @@ entry:
   %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
-  %is_dead_rem = icmp slt i32 %cur_arch_rem, 0
-  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_cont
+  %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
+  br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
 
-rem_dead_entity_error:                            ; preds = %entry
-  %2 = call i32 @puts(ptr @ecs_err_dead_rem.16)
-  call void @exit(i32 1)
-  unreachable
+rem_err_entity:                                   ; preds = %entry
+  %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
+  br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
 rem_cont:                                         ; preds = %entry
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
@@ -5869,6 +6012,14 @@ rem_cont:                                         ; preds = %entry
   %rem_has_bit = and i64 %cur_mask_val_rem, 32
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
+
+rem_dead_entity_error:                            ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_rem_Velocity)
+  unreachable
+
+rem_pending_entity_error:                         ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_rem_Velocity)
+  unreachable
 
 do_remove:                                        ; preds = %rem_cont
   %new_mask_rem = and i64 %cur_mask_val_rem, -33
@@ -5919,7 +6070,7 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   %rem_dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 0
   %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
   %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
@@ -5934,7 +6085,7 @@ copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
   %rem_dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 1
   %rem_dst_raw_Frozen = load ptr, ptr %rem_dst_col_Frozen, align 8
   %rem_dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_dst_raw_Frozen, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
+  %3 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
   br label %skip_rem_Frozen
 
 skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
@@ -5949,7 +6100,7 @@ copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
   %rem_dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 2
   %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
   %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
+  %4 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
   br label %skip_rem_PlayerTag
 
 skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
@@ -5964,7 +6115,7 @@ copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
   %rem_dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 3
   %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
   %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
+  %5 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
@@ -5979,7 +6130,7 @@ copy_rem_StunnedTag:                              ; preds = %skip_rem_Position
   %rem_dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 4
   %rem_dst_raw_StunnedTag = load ptr, ptr %rem_dst_col_StunnedTag, align 8
   %rem_dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_dst_raw_StunnedTag, i32 %new_row_rem
-  %7 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
+  %6 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
   br label %skip_rem_StunnedTag
 
 skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_Position
@@ -6015,7 +6166,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -6028,7 +6179,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -6041,7 +6192,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -6054,7 +6205,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -6067,7 +6218,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -6080,7 +6231,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %13 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag
@@ -7117,9 +7268,9 @@ entry:
   %world = alloca ptr, align 8
   %0 = call i32 @SetConsoleOutputCP(i32 65001)
   %1 = call i32 @SetConsoleCP(i32 65001)
-  %puts_call = call i32 @puts(ptr @str_lit.29)
-  %puts_call1 = call i32 @puts(ptr @str_lit.30)
-  %puts_call2 = call i32 @puts(ptr @str_lit.31)
+  %puts_call = call i32 @puts(ptr @str_lit.13)
+  %puts_call1 = call i32 @puts(ptr @str_lit.14)
+  %puts_call2 = call i32 @puts(ptr @str_lit.15)
   %new_world = call ptr @ecs_create_world()
   store ptr %new_world, ptr %world, align 8
   %world3 = load ptr, ptr %world, align 8
@@ -7150,9 +7301,9 @@ entry:
   %npc18 = load i32, ptr %npc, align 4
   %str_i32 = call ptr @rt_to_string_i32(ptr %world_wptr, i32 %npc18)
   %world_wptr19 = load ptr, ptr %world, align 8
-  %str_add = call ptr @rt_str_concat(ptr %world_wptr19, ptr @str_lit.32, ptr %str_i32)
+  %str_add = call ptr @rt_str_concat(ptr %world_wptr19, ptr @str_lit.16, ptr %str_i32)
   %world_wptr20 = load ptr, ptr %world, align 8
-  %str_add21 = call ptr @rt_str_concat(ptr %world_wptr20, ptr %str_add, ptr @str_lit.33)
+  %str_add21 = call ptr @rt_str_concat(ptr %world_wptr20, ptr %str_add, ptr @str_lit.17)
   %world_wptr22 = load ptr, ptr %world, align 8
   %world23 = load ptr, ptr %world, align 8
   %npc24 = load i32, ptr %npc, align 4
@@ -7165,9 +7316,9 @@ entry:
   %hero29 = load i32, ptr %hero, align 4
   %str_i3230 = call ptr @rt_to_string_i32(ptr %world_wptr28, i32 %hero29)
   %world_wptr31 = load ptr, ptr %world, align 8
-  %str_add32 = call ptr @rt_str_concat(ptr %world_wptr31, ptr @str_lit.34, ptr %str_i3230)
+  %str_add32 = call ptr @rt_str_concat(ptr %world_wptr31, ptr @str_lit.18, ptr %str_i3230)
   %world_wptr33 = load ptr, ptr %world, align 8
-  %str_add34 = call ptr @rt_str_concat(ptr %world_wptr33, ptr %str_add32, ptr @str_lit.35)
+  %str_add34 = call ptr @rt_str_concat(ptr %world_wptr33, ptr %str_add32, ptr @str_lit.19)
   %world_wptr35 = load ptr, ptr %world, align 8
   %world36 = load ptr, ptr %world, align 8
   %hero37 = load i32, ptr %hero, align 4
@@ -7176,7 +7327,7 @@ entry:
   %world_wptr40 = load ptr, ptr %world, align 8
   %str_add41 = call ptr @rt_str_concat(ptr %world_wptr40, ptr %str_add34, ptr %str_bool39)
   %puts_call42 = call i32 @puts(ptr %str_add41)
-  %puts_call43 = call i32 @puts(ptr @str_lit.36)
+  %puts_call43 = call i32 @puts(ptr @str_lit.20)
   %world44 = load ptr, ptr %world, align 8
   call void @pipeline_FilterPipeline(ptr %world44)
   %world_wptr45 = load ptr, ptr %world, align 8
@@ -7185,13 +7336,13 @@ entry:
   %has_Frozen_call48 = call i1 @world_has_Frozen(ptr %world46, i32 %hero47)
   %str_bool49 = call ptr @rt_to_string_bool(i1 %has_Frozen_call48)
   %world_wptr50 = load ptr, ptr %world, align 8
-  %str_add51 = call ptr @rt_str_concat(ptr %world_wptr50, ptr @str_lit.37, ptr %str_bool49)
+  %str_add51 = call ptr @rt_str_concat(ptr %world_wptr50, ptr @str_lit.21, ptr %str_bool49)
   %puts_call52 = call i32 @puts(ptr %str_add51)
-  %puts_call53 = call i32 @puts(ptr @str_lit.38)
+  %puts_call53 = call i32 @puts(ptr @str_lit.22)
   %world54 = load ptr, ptr %world, align 8
   call void @pipeline_FilterPipeline(ptr %world54)
-  %puts_call55 = call i32 @puts(ptr @str_lit.39)
-  %puts_call56 = call i32 @puts(ptr @str_lit.40)
+  %puts_call55 = call i32 @puts(ptr @str_lit.23)
+  %puts_call56 = call i32 @puts(ptr @str_lit.24)
   %h_stdin = call ptr @GetStdHandle(i32 -10)
   %2 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin)
   %key_input = call i32 @_getch()
@@ -7282,7 +7433,7 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %world_wptr3 = load ptr, ptr %world_alloca, align 8
   %str_add = call ptr @rt_str_concat(ptr %world_wptr3, ptr @str_lit, ptr %str_i32)
   %world_wptr4 = load ptr, ptr %world_alloca, align 8
-  %str_add5 = call ptr @rt_str_concat(ptr %world_wptr4, ptr %str_add, ptr @str_lit.17)
+  %str_add5 = call ptr @rt_str_concat(ptr %world_wptr4, ptr %str_add, ptr @str_lit.1)
   %world_wptr6 = load ptr, ptr %world_alloca, align 8
   %pos_x = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 0
   %x_val = load float, ptr %pos_x, align 4
@@ -7290,7 +7441,7 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %world_wptr7 = load ptr, ptr %world_alloca, align 8
   %str_add8 = call ptr @rt_str_concat(ptr %world_wptr7, ptr %str_add5, ptr %str_f32)
   %world_wptr9 = load ptr, ptr %world_alloca, align 8
-  %str_add10 = call ptr @rt_str_concat(ptr %world_wptr9, ptr %str_add8, ptr @str_lit.18)
+  %str_add10 = call ptr @rt_str_concat(ptr %world_wptr9, ptr %str_add8, ptr @str_lit.2)
   %world_wptr11 = load ptr, ptr %world_alloca, align 8
   %pos_y = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 1
   %y_val = load float, ptr %pos_y, align 4
@@ -7298,7 +7449,7 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %world_wptr13 = load ptr, ptr %world_alloca, align 8
   %str_add14 = call ptr @rt_str_concat(ptr %world_wptr13, ptr %str_add10, ptr %str_f3212)
   %world_wptr15 = load ptr, ptr %world_alloca, align 8
-  %str_add16 = call ptr @rt_str_concat(ptr %world_wptr15, ptr %str_add14, ptr @str_lit.19)
+  %str_add16 = call ptr @rt_str_concat(ptr %world_wptr15, ptr %str_add14, ptr @str_lit.3)
   %puts_call = call i32 @puts(ptr %str_add16)
   %next_row = add i32 %cur_row, 1
   store i32 %next_row, ptr %row, align 4
@@ -7461,9 +7612,9 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %e = load i32, ptr %e_alloca, align 4
   %str_i32 = call ptr @rt_to_string_i32(ptr %world_wptr, i32 %e)
   %world_wptr1 = load ptr, ptr %world_alloca, align 8
-  %str_add = call ptr @rt_str_concat(ptr %world_wptr1, ptr @str_lit.20, ptr %str_i32)
+  %str_add = call ptr @rt_str_concat(ptr %world_wptr1, ptr @str_lit.4, ptr %str_i32)
   %world_wptr2 = load ptr, ptr %world_alloca, align 8
-  %str_add3 = call ptr @rt_str_concat(ptr %world_wptr2, ptr %str_add, ptr @str_lit.21)
+  %str_add3 = call ptr @rt_str_concat(ptr %world_wptr2, ptr %str_add, ptr @str_lit.5)
   %world_wptr4 = load ptr, ptr %world_alloca, align 8
   %f_duration = getelementptr inbounds nuw %struct.Frozen, ptr %f_elem, i32 0, i32 0
   %duration_val = load float, ptr %f_duration, align 4
@@ -7471,7 +7622,7 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %world_wptr5 = load ptr, ptr %world_alloca, align 8
   %str_add6 = call ptr @rt_str_concat(ptr %world_wptr5, ptr %str_add3, ptr %str_f32)
   %world_wptr7 = load ptr, ptr %world_alloca, align 8
-  %str_add8 = call ptr @rt_str_concat(ptr %world_wptr7, ptr %str_add6, ptr @str_lit.22)
+  %str_add8 = call ptr @rt_str_concat(ptr %world_wptr7, ptr %str_add6, ptr @str_lit.6)
   %puts_call = call i32 @puts(ptr %str_add8)
   %f_duration9 = getelementptr inbounds nuw %struct.Frozen, ptr %f_elem, i32 0, i32 0
   %duration_val10 = load float, ptr %f_duration9, align 4
@@ -7483,9 +7634,9 @@ then:                                             ; preds = %ent_loop_body
   %e12 = load i32, ptr %e_alloca, align 4
   %str_i3213 = call ptr @rt_to_string_i32(ptr %world_wptr11, i32 %e12)
   %world_wptr14 = load ptr, ptr %world_alloca, align 8
-  %str_add15 = call ptr @rt_str_concat(ptr %world_wptr14, ptr @str_lit.23, ptr %str_i3213)
+  %str_add15 = call ptr @rt_str_concat(ptr %world_wptr14, ptr @str_lit.7, ptr %str_i3213)
   %world_wptr16 = load ptr, ptr %world_alloca, align 8
-  %str_add17 = call ptr @rt_str_concat(ptr %world_wptr16, ptr %str_add15, ptr @str_lit.24)
+  %str_add17 = call ptr @rt_str_concat(ptr %world_wptr16, ptr %str_add15, ptr @str_lit.8)
   %puts_call18 = call i32 @puts(ptr %str_add17)
   %cmd = load ptr, ptr %world_alloca, align 8
   %e19 = load i32, ptr %e_alloca, align 4
@@ -7568,9 +7719,9 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %e = load i32, ptr %e_alloca, align 4
   %str_i32 = call ptr @rt_to_string_i32(ptr %world_wptr, i32 %e)
   %world_wptr1 = load ptr, ptr %world_alloca, align 8
-  %str_add = call ptr @rt_str_concat(ptr %world_wptr1, ptr @str_lit.25, ptr %str_i32)
+  %str_add = call ptr @rt_str_concat(ptr %world_wptr1, ptr @str_lit.9, ptr %str_i32)
   %world_wptr2 = load ptr, ptr %world_alloca, align 8
-  %str_add3 = call ptr @rt_str_concat(ptr %world_wptr2, ptr %str_add, ptr @str_lit.26)
+  %str_add3 = call ptr @rt_str_concat(ptr %world_wptr2, ptr %str_add, ptr @str_lit.10)
   %world_wptr4 = load ptr, ptr %world_alloca, align 8
   %pos_x = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 0
   %x_val = load float, ptr %pos_x, align 4
@@ -7578,7 +7729,7 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %world_wptr5 = load ptr, ptr %world_alloca, align 8
   %str_add6 = call ptr @rt_str_concat(ptr %world_wptr5, ptr %str_add3, ptr %str_f32)
   %world_wptr7 = load ptr, ptr %world_alloca, align 8
-  %str_add8 = call ptr @rt_str_concat(ptr %world_wptr7, ptr %str_add6, ptr @str_lit.27)
+  %str_add8 = call ptr @rt_str_concat(ptr %world_wptr7, ptr %str_add6, ptr @str_lit.11)
   %world_wptr9 = load ptr, ptr %world_alloca, align 8
   %pos_y = getelementptr inbounds nuw %struct.Position, ptr %pos_elem, i32 0, i32 1
   %y_val = load float, ptr %pos_y, align 4
@@ -7586,7 +7737,7 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %world_wptr11 = load ptr, ptr %world_alloca, align 8
   %str_add12 = call ptr @rt_str_concat(ptr %world_wptr11, ptr %str_add8, ptr %str_f3210)
   %world_wptr13 = load ptr, ptr %world_alloca, align 8
-  %str_add14 = call ptr @rt_str_concat(ptr %world_wptr13, ptr %str_add12, ptr @str_lit.28)
+  %str_add14 = call ptr @rt_str_concat(ptr %world_wptr13, ptr %str_add12, ptr @str_lit.12)
   %puts_call = call i32 @puts(ptr %str_add14)
   %next_row = add i32 %cur_row, 1
   store i32 %next_row, ptr %row, align 4

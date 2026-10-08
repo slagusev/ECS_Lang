@@ -172,8 +172,10 @@ flowchart LR
 
 ### Защита инварианта жизненного цикла сущностей:
 - `entity_archetypes[e] >= 0`: сущность активна и размещена в целевом архетипе.
-- `entity_archetypes[e] == -1`: сущность деактивирована через `world.despawn(e)` (swap-remove завершен).
-- Любая попытка мутации (`world.set_*`, `world.add_*`, `world.remove_*`) над уничтоженной сущностью пресекается нативной проверкой с выводом системной ошибки `[ECS Error] Attempted to mutate despawned or dead entity` и кодом `exit(1)`, гарантируя запрет воскрешения мертвых сущностей.
+- `entity_archetypes[e] == -1`: сущность зарезервирована / ожидает размещения (`pending allocation`).
+- `entity_archetypes[e] == -2`: сущность деактивирована через `world.despawn(e)` (`dead / despawned`).
+- Вызов `world_assign_a0` производит размещение в базовый архетип только для неразмещенных сущностей (`== -1`); мертвые сущности (`-2`) не подлежат повторному назначению.
+- Любая попытка мутации (`world.set_*`, `world.add_*`, `world.remove_*`) над уничтоженной (`-2`) или неразмещенной (`-1`) сущностью пресекается вызовом `@rt_panic` с выводом диагностической ошибки (`[ECS Error] Attempted to mutate despawned or dead entity...` / `[ECS Error] Attempted to mutate unassigned or pending entity...`) и аварийным выходом `exit(1)`, гарантируя строгий запрет молчаливого воскрешения мертвых сущностей.
 
 ---
 
@@ -366,7 +368,7 @@ ECSLang включает встроенную высокопроизводите
    - Идентификатор последней сущности `movedE = curArch.entities[lastRow]` перемещается в `curArch.entities[curRow]`.
    - Для всех активных колонок компонентов в битовой маске архетипа данные копируются из строки `lastRow` в строку `curRow` через `llvm.memcpy`.
    - Обновляется индекс строки перенесенной сущности: `world.entity_row[movedE] = curRow`.
-5. Исходная сущность помечается как мертвая: `world.entity_arch[e] = -1`, `world.entity_row[e] = -1`.
+5. Исходная сущность помечается как мертвая: `world.entity_arch[e] = -2`, `world.entity_row[e] = -2`.
 
 ### 4. Потокобезопасность в параллельных конвейерах:
 - Добавление команд в буфер защищено эксклюзивным захватом `AcquireSRWLockExclusive` / `ReleaseSRWLockExclusive`.

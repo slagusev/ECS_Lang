@@ -9,7 +9,7 @@
 | Пункт / Фича | Статус | Доказательство в кодовой базе |
 |---|---|---|
 | **Точка отката Шага 1** | **ВЫПОЛНЕНО** | Тег `a7-step1-green` зафиксирован на коммите `8ffa26e` и запушен в `origin` |
-| **A1: Защита от воскрешения** | **ЧАСТИЧНО** | Проверка `curArchIdx < 0` есть в `EcsRuntimeEmitter.Archetypes.cs:669` и `:944`, но `rt_panic` не выделен, состояния `-1` (pending) и `-2` (dead) не разделены |
+| **A1: Защита от воскрешения** | **ВЫПОЛНЕНО (Шаг P0.1)** | Разграничены состояния: `-1` pending, `-2` dead в `entity_arch` и `entity_row`. Выделен хелпер `@rt_panic`. Инвариантный тест `tests/verify_a1_invariant.ps1` подтверждает код возврата 1 и диагностику ошибки |
 | **A2: Лимит 64 компонентов** | **ВЫПОЛНЕНО** | `TypeChecker.cs:188-199` (`ValidateComponentLimit`, ошибка компиляции при >64) |
 | **A3: Синхронизация `world_emit_*`** | **ОТСУТСТВУЕТ** | `EcsRuntimeEmitter.Events.cs:40-80` (нет блокировки `cmd_lock`, конкурентный `realloc` не защищен) |
 | **A4: Запрет `world.*` в системах** | **ОТСУТСТВУЕТ** | `TypeChecker.Declarations.cs:356` объявляет `world` в скоупе системы, `TypeChecker.Expressions.cs:421` разрешает любые вызовы кроме `Commands` |
@@ -35,6 +35,7 @@
 - **Объём**: Ввести хелпер `rt_panic(ptr msg)` в кодогене. Разграничить состояния: `-1` = unassigned/pending allocation, `-2` = dead/despawned. Мутация сущности со статусом `-2` вызывает `rt_panic` с диагностикой `[ECS Error] Attempted to mutate despawned or dead entity`.
 - **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`.
 - **Критерий приёмки**: Уровень 2 (инвариантный тест `tests/a1_no_resurrect_dead_entity.ecs` подтверждает аварийную остановку).
+- **Статус**: **ВЫПОЛНЕНО** (коммит P0.1; Уровень 2 подтвержден `tests/verify_a1_invariant.ps1`; Уровень 3 строгий IR-паритет 6/6; Уровень 1 23/23).
 - **Шаблон коммита**: `fix(runtime): introduce rt_panic and distinguish pending (-1) vs dead (-2) entity states`
 
 #### Шаг P0.2 — Аппаратный `pause` в POSIX-спинлоке (B1-fix)
