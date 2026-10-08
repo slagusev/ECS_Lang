@@ -687,6 +687,14 @@ fn main(): i32 {
     * `EcsRuntimeEmitter.Commands.cs`: отложенные буферы команд (`world_cmd_ensure_cap`, `world_cmd_spawn`, `world_cmd_despawn`, `world_cmd_set_*`, `world_cmd_add_*`, `world_cmd_remove_*`, `world_apply_commands`).
     * `EcsRuntimeEmitter.Events.cs`: двухбуферные очереди событий (`world_emit_*`, `world_swap_events`).
   - Полная верификация сквозной сборки `dotnet build` (0 предупреждений, 0 ошибок) и валидация рантайма на примерах `examples/09_ecs_command_buffer.ecs` и `examples/10_ecs_events_and_observers.ecs` (Exit Code 0).
+- [x] Пункт 2.19: Рефакторинг ядра и физическая изоляция Code Bloat (Шаг 2 - ECSLang.Semantics):
+  - Декомпозиция монолитного `TypeChecker.Expressions.cs` (1 283 -> 575 строк) с физическим выделением `partial class` модулей:
+    * `TypeChecker.Closures.cs`: семантический анализ `LambdaExpression`, косвенных вызовов `IndirectCallExpression` и алгоритм детекции захваченных переменных `FindCaptures`.
+    * `TypeChecker.Collections.cs`: типизация `ArrayLiteralExpression`, `IndexExpression`, конструкторов и встроенных методов коллекций `Vec<T>` и `Map<K, V>`.
+    * `TypeChecker.TaggedUnions.cs`: типизация конструкторов `Some`, `None`, `Ok`, `Err` и методов `Option<T>` / `Result<T, E>`.
+    * `TypeChecker.Raylib.cs`: семантическая валидация вызовов Raylib API.
+  - Исправление резолюции методов `get_*` на структурах при наличии синтаксического сахара геттеров ресурсов мира (`ResourceGetExpressionNode` fallback).
+  - Успешная сборка `dotnet build` (0 варнингов, 0 ошибок) и прохождение тестов `06_dynamic_collections.ecs`, `07_closures_and_generics.ecs` и `resource_main_test.ecs` (Exit Code 0).
 
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.

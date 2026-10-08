@@ -24,6 +24,12 @@ public sealed partial class LlvmCodeGenerator
         LLVMValueRef worldPtr;
         if (resGet.Target != null)
         {
+            var targetType = _typeChecker.GetNodeType(resGet.Target);
+            if (targetType != TypeSymbol.World && targetType.Name != "World")
+            {
+                var fallbackCall = new MethodCallExpression(resGet.Target, $"get_{resGet.ResourceName}", System.Array.Empty<ExpressionNode>(), resGet.Span);
+                return CompileExpression(context, module, builder, function, fallbackCall, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
+            }
             worldPtr = CompileExpression(context, module, builder, function, resGet.Target, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
         }
         else if (locals.TryGetValue("world", out var defaultWorld))

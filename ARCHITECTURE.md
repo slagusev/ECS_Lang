@@ -93,6 +93,12 @@ flowchart LR
   - **Проход 2**: проверка тел функций и систем, валидация типов выражений и областей видимости.
 - Предотвращение конфликтов алиасинга в ECS: проверка, что две параллельные системы или два аргумента запроса не запрашивают мутабельный доступ к одному компоненту одновременно.
 - Валидация методов экземпляров `World` (`spawn`, `set_*`, `add_*`, `remove_*`, `has_*`, `sort_hierarchy`).
+- **Модульная архитектура (Physical Partial Class Isolation)**:
+  * `TypeChecker.Expressions.cs` — диспетчер выражений, проверка бинарных/унарных операций, литералов, вызовов функций и методов.
+  * `TypeChecker.Closures.cs` — типизация лямбд (`LambdaExpression`), косвенных вызовов (`IndirectCallExpression`) и захвата переменных окружения (`FindCaptures`).
+  * `TypeChecker.Collections.cs` — проверка литералов массивов, индексации (`IndexExpression`), конструкторов и методов `Vec<T>` и `Map<K, V>`.
+  * `TypeChecker.TaggedUnions.cs` — валидация конструкторов (`Some`, `None`, `Ok`, `Err`) и методов `Option<T>` и `Result<T, E>`.
+  * `TypeChecker.Raylib.cs` — семантическая валидация вызовов мультимедийного API Raylib 2D.
 
 ### 4. Генерация LLVM IR (`LlvmCodeGenerator` & `EcsRuntimeEmitter`)
 - Двухпроходная генерация функций (Pass 1 forward-declaration позволяет вызывать функции в любом порядке).

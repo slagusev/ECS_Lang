@@ -12,7 +12,11 @@ public sealed partial class TypeChecker
             var targetType = CheckExpression(resGet.Target);
             if (targetType != TypeSymbol.World && targetType.Name != "World" && targetType != TypeSymbol.Unknown)
             {
-                _diagnostics.ReportError($"Cannot get resource '{resGet.ResourceName}' from non-World type '{targetType.Name}'.", resGet.Span);
+                // Target is not a World instance: fallback to regular method call (e.g. pair.get_first())
+                var fallbackCall = new MethodCallExpression(resGet.Target, $"get_{resGet.ResourceName}", System.Array.Empty<ExpressionNode>(), resGet.Span);
+                var callType = CheckMethodCall(fallbackCall);
+                _nodeTypes[resGet] = callType;
+                return callType;
             }
         }
 
