@@ -437,6 +437,9 @@ public sealed partial class Parser
                 }
             }
             else if (tok.Type != TokenType.Identifier &&
+                     tok.Type != TokenType.Fn &&
+                     tok.Type != TokenType.OpenParen &&
+                     tok.Type != TokenType.CloseParen &&
                      tok.Type != TokenType.Comma &&
                      tok.Type != TokenType.OpenBracket &&
                      tok.Type != TokenType.CloseBracket &&

@@ -1,0 +1,26 @@
+fn call_pure(f: fn(i32): i32, val: i32): i32 {
+    return f(val);
+}
+
+fn main(): i32 {
+    let pure_fn = |x: i32| x * 2;
+    let res1 = call_pure(pure_fn, 21);
+
+    let factor = 100;
+    let local_c = |x: i32| x + factor;
+    let res2 = local_c(42);
+
+    let mut nums = Vec<i32>();
+    nums.push(1);
+    nums.push(2);
+    nums.push(3);
+
+    let offset = 10;
+    nums.for_each(|x: i32| {
+        println(x + offset);
+    });
+
+    println(res1);
+    println(res2);
+    return 0;
+}

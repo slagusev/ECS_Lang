@@ -29,7 +29,49 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
     public bool IsOption => Name.StartsWith("Option<") && Name.EndsWith(">");
     public bool IsResult => Name.StartsWith("Result<") && Name.EndsWith(">");
     public bool IsFunction => Name.StartsWith("fn(") || Name.StartsWith("closure(");
+    public bool IsCapturingClosure => Name.StartsWith("closure(");
     public bool IsGenericInstantiation => Name.Contains("<") && Name.EndsWith(">");
+
+    public bool ContainsCapturingClosure()
+    {
+        if (IsCapturingClosure) return true;
+        if (TryGetGenericInfo(out _, out var args))
+        {
+            foreach (var arg in args)
+            {
+                if (arg.ContainsCapturingClosure()) return true;
+            }
+        }
+        if (TryGetArrayInfo(out var elemFixed, out _))
+        {
+            if (elemFixed.ContainsCapturingClosure()) return true;
+        }
+        if (TryGetDynamicArrayElement(out var elemDyn))
+        {
+            if (elemDyn.ContainsCapturingClosure()) return true;
+        }
+        if (TryGetMapInfo(out var keyType, out var valType))
+        {
+            if (keyType.ContainsCapturingClosure() || valType.ContainsCapturingClosure()) return true;
+        }
+        if (TryGetOptionInfo(out var optVal))
+        {
+            if (optVal.ContainsCapturingClosure()) return true;
+        }
+        if (TryGetResultInfo(out var okT, out var errT))
+        {
+            if (okT.ContainsCapturingClosure() || errT.ContainsCapturingClosure()) return true;
+        }
+        if (TryGetFunctionInfo(out var paramTypes, out var retType))
+        {
+            foreach (var p in paramTypes)
+            {
+                if (p.ContainsCapturingClosure()) return true;
+            }
+            if (retType.ContainsCapturingClosure()) return true;
+        }
+        return false;
+    }
 
     public bool TryGetGenericInfo(out string baseName, out IReadOnlyList<TypeSymbol> typeArguments)
     {
@@ -171,10 +213,11 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
     {
         if (IsFunction)
         {
+            int prefixLen = Name.StartsWith("closure(") ? 8 : 3;
             int colonIdx = -1;
             int depth = 0;
             int parenClose = -1;
-            for (int i = 2; i < Name.Length; i++)
+            for (int i = prefixLen - 1; i < Name.Length; i++)
             {
                 if (Name[i] == '(' || Name[i] == '<' || Name[i] == '[') depth++;
                 else if (Name[i] == ')' || Name[i] == '>' || Name[i] == ']')
@@ -194,7 +237,7 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
 
             if (parenClose != -1)
             {
-                var paramsStr = Name.Substring(3, parenClose - 3).Trim();
+                var paramsStr = Name.Substring(prefixLen, parenClose - prefixLen).Trim();
                 paramTypes = new List<TypeSymbol>();
                 if (!string.IsNullOrEmpty(paramsStr))
                 {
@@ -245,6 +288,12 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
         return new TypeSymbol($"fn({pStr}): {returnType.Name}", IsPrimitive: false);
     }
 
+    public static TypeSymbol CreateClosure(IReadOnlyList<TypeSymbol> paramTypes, TypeSymbol returnType)
+    {
+        var pStr = string.Join(", ", paramTypes.Select(p => p.Name));
+        return new TypeSymbol($"closure({pStr}): {returnType.Name}", IsPrimitive: false);
+    }
+
     public static TypeSymbol FromName(string? name)
     {
         if (name == null) return Unknown;
@@ -254,6 +303,14 @@ public sealed record TypeSymbol(string Name, bool IsPrimitive = true)
             if (dummy.TryGetFunctionInfo(out var pTypes, out var rType))
             {
                 return CreateFunction(pTypes, rType);
+            }
+        }
+        if (name.StartsWith("closure("))
+        {
+            var dummy = new TypeSymbol(name);
+            if (dummy.TryGetFunctionInfo(out var pTypes, out var rType))
+            {
+                return CreateClosure(pTypes, rType);
             }
         }
         if (name.StartsWith("Vec<") && name.EndsWith(">"))

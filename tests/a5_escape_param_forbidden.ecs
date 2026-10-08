@@ -1,0 +1,10 @@
+fn run_user_callback(f: fn(i32): i32, val: i32): i32 {
+    return f(val);
+}
+
+fn main(): i32 {
+    let factor = 10;
+    let c = |x: i32| x + factor;
+    let _res = run_user_callback(c, 5);
+    return 0;
+}

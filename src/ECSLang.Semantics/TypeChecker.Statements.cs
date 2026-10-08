@@ -49,9 +49,17 @@ public sealed partial class TypeChecker
                 if (retStmt.Value != null)
                 {
                     var rType = CheckExpression(retStmt.Value);
+                    if (rType.ContainsCapturingClosure())
+                    {
+                        _diagnostics.ReportError("Capturing closure cannot be returned from a function. Closures with stack-allocated captures cannot escape their enclosing frame.", retStmt.Span);
+                    }
                     if (_currentExpectedReturnType != null)
                     {
-                        if (_currentExpectedReturnType.IsOption && (rType.Name == "None" || retStmt.Value is IdentifierExpression { Name: "None" } || retStmt.Value is CallExpression { Callee: "None" }))
+                        if (_currentExpectedReturnType.ContainsCapturingClosure())
+                        {
+                            _diagnostics.ReportError("Capturing closure cannot be used as a return type.", retStmt.Span);
+                        }
+                        else if (_currentExpectedReturnType.IsOption && (rType.Name == "None" || retStmt.Value is IdentifierExpression { Name: "None" } || retStmt.Value is CallExpression { Callee: "None" }))
                         {
                             _nodeTypes[retStmt.Value] = _currentExpectedReturnType;
                         }
@@ -125,6 +133,11 @@ public sealed partial class TypeChecker
             _diagnostics.ReportError(
                 $"Cannot initialize variable of type '{explicitType.Name}' with value of type '{initType.Name}'.",
                 varDecl.Initializer.Span);
+        }
+
+        if (!explicitType.IsCapturingClosure && explicitType.ContainsCapturingClosure())
+        {
+            _diagnostics.ReportError($"Capturing closure cannot be stored in composite type '{explicitType.Name}'. Closures with stack-allocated captures cannot escape their enclosing frame.", varDecl.Span);
         }
 
         var sym = new VariableSymbol(varDecl.Name, explicitType, varDecl.IsMutable, varDecl.Span);
@@ -206,6 +219,11 @@ public sealed partial class TypeChecker
         {
             _nodeTypes[assign.Value] = expectedType;
             valType = expectedType;
+        }
+
+        if (valType.ContainsCapturingClosure() && (assign.MemberName != null || assign.Index != null))
+        {
+            _diagnostics.ReportError("Capturing closure cannot be stored in a struct field or collection element. Closures with stack-allocated captures cannot escape their enclosing frame.", assign.Value.Span);
         }
 
         if (expectedType != TypeSymbol.Unknown && valType != TypeSymbol.Unknown && !AreTypesCompatible(expectedType, valType))

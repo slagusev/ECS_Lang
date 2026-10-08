@@ -307,6 +307,14 @@ public sealed partial class TypeChecker
         var monomorphizedFn = EnsureMonomorphizedFunction(call.Callee, null, argTypesList, call.Span);
         if (monomorphizedFn != null)
         {
+            for (int i = 0; i < call.Arguments.Count; i++)
+            {
+                var argType = GetNodeType(call.Arguments[i]);
+                if (argType.ContainsCapturingClosure())
+                {
+                    _diagnostics.ReportError($"Capturing closure cannot be passed as an argument to function '{call.Callee}'. Closures with stack-allocated captures cannot escape their enclosing frame.", call.Arguments[i].Span);
+                }
+            }
             return TypeSymbol.FromName(monomorphizedFn.ReturnType);
         }
 
@@ -317,6 +325,14 @@ public sealed partial class TypeChecker
             {
                 _diagnostics.ReportError($"Struct '{call.Callee}' constructor expects {stSym.Fields.Count} arguments, but got {call.Arguments.Count}.", call.Span);
             }
+            for (int i = 0; i < call.Arguments.Count; i++)
+            {
+                var argType = GetNodeType(call.Arguments[i]);
+                if (argType.ContainsCapturingClosure())
+                {
+                    _diagnostics.ReportError("Capturing closure cannot be stored in a struct field. Closures with stack-allocated captures cannot escape their enclosing frame.", call.Arguments[i].Span);
+                }
+            }
             return TypeSymbol.FromName(stSym.Name);
         }
 
@@ -326,6 +342,14 @@ public sealed partial class TypeChecker
             if (call.Arguments.Count != compSym.Fields.Count)
             {
                 _diagnostics.ReportError($"Component '{call.Callee}' constructor expects {compSym.Fields.Count} arguments, but got {call.Arguments.Count}.", call.Span);
+            }
+            for (int i = 0; i < call.Arguments.Count; i++)
+            {
+                var argType = GetNodeType(call.Arguments[i]);
+                if (argType.ContainsCapturingClosure())
+                {
+                    _diagnostics.ReportError("Capturing closure cannot be stored in a component field. Closures with stack-allocated captures cannot escape their enclosing frame.", call.Arguments[i].Span);
+                }
             }
             return TypeSymbol.FromName(compSym.Name);
         }
@@ -344,7 +368,11 @@ public sealed partial class TypeChecker
                     for (int i = 0; i < call.Arguments.Count; i++)
                     {
                         var argType = GetNodeType(call.Arguments[i]);
-                        if (!AreTypesCompatible(paramTypes[i], argType))
+                        if (argType.ContainsCapturingClosure())
+                        {
+                            _diagnostics.ReportError("Capturing closure cannot be passed as an argument. Closures with stack-allocated captures cannot escape their enclosing frame.", call.Arguments[i].Span);
+                        }
+                        else if (!AreTypesCompatible(paramTypes[i], argType))
                         {
                             _diagnostics.ReportError($"Argument {i + 1} of '{call.Callee}' expects '{paramTypes[i].Name}', but got '{argType.Name}'.", call.Arguments[i].Span);
                         }
@@ -360,6 +388,17 @@ public sealed partial class TypeChecker
             if (call.Arguments.Count != fnDecl.Parameters.Count)
             {
                 _diagnostics.ReportError($"Function '{call.Callee}' expects {fnDecl.Parameters.Count} arguments, but got {call.Arguments.Count}.", call.Span);
+            }
+            else
+            {
+                for (int i = 0; i < call.Arguments.Count; i++)
+                {
+                    var argType = GetNodeType(call.Arguments[i]);
+                    if (argType.ContainsCapturingClosure())
+                    {
+                        _diagnostics.ReportError($"Capturing closure cannot be passed as an argument to function '{call.Callee}'. Closures with stack-allocated captures cannot escape their enclosing frame.", call.Arguments[i].Span);
+                    }
+                }
             }
             return TypeSymbol.FromName(fnDecl.ReturnType);
         }
@@ -401,12 +440,21 @@ public sealed partial class TypeChecker
                 for (int i = 0; i < methodCall.Arguments.Count; i++)
                 {
                     var argType = GetNodeType(methodCall.Arguments[i]);
-                    var expectedParamType = TypeSymbol.FromName(methodDecl.Parameters[i + pOffset].TypeName);
-                    if (!AreTypesCompatible(expectedParamType, argType))
+                    if (argType.ContainsCapturingClosure())
                     {
                         _diagnostics.ReportError(
-                            $"Argument {i + 1} of method '{methodCall.MethodName}' expects type '{expectedParamType.Name}', but got '{argType.Name}'.",
+                            $"Capturing closure cannot be passed as an argument to method '{methodCall.MethodName}'. Closures with stack-allocated captures cannot escape their enclosing frame.",
                             methodCall.Arguments[i].Span);
+                    }
+                    else
+                    {
+                        var expectedParamType = TypeSymbol.FromName(methodDecl.Parameters[i + pOffset].TypeName);
+                        if (!AreTypesCompatible(expectedParamType, argType))
+                        {
+                            _diagnostics.ReportError(
+                                $"Argument {i + 1} of method '{methodCall.MethodName}' expects type '{expectedParamType.Name}', but got '{argType.Name}'.",
+                                methodCall.Arguments[i].Span);
+                        }
                     }
                 }
             }

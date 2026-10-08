@@ -1,0 +1,10 @@
+struct CallbackHolder {
+    cb: closure(i32): i32,
+}
+
+fn main(): i32 {
+    let factor = 5;
+    let c = |x: i32| x + factor;
+    let _h = CallbackHolder(c);
+    return 0;
+}

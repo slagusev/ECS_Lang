@@ -71,7 +71,12 @@ public sealed partial class TypeChecker
             {
                 _diagnostics.ReportError($"Duplicate field '{f.Name}' in component '{comp.Name}'.", f.Span);
             }
-            fields.Add(new ComponentFieldSymbol(f.Name, TypeSymbol.FromName(f.TypeName), f.Span));
+            var fType = TypeSymbol.FromName(f.TypeName);
+            if (fType.ContainsCapturingClosure())
+            {
+                _diagnostics.ReportError($"Field '{f.Name}' in component '{comp.Name}' cannot have capturing closure type. Closures with stack-allocated captures cannot escape their enclosing frame.", f.Span);
+            }
+            fields.Add(new ComponentFieldSymbol(f.Name, fType, f.Span));
         }
 
         _components[comp.Name] = new ComponentSymbol(comp.Name, fields, comp.Span);
@@ -94,7 +99,12 @@ public sealed partial class TypeChecker
             {
                 _diagnostics.ReportError($"Duplicate field '{f.Name}' in resource '{res.Name}'.", f.Span);
             }
-            fields.Add(new ComponentFieldSymbol(f.Name, TypeSymbol.FromName(f.TypeName), f.Span));
+            var fType = TypeSymbol.FromName(f.TypeName);
+            if (fType.ContainsCapturingClosure())
+            {
+                _diagnostics.ReportError($"Field '{f.Name}' in resource '{res.Name}' cannot have capturing closure type. Closures with stack-allocated captures cannot escape their enclosing frame.", f.Span);
+            }
+            fields.Add(new ComponentFieldSymbol(f.Name, fType, f.Span));
         }
 
         _resources[res.Name] = new ResourceSymbol(res.Name, fields, res.Span);
@@ -117,7 +127,12 @@ public sealed partial class TypeChecker
             {
                 _diagnostics.ReportError($"Duplicate field '{f.Name}' in struct '{st.Name}'.", f.Span);
             }
-            fields.Add(new ComponentFieldSymbol(f.Name, TypeSymbol.FromName(f.TypeName), f.Span));
+            var fType = TypeSymbol.FromName(f.TypeName);
+            if (fType.ContainsCapturingClosure())
+            {
+                _diagnostics.ReportError($"Field '{f.Name}' in struct '{st.Name}' cannot have capturing closure type. Closures with stack-allocated captures cannot escape their enclosing frame.", f.Span);
+            }
+            fields.Add(new ComponentFieldSymbol(f.Name, fType, f.Span));
         }
 
         _structs[st.Name] = new StructSymbol(st.Name, fields, st.Span);
@@ -140,7 +155,12 @@ public sealed partial class TypeChecker
             {
                 _diagnostics.ReportError($"Duplicate field '{f.Name}' in event '{ev.Name}'.", f.Span);
             }
-            fields.Add(new ComponentFieldSymbol(f.Name, TypeSymbol.FromName(f.TypeName), f.Span));
+            var fType = TypeSymbol.FromName(f.TypeName);
+            if (fType.ContainsCapturingClosure())
+            {
+                _diagnostics.ReportError($"Field '{f.Name}' in event '{ev.Name}' cannot have capturing closure type. Closures with stack-allocated captures cannot escape their enclosing frame.", f.Span);
+            }
+            fields.Add(new ComponentFieldSymbol(f.Name, fType, f.Span));
         }
 
         var evSym = new EventSymbol(ev.Name, fields, ev.Span);
@@ -452,6 +472,10 @@ public sealed partial class TypeChecker
         foreach (var param in fn.Parameters)
         {
             var paramType = EnsureMonomorphizedType(param.TypeName, param.Span);
+            if (paramType.ContainsCapturingClosure())
+            {
+                _diagnostics.ReportError($"Parameter '{param.Name}' of function '{fn.Name}' cannot have capturing closure type. Closures with stack-allocated captures cannot escape their enclosing frame.", param.Span);
+            }
             var varSym = new VariableSymbol(param.Name, paramType, IsMutable: param.IsMutable, param.Span);
             if (!_currentScope.TryDeclare(varSym))
             {
@@ -463,6 +487,10 @@ public sealed partial class TypeChecker
         var oldFnName = _currentFunctionName;
         _currentFunctionName = fn.Name;
         _currentExpectedReturnType = fn.ReturnType != null ? EnsureMonomorphizedType(fn.ReturnType, fn.Span) : TypeSymbol.Void;
+        if (_currentExpectedReturnType.ContainsCapturingClosure())
+        {
+            _diagnostics.ReportError($"Function '{fn.Name}' cannot return capturing closure type. Closures with stack-allocated captures cannot escape their enclosing frame.", fn.Span);
+        }
 
         CheckBlock(fn.Body);
 

@@ -50,7 +50,9 @@ public sealed partial class TypeChecker
 
         _currentScope = prevScope;
 
-        var funcType = TypeSymbol.CreateFunction(paramTypes, retType);
+        var funcType = captures.Count > 0
+            ? TypeSymbol.CreateClosure(paramTypes, retType)
+            : TypeSymbol.CreateFunction(paramTypes, retType);
         _nodeTypes[lambda] = funcType;
         return funcType;
     }
@@ -70,7 +72,11 @@ public sealed partial class TypeChecker
             {
                 for (int i = 0; i < paramTypes.Count; i++)
                 {
-                    if (!AreTypesCompatible(paramTypes[i], argTypes[i]))
+                    if (argTypes[i].ContainsCapturingClosure())
+                    {
+                        _diagnostics.ReportError("Capturing closure cannot be passed as an argument. Closures with stack-allocated captures cannot escape their enclosing frame.", indCall.Arguments[i].Span);
+                    }
+                    else if (!AreTypesCompatible(paramTypes[i], argTypes[i]))
                     {
                         _diagnostics.ReportError($"Argument {i + 1} expects '{paramTypes[i].Name}', got '{argTypes[i].Name}'.", indCall.Arguments[i].Span);
                     }

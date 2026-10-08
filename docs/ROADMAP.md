@@ -12,9 +12,9 @@
 | **A1: Защита от воскрешения** | **ВЫПОЛНЕНО (Шаг P0.1)** | Разграничены состояния: `-1` pending, `-2` dead в `entity_arch` и `entity_row`. Выделен хелпер `@rt_panic`. Инвариантный тест `tests/verify_a1_invariant.ps1` подтверждает код возврата 1 и диагностику ошибки |
 | **A2: Лимит 64 компонентов** | **ВЫПОЛНЕНО** | `TypeChecker.cs:188-199` (`ValidateComponentLimit`, ошибка компиляции при >64) |
 | **A3: Синхронизация `world_emit_*`** | **ВЫПОЛНЕНО (Шаг P0.3)** | Добавлено отдельное поле `emit_lock: ptr` (поле 11 `%struct.EcsWorld`). Критическая секция `world_emit_*` и `world_swap_events` синхронизирована. Уровень 2 и 3 доказан тестом `tests/verify_a3_emit_lock_invariant.ps1` |
-| **A4: Запрет `world.*` в системах** | **ОТСУТСТВУЕТ** | `TypeChecker.Declarations.cs:356` объявляет `world` в скоупе системы, `TypeChecker.Expressions.cs:421` разрешает любые вызовы кроме `Commands` |
-| **A5: Запрет escape-замыканий** | **ОТСУТСТВУЕТ** | `TypeChecker.Closures.cs:9-56` и `TypeChecker.Statements.cs:48-60` не валидируют возврат замыканий с захватом стека |
-| **A6: Guards (bounds + liveness)** | **ЧАСТИЧНО** | Liveness (`< 0`) есть в `set_/add_/remove_/has_`, но bounds check (`e < 0 \|\| e >= entity_count`) отсутствует во всех функциях манипуляции |
+| **A4: Запрет `world.*` в системах** | **ВЫПОЛНЕНО (Шаг P0.5)** | Строгий белый список `world.emit_*` / `world.emit` в телах систем; все остальные методы мира запрещены с подсказкой про `cmd.*`. Уровень 2 доказан тестом `tests/verify_a4_system_world_whitelist.ps1` |
+| **A5: Запрет escape-замыканий** | **ВЫПОЛНЕНО (Шаг P0.6)** | Разделение `fn(...)` и `closure(...)`. Запрет `ContainsCapturingClosure()` в сигнатурах функций/методов, полях структур/компонентов/ресурсов, коллекциях (`Vec.push`, `Map.insert`). Уровень 2 доказан тестом `tests/verify_a5_closure_escape_invariant.ps1` |
+| **A6: Guards (bounds + liveness)** | **ВЫПОЛНЕНО (Шаг P0.4)** | Проверки `e < 0 \|\| e >= world.entity_count` и `world.entity_arch[e] < 0` добавлены во все `world_set_*`, `world_add_*`, `world_remove_*`, `world_has_*` с вызовом `rt_panic`. Уровень 2 доказан тестом `tests/verify_a6_bounds_invariant.ps1` |
 | **B1: `pause` в POSIX-спинлоке** | **ВЫПОЛНЕНО (Шаг P0.2)** | Встроен `llvm.x86.sse2.pause` (x86_64) и `llvm.aarch64.hint(1)` (Arm64) в `spin_backoff` базовый блок `ecs_spin_acquire`. Уровень 3 доказан тестом `tests/verify_b1_pause_invariant.ps1` |
 | **A7 У1: Сьют Ур. 1 с исполнением** | **ВЫПОЛНЕНО** | `tests/run_all_examples.ps1` (29 собрано, 23 выполнено ExitCode 0, 6 документированных GUI/Network пропусков; 3 тяжелых I/O-файла удалены по указанию) |
 | **A7 У2: Perf particles_100k** | **БЕЙЗЛАЙН ЗАФИКСИРОВАН** | `tests/particles_100k.ecs` в Release -O3: спавн 100k = ~18.3 мс, 100 тиков = ~74 мс. Сравнение до/после Шага 1 обязательно на шаге A7.Ф через checkout родительского коммита |
@@ -70,6 +70,7 @@
 - **Объём**: Правило уровня ТИПОВ: тип capturing-closure запрещен в: возвращаемом типе функций (`return`), полях `struct`/`component`/`resource`, типах-аргументах `Vec<T>` / `Map<K, V>`, параметрах пользовательских функций. Разрешен ТОЛЬКО как аргумент встроенных методов коллекций (`for_each`, `map`, `filter`, `any`, `all`, `find`). Замыкания без захвата (чистые функции) разрешены без ограничений.
 - **Файлы**: `src/ECSLang.Semantics/TypeChecker.Closures.cs`, `TypeChecker.Statements.cs`, `TypeChecker.Expressions.cs`.
 - **Критерий приёмки**: Уровень 2 (негативные тесты возврата и сохранения capturing-closure падают на этапе типизации).
+- **Статус**: **ВЫПОЛНЕНО** (коммит P0.6; Уровень 2 подтвержден `tests/verify_a5_closure_escape_invariant.ps1` (4 негативных сценария + 1 позитивный с исполнением); Уровень 3 строгий IR-паритет 6/6; Уровень 1 29/29 built, 23/23 runned exit code 0).
 - **Шаблон коммита**: `feat(semantics): prohibit escaping capturing-closure types across signatures and collections`
 
 ---

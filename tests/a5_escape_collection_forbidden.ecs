@@ -1,0 +1,7 @@
+fn main(): i32 {
+    let factor = 5;
+    let c = |x: i32| x + factor;
+    let mut v = Vec<fn(i32): i32>();
+    v.push(c);
+    return 0;
+}

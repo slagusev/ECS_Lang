@@ -46,10 +46,11 @@ public sealed partial class Parser
             Match(TokenType.CloseBracket, "Expected ']' to close dynamic array type.");
             return $"[{elemType}]";
         }
-        if (Check(TokenType.Fn) || (Check(TokenType.Identifier) && Current.Text == "fn"))
+        if (Check(TokenType.Fn) || (Check(TokenType.Identifier) && (Current.Text == "fn" || Current.Text == "closure")))
         {
+            bool isClosure = Check(TokenType.Identifier) && Current.Text == "closure";
             Advance();
-            Match(TokenType.OpenParen, "Expected '(' after 'fn' in function type.");
+            Match(TokenType.OpenParen, "Expected '(' after function/closure in type.");
             var pTypes = new List<string>();
             if (!Check(TokenType.CloseParen))
             {
@@ -58,14 +59,16 @@ public sealed partial class Parser
                     pTypes.Add(ParseTypeAnnotation());
                 } while (Check(TokenType.Comma) && Advance().Type == TokenType.Comma);
             }
-            Match(TokenType.CloseParen, "Expected ')' after parameter types in function type.");
+            Match(TokenType.CloseParen, "Expected ')' after parameter types in function/closure type.");
             string retType = "void";
             if (Check(TokenType.Colon) || Check(TokenType.Arrow))
             {
                 Advance();
                 retType = ParseTypeAnnotation();
             }
-            return $"fn({string.Join(", ", pTypes)}): {retType}";
+            return isClosure
+                ? $"closure({string.Join(", ", pTypes)}): {retType}"
+                : $"fn({string.Join(", ", pTypes)}): {retType}";
         }
         var idTok = Match(TokenType.Identifier, "Expected type name.");
         if ((idTok.Text == "Vec" || idTok.Text == "List") && Check(TokenType.Less))

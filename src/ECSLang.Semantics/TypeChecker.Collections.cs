@@ -13,9 +13,17 @@ public sealed partial class TypeChecker
         }
 
         var firstType = CheckExpression(arrLit.Elements[0]);
+        if (firstType.ContainsCapturingClosure())
+        {
+            _diagnostics.ReportError("Capturing closure cannot be stored in an array. Closures with stack-allocated captures cannot escape their enclosing frame.", arrLit.Elements[0].Span);
+        }
         for (int i = 1; i < arrLit.Elements.Count; i++)
         {
             var elemType = CheckExpression(arrLit.Elements[i]);
+            if (elemType.ContainsCapturingClosure())
+            {
+                _diagnostics.ReportError("Capturing closure cannot be stored in an array. Closures with stack-allocated captures cannot escape their enclosing frame.", arrLit.Elements[i].Span);
+            }
             if (firstType != TypeSymbol.Unknown && elemType != TypeSymbol.Unknown && firstType != elemType)
             {
                 _diagnostics.ReportError($"Array element at index {i} has type '{elemType.Name}', expected '{firstType.Name}'.", arrLit.Elements[i].Span);
@@ -63,7 +71,12 @@ public sealed partial class TypeChecker
         if (call.Callee.StartsWith("Vec<") || call.Callee.StartsWith("List<") ||
             call.Callee.StartsWith("Map<") || call.Callee.StartsWith("HashMap<"))
         {
-            result = TypeSymbol.FromName(call.Callee);
+            var collType = TypeSymbol.FromName(call.Callee);
+            if (collType.ContainsCapturingClosure())
+            {
+                _diagnostics.ReportError($"Capturing closure cannot be used as type argument in collection '{call.Callee}'. Closures with stack-allocated captures cannot escape their enclosing frame.", call.Span);
+            }
+            result = collType;
             return true;
         }
 
@@ -85,7 +98,11 @@ public sealed partial class TypeChecker
                 else
                 {
                     var argType = GetNodeType(methodCall.Arguments[0]);
-                    if (elemType != TypeSymbol.Unknown && argType != TypeSymbol.Unknown && !AreTypesCompatible(elemType, argType))
+                    if (argType.ContainsCapturingClosure())
+                    {
+                        _diagnostics.ReportError("Capturing closure cannot be stored in a collection. Closures with stack-allocated captures cannot escape their enclosing frame.", methodCall.Arguments[0].Span);
+                    }
+                    else if (elemType != TypeSymbol.Unknown && argType != TypeSymbol.Unknown && !AreTypesCompatible(elemType, argType))
                     {
                         _diagnostics.ReportError($"Argument 1 of 'push' expects type '{elemType.Name}', but got '{argType.Name}'.", methodCall.Arguments[0].Span);
                     }
@@ -186,6 +203,10 @@ public sealed partial class TypeChecker
                         {
                             _diagnostics.ReportError($"Closure for 'map' must accept '{elemType.Name}'.", methodCall.Arguments[0].Span);
                         }
+                        if (rType.ContainsCapturingClosure())
+                        {
+                            _diagnostics.ReportError("Capturing closure cannot be used as an element of a collection returned by 'map'. Closures with stack-allocated captures cannot escape their enclosing frame.", methodCall.Arguments[0].Span);
+                        }
                         mappedElem = rType;
                     }
                 }
@@ -277,13 +298,20 @@ public sealed partial class TypeChecker
                 {
                     var kArg = GetNodeType(methodCall.Arguments[0]);
                     var vArg = GetNodeType(methodCall.Arguments[1]);
-                    if (keyType != TypeSymbol.Unknown && kArg != TypeSymbol.Unknown && !AreTypesCompatible(keyType, kArg))
+                    if (kArg.ContainsCapturingClosure() || vArg.ContainsCapturingClosure())
                     {
-                        _diagnostics.ReportError($"Argument 1 of '{methodCall.MethodName}' expects key type '{keyType.Name}', but got '{kArg.Name}'.", methodCall.Arguments[0].Span);
+                        _diagnostics.ReportError("Capturing closure cannot be stored in a map. Closures with stack-allocated captures cannot escape their enclosing frame.", methodCall.Span);
                     }
-                    if (valType != TypeSymbol.Unknown && vArg != TypeSymbol.Unknown && !AreTypesCompatible(valType, vArg))
+                    else
                     {
-                        _diagnostics.ReportError($"Argument 2 of '{methodCall.MethodName}' expects value type '{valType.Name}', but got '{vArg.Name}'.", methodCall.Arguments[1].Span);
+                        if (keyType != TypeSymbol.Unknown && kArg != TypeSymbol.Unknown && !AreTypesCompatible(keyType, kArg))
+                        {
+                            _diagnostics.ReportError($"Argument 1 of '{methodCall.MethodName}' expects key type '{keyType.Name}', but got '{kArg.Name}'.", methodCall.Arguments[0].Span);
+                        }
+                        if (valType != TypeSymbol.Unknown && vArg != TypeSymbol.Unknown && !AreTypesCompatible(valType, vArg))
+                        {
+                            _diagnostics.ReportError($"Argument 2 of '{methodCall.MethodName}' expects value type '{valType.Name}', but got '{vArg.Name}'.", methodCall.Arguments[1].Span);
+                        }
                     }
                 }
                 _nodeTypes[methodCall] = TypeSymbol.Void;
