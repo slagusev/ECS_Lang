@@ -25,12 +25,18 @@ public sealed partial class EcsRuntimeEmitter
     private readonly Dictionary<string, ulong> _eventSizes = new(StringComparer.Ordinal);
 
     // Multi-Archetype Structs
+    private int _maskWords = 1;
+    private LLVMTypeRef _maskArrayType;
     private LLVMTypeRef _archStructType;
     private LLVMTypeRef _colArrayType;
     private LLVMTypeRef _worldStructType;
     private int _nameIndexWorldOffset = -1;
     private int _stringArenaHeadWorldOffset = -1;
     private int _stringArenaChunksWorldOffset = -1;
+
+    public int MaskWords => _maskWords;
+    public LLVMTypeRef MaskArrayType => _maskArrayType;
+    public LLVMTypeRef GetMaskArrayType() => _maskArrayType;
 
     public int NameIndexWorldOffset => _nameIndexWorldOffset;
     public int StringArenaHeadWorldOffset => _stringArenaHeadWorldOffset;
@@ -201,19 +207,33 @@ public sealed partial class EcsRuntimeEmitter
             _eventSizes[evName] = Math.Max(1, sizeInBytes);
         }
 
-        // 3. Define %struct.Archetype: { i64 mask, i32 count, i32 cap, ptr entities, [N x ptr] columns }
+        // 3. Define %struct.Archetype: { [WORDS x i64] mask, i32 count, i32 cap, ptr entities, [N x ptr] columns }
         uint compCount = (uint)Math.Max(1, _orderedCompNames.Count);
+        _maskWords = Math.Max(1, (int)((compCount + 63) / 64));
+        _maskArrayType = LLVMTypeRef.CreateArray(_context.Int64Type, (uint)_maskWords);
         _colArrayType = LLVMTypeRef.CreateArray(i8PtrType, compCount);
 
         _archStructType = _context.CreateNamedStruct("struct.Archetype");
         _archStructType.StructSetBody(new[]
         {
-            _context.Int64Type, // 0: mask
+            _maskArrayType,     // 0: mask [WORDS x i64]
             _context.Int32Type, // 1: count
             _context.Int32Type, // 2: cap
             i8PtrType,          // 3: entities (ptr to i32)
             _colArrayType       // 4: columns ([N x ptr])
         }, false);
+
+        // Parameterized self-check: for WORDS = 1, ABI size of %struct.Archetype matches scalar i64 mask layout
+        ulong actualArchSize = LlvmApi.ABISizeOfType(dataLayout, _archStructType);
+        if (_maskWords == 1)
+        {
+            ulong expectedArchSize = 24 + (ulong)compCount * 8;
+            if (actualArchSize != expectedArchSize)
+            {
+                throw new InvalidOperationException(
+                    $"ABI mismatch for %struct.Archetype with WORDS=1: expected {expectedArchSize} bytes, got {actualArchSize} bytes.");
+            }
+        }
 
         // 4. Define %struct.EcsWorld
         // Fields:

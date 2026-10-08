@@ -728,6 +728,16 @@ fn main(): i32 {
     * Разработан инструмент верификации `tests/verify_golden_ir.ps1` с поддержкой режимов `-Mode strict` (точное посимвольное совпадение) и `-Mode refactor` (классификация хунков по 4 легальным архитектурным категориям).
     * Обновлен `.gitignore` с исключением `!tests/golden_ir/*.ll`.
     * Успешная сборка `dotnet build` (0 errors, 0 warnings) и прохождение верификации `tests/verify_golden_ir.ps1 -Mode strict` (6/6 EXACT MATCH).
+- [x] Пункт 2.24: Снятие предела 64 компонентов (Шаг 1 — Многословные маски в %struct.Archetype и сигнатура world_get_or_create_archetype):
+  - Перевод поля 0 `%struct.Archetype` на массив `[WORDS x i64]`, где `WORDS = (totalComps + 63) >> 6`.
+  - Добавление свойств `MaskWords`, `MaskArrayType` в `EcsRuntimeEmitter`.
+  - Встроен параметризованный ABI self-check assertion в `EmitEcsDeclarations`: при `WORDS = 1` размер `%struct.Archetype` совпадает с прежним лейаутом (`expectedArchSize == actualArchSize`).
+  - Сигнатура `world_get_or_create_archetype` обновлена до `(ptr world, ptr mask)`.
+  - Поиск архетипа в таблицах мира развернут в пословное сравнение слов маски с логическим `and i1`.
+  - Инициализация маски нового архетипа выполняет пословное копирование слов.
+  - Точки вызова `world_get_or_create_archetype` (`ecs_create_world`, `world_assign_a0`, `world_set_*`, `world_remove_*`, `LlvmCodeGenerator.BulkSpawn.cs`) обновлены для передачи типизированного указателя на буфер `[WORDS x i64]`.
+  - Обновлены и синхронизированы golden IR эталоны `tests/golden_ir/*.ll` (6/6 EXACT MATCH в `verify_golden_ir.ps1 -Mode strict`).
+  - Полный прогон всех 32 примеров из `examples/` завершен со 100% успехом.
 
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.

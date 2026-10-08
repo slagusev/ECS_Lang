@@ -140,10 +140,22 @@ public sealed partial class LlvmCodeGenerator
         var eVal = builder.BuildCall2(allocEntType, allocEntFunc, new[] { targetVal }, "e_alloc");
 
         // 3. Find or create target archetype
-        var maskVal = LLVMValueRef.CreateConstInt(context.Int64Type, targetMask);
+        var maskArrayType = ecs.MaskArrayType;
+        var maskWords = ecs.MaskWords;
+        var maskBuf = builder.BuildAlloca(maskArrayType, "spawn_mask_buf");
+        for (int w = 0; w < maskWords; w++)
+        {
+            var dstW = builder.BuildInBoundsGEP2(maskArrayType, maskBuf, new[]
+            {
+                LLVMValueRef.CreateConstInt(context.Int32Type, 0),
+                LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)w)
+            }, $"dst_spawn_w{w}");
+            var wordVal = (w == 0) ? targetMask : 0UL;
+            builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int64Type, wordVal), dstW);
+        }
         var getArchFunc = module.GetNamedFunction("world_get_or_create_archetype");
         var getArchType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(getArchFunc);
-        var archIdx = builder.BuildCall2(getArchType, getArchFunc, new[] { targetVal, maskVal }, "arch_idx");
+        var archIdx = builder.BuildCall2(getArchType, getArchFunc, new[] { targetVal, maskBuf }, "arch_idx");
 
         // 4. Ensure archetype capacity (world_grow_archetype if needed)
         var archTablesSlot = builder.BuildStructGEP2(worldStructType, targetVal, 2, "tables_slot");

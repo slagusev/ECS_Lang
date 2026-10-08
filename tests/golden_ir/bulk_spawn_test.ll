@@ -4,7 +4,7 @@ target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:
 target triple = "x86_64-pc-windows-msvc"
 
 %struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, ptr, i32, i32, ptr, ptr }
-%struct.Archetype = type { i64, i32, i32, ptr, [3 x ptr] }
+%struct.Archetype = type { [1 x i64], i32, i32, ptr, [3 x ptr] }
 %struct.ChildOf = type { i32 }
 %struct.Position = type { float, float }
 %struct.Velocity = type { float, float }
@@ -167,7 +167,7 @@ declare void @CloseThreadpoolWork(ptr)
 
 declare i32 @GetTickCount()
 
-define i32 @world_get_or_create_archetype(ptr %0, i64 %1) {
+define i32 @world_get_or_create_archetype(ptr %0, ptr %1) {
 entry:
   %arch_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 0
   %arch_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 1
@@ -186,8 +186,11 @@ search_body:                                      ; preds = %search_cond
   %tables_base = load ptr, ptr %arch_tables_slot, align 8
   %arch_elem = getelementptr inbounds %struct.Archetype, ptr %tables_base, i32 %cur_i
   %mask_gep = getelementptr inbounds nuw %struct.Archetype, ptr %arch_elem, i32 0, i32 0
-  %existing_mask = load i64, ptr %mask_gep, align 8
-  %is_match = icmp eq i64 %existing_mask, %1
+  %ex_w0 = getelementptr inbounds [1 x i64], ptr %mask_gep, i32 0, i32 0
+  %existing_mask = load i64, ptr %ex_w0, align 8
+  %tgt_w0 = getelementptr inbounds [1 x i64], ptr %1, i32 0, i32 0
+  %target_mask = load i64, ptr %tgt_w0, align 8
+  %is_match = icmp eq i64 %existing_mask, %target_mask
   br i1 %is_match, label %return_found, label %search_next
 
 not_found:                                        ; preds = %search_cond
@@ -221,7 +224,10 @@ init_arch:                                        ; preds = %grow_tables, %not_f
   %latest_tables = load ptr, ptr %arch_tables_slot, align 8
   %new_arch_elem = getelementptr inbounds %struct.Archetype, ptr %latest_tables, i32 %cur_count
   %m_gep = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_elem, i32 0, i32 0
-  store i64 %1, ptr %m_gep, align 8
+  %src_w0 = getelementptr inbounds [1 x i64], ptr %1, i32 0, i32 0
+  %src_val0 = load i64, ptr %src_w0, align 8
+  %dst_w0 = getelementptr inbounds [1 x i64], ptr %m_gep, i32 0, i32 0
+  store i64 %src_val0, ptr %dst_w0, align 8
   %cnt_gep = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_elem, i32 0, i32 1
   store i32 0, ptr %cnt_gep, align 4
   %cap_gep = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_elem, i32 0, i32 2
@@ -304,7 +310,9 @@ define ptr @ecs_create_world() {
 entry:
   %raw_world = call ptr @malloc(i64 96)
   %0 = call ptr @memset(ptr %raw_world, i32 0, i64 96)
-  %a0_init = call i32 @world_get_or_create_archetype(ptr %raw_world, i64 0)
+  %a0_mask = alloca [1 x i64], align 8
+  store [1 x i64] zeroinitializer, ptr %a0_mask, align 8
+  %a0_init = call i32 @world_get_or_create_archetype(ptr %raw_world, ptr %a0_mask)
   ret ptr %raw_world
 }
 
@@ -360,7 +368,9 @@ entry:
   br i1 %is_unassigned, label %do_assign, label %exit_a0
 
 do_assign:                                        ; preds = %entry
-  %a0 = call i32 @world_get_or_create_archetype(ptr %0, i64 0)
+  %a0_mask_assign = alloca [1 x i64], align 8
+  store [1 x i64] zeroinitializer, ptr %a0_mask_assign, align 8
+  %a0 = call i32 @world_get_or_create_archetype(ptr %0, ptr %a0_mask_assign)
   %tables_slot_a0 = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %tables_a0 = load ptr, ptr %tables_slot_a0, align 8
   %a0_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_a0, i32 %a0
@@ -594,7 +604,8 @@ set_cont:                                         ; preds = %entry
   %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_slot, align 8
+  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
   %has_bit = and i64 %cur_mask, 1
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
@@ -606,7 +617,12 @@ in_place_update:                                  ; preds = %set_cont
 
 transition:                                       ; preds = %set_cont
   %new_mask = or i64 %cur_mask, 1
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %temp_mask_set = alloca [1 x i64], align 8
+  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %val_set_w0 = load i64, ptr %src_set_w0, align 8
+  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
+  store i64 %new_mask, ptr %dst_set_w0, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
   %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
@@ -789,7 +805,8 @@ set_cont:                                         ; preds = %entry
   %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_slot, align 8
+  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
   %has_bit = and i64 %cur_mask, 1
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
@@ -801,7 +818,12 @@ in_place_update:                                  ; preds = %set_cont
 
 transition:                                       ; preds = %set_cont
   %new_mask = or i64 %cur_mask, 1
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %temp_mask_set = alloca [1 x i64], align 8
+  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %val_set_w0 = load i64, ptr %src_set_w0, align 8
+  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
+  store i64 %new_mask, ptr %dst_set_w0, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
   %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
@@ -980,14 +1002,20 @@ rem_cont:                                         ; preds = %entry
   %tables_rem = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem = getelementptr inbounds %struct.Archetype, ptr %tables_rem, i32 %cur_arch_rem
   %cur_mask_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem, i32 0, i32 0
-  %cur_mask_val_rem = load i64, ptr %cur_mask_rem, align 8
+  %cur_mask_w0_rem_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_rem, i32 0, i32 0
+  %cur_mask_val_rem = load i64, ptr %cur_mask_w0_rem_ptr, align 8
   %rem_has_bit = and i64 %cur_mask_val_rem, 1
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
 
 do_remove:                                        ; preds = %rem_cont
   %new_mask_rem = and i64 %cur_mask_val_rem, -2
-  %new_arch_rem = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask_rem)
+  %temp_mask_rem = alloca [1 x i64], align 8
+  %src_rem_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_rem, i32 0, i32 0
+  %val_rem_w0 = load i64, ptr %src_rem_w0, align 8
+  %dst_rem_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_rem, i32 0, i32 0
+  store i64 %new_mask_rem, ptr %dst_rem_w0, align 8
+  %new_arch_rem = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_rem)
   %tables_rem_tr1 = load ptr, ptr %tables_slot_rem, align 8
   %new_arch_ptr_rem1 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr1, i32 %new_arch_rem
   %cnt_slot_rem1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem1, i32 0, i32 1
@@ -1239,7 +1267,8 @@ set_cont:                                         ; preds = %entry
   %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_slot, align 8
+  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
   %has_bit = and i64 %cur_mask, 2
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
@@ -1251,7 +1280,12 @@ in_place_update:                                  ; preds = %set_cont
 
 transition:                                       ; preds = %set_cont
   %new_mask = or i64 %cur_mask, 2
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %temp_mask_set = alloca [1 x i64], align 8
+  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %val_set_w0 = load i64, ptr %src_set_w0, align 8
+  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
+  store i64 %new_mask, ptr %dst_set_w0, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
   %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
@@ -1434,7 +1468,8 @@ set_cont:                                         ; preds = %entry
   %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_slot, align 8
+  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
   %has_bit = and i64 %cur_mask, 2
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
@@ -1446,7 +1481,12 @@ in_place_update:                                  ; preds = %set_cont
 
 transition:                                       ; preds = %set_cont
   %new_mask = or i64 %cur_mask, 2
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %temp_mask_set = alloca [1 x i64], align 8
+  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %val_set_w0 = load i64, ptr %src_set_w0, align 8
+  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
+  store i64 %new_mask, ptr %dst_set_w0, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
   %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
@@ -1627,14 +1667,20 @@ rem_cont:                                         ; preds = %entry
   %tables_rem = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem = getelementptr inbounds %struct.Archetype, ptr %tables_rem, i32 %cur_arch_rem
   %cur_mask_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem, i32 0, i32 0
-  %cur_mask_val_rem = load i64, ptr %cur_mask_rem, align 8
+  %cur_mask_w0_rem_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_rem, i32 0, i32 0
+  %cur_mask_val_rem = load i64, ptr %cur_mask_w0_rem_ptr, align 8
   %rem_has_bit = and i64 %cur_mask_val_rem, 2
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
 
 do_remove:                                        ; preds = %rem_cont
   %new_mask_rem = and i64 %cur_mask_val_rem, -3
-  %new_arch_rem = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask_rem)
+  %temp_mask_rem = alloca [1 x i64], align 8
+  %src_rem_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_rem, i32 0, i32 0
+  %val_rem_w0 = load i64, ptr %src_rem_w0, align 8
+  %dst_rem_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_rem, i32 0, i32 0
+  store i64 %new_mask_rem, ptr %dst_rem_w0, align 8
+  %new_arch_rem = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_rem)
   %tables_rem_tr1 = load ptr, ptr %tables_slot_rem, align 8
   %new_arch_ptr_rem1 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr1, i32 %new_arch_rem
   %cnt_slot_rem1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem1, i32 0, i32 1
@@ -1890,7 +1936,8 @@ set_cont:                                         ; preds = %entry
   %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_slot, align 8
+  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
   %has_bit = and i64 %cur_mask, 4
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
@@ -1902,7 +1949,12 @@ in_place_update:                                  ; preds = %set_cont
 
 transition:                                       ; preds = %set_cont
   %new_mask = or i64 %cur_mask, 4
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %temp_mask_set = alloca [1 x i64], align 8
+  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %val_set_w0 = load i64, ptr %src_set_w0, align 8
+  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
+  store i64 %new_mask, ptr %dst_set_w0, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
   %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
@@ -2085,7 +2137,8 @@ set_cont:                                         ; preds = %entry
   %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
   %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_slot, align 8
+  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
   %has_bit = and i64 %cur_mask, 4
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
@@ -2097,7 +2150,12 @@ in_place_update:                                  ; preds = %set_cont
 
 transition:                                       ; preds = %set_cont
   %new_mask = or i64 %cur_mask, 4
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask)
+  %temp_mask_set = alloca [1 x i64], align 8
+  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %val_set_w0 = load i64, ptr %src_set_w0, align 8
+  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
+  store i64 %new_mask, ptr %dst_set_w0, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
   %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
   %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
   %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
@@ -2278,14 +2336,20 @@ rem_cont:                                         ; preds = %entry
   %tables_rem = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem = getelementptr inbounds %struct.Archetype, ptr %tables_rem, i32 %cur_arch_rem
   %cur_mask_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem, i32 0, i32 0
-  %cur_mask_val_rem = load i64, ptr %cur_mask_rem, align 8
+  %cur_mask_w0_rem_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_rem, i32 0, i32 0
+  %cur_mask_val_rem = load i64, ptr %cur_mask_w0_rem_ptr, align 8
   %rem_has_bit = and i64 %cur_mask_val_rem, 4
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
 
 do_remove:                                        ; preds = %rem_cont
   %new_mask_rem = and i64 %cur_mask_val_rem, -5
-  %new_arch_rem = call i32 @world_get_or_create_archetype(ptr %0, i64 %new_mask_rem)
+  %temp_mask_rem = alloca [1 x i64], align 8
+  %src_rem_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_rem, i32 0, i32 0
+  %val_rem_w0 = load i64, ptr %src_rem_w0, align 8
+  %dst_rem_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_rem, i32 0, i32 0
+  store i64 %new_mask_rem, ptr %dst_rem_w0, align 8
+  %new_arch_rem = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_rem)
   %tables_rem_tr1 = load ptr, ptr %tables_slot_rem, align 8
   %new_arch_ptr_rem1 = getelementptr inbounds %struct.Archetype, ptr %tables_rem_tr1, i32 %new_arch_rem
   %cnt_slot_rem1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem1, i32 0, i32 1
@@ -3349,7 +3413,10 @@ entry:
   store ptr %new_world, ptr %world, align 8
   %world1 = load ptr, ptr %world, align 8
   %e_alloc = call i32 @world_alloc_entity(ptr %world1)
-  %arch_idx = call i32 @world_get_or_create_archetype(ptr %world1, i64 6)
+  %spawn_mask_buf = alloca [1 x i64], align 8
+  %dst_spawn_w0 = getelementptr inbounds [1 x i64], ptr %spawn_mask_buf, i32 0, i32 0
+  store i64 6, ptr %dst_spawn_w0, align 8
+  %arch_idx = call i32 @world_get_or_create_archetype(ptr %world1, ptr %spawn_mask_buf)
   %tables_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world1, i32 0, i32 2
   %tables_base = load ptr, ptr %tables_slot, align 8
   %arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_base, i32 %arch_idx
@@ -3401,58 +3468,61 @@ bspawn_cont:                                      ; preds = %bspawn_grow, %entry
   store i32 %e_alloc, ptr %e1, align 4
   %world2 = load ptr, ptr %world, align 8
   %e_alloc3 = call i32 @world_alloc_entity(ptr %world2)
-  %arch_idx4 = call i32 @world_get_or_create_archetype(ptr %world2, i64 6)
-  %tables_slot5 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world2, i32 0, i32 2
-  %tables_base6 = load ptr, ptr %tables_slot5, align 8
-  %arch_ptr7 = getelementptr inbounds %struct.Archetype, ptr %tables_base6, i32 %arch_idx4
-  %cnt_slot8 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr7, i32 0, i32 1
-  %cur_cnt9 = load i32, ptr %cnt_slot8, align 4
-  %cap_slot10 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr7, i32 0, i32 2
-  %cur_cap11 = load i32, ptr %cap_slot10, align 4
-  %need_grow12 = icmp sge i32 %cur_cnt9, %cur_cap11
-  br i1 %need_grow12, label %bspawn_grow13, label %bspawn_cont14
+  %spawn_mask_buf4 = alloca [1 x i64], align 8
+  %dst_spawn_w05 = getelementptr inbounds [1 x i64], ptr %spawn_mask_buf4, i32 0, i32 0
+  store i64 6, ptr %dst_spawn_w05, align 8
+  %arch_idx6 = call i32 @world_get_or_create_archetype(ptr %world2, ptr %spawn_mask_buf4)
+  %tables_slot7 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world2, i32 0, i32 2
+  %tables_base8 = load ptr, ptr %tables_slot7, align 8
+  %arch_ptr9 = getelementptr inbounds %struct.Archetype, ptr %tables_base8, i32 %arch_idx6
+  %cnt_slot10 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr9, i32 0, i32 1
+  %cur_cnt11 = load i32, ptr %cnt_slot10, align 4
+  %cap_slot12 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr9, i32 0, i32 2
+  %cur_cap13 = load i32, ptr %cap_slot12, align 4
+  %need_grow14 = icmp sge i32 %cur_cnt11, %cur_cap13
+  br i1 %need_grow14, label %bspawn_grow15, label %bspawn_cont16
 
-bspawn_grow13:                                    ; preds = %bspawn_cont
-  call void @world_grow_archetype(ptr %world2, i32 %arch_idx4)
-  br label %bspawn_cont14
+bspawn_grow15:                                    ; preds = %bspawn_cont
+  call void @world_grow_archetype(ptr %world2, i32 %arch_idx6)
+  br label %bspawn_cont16
 
-bspawn_cont14:                                    ; preds = %bspawn_grow13, %bspawn_cont
-  %tables_base_cont15 = load ptr, ptr %tables_slot5, align 8
-  %arch_ptr_cont16 = getelementptr inbounds %struct.Archetype, ptr %tables_base_cont15, i32 %arch_idx4
-  %cnt_slot_cont17 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont16, i32 0, i32 1
-  %row18 = load i32, ptr %cnt_slot_cont17, align 4
-  %next_cnt19 = add i32 %row18, 1
-  store i32 %next_cnt19, ptr %cnt_slot_cont17, align 4
-  %ent_slot20 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont16, i32 0, i32 3
-  %ent_raw21 = load ptr, ptr %ent_slot20, align 8
-  %ent_elem22 = getelementptr inbounds i32, ptr %ent_raw21, i32 %row18
-  store i32 %e_alloc3, ptr %ent_elem22, align 4
-  %ent_arch_slot23 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world2, i32 0, i32 5
-  %ent_arch_arr24 = load ptr, ptr %ent_arch_slot23, align 8
-  %e_arch_elem25 = getelementptr inbounds i32, ptr %ent_arch_arr24, i32 %e_alloc3
-  store i32 %arch_idx4, ptr %e_arch_elem25, align 4
-  %ent_row_slot26 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world2, i32 0, i32 6
-  %ent_row_arr27 = load ptr, ptr %ent_row_slot26, align 8
-  %e_row_elem28 = getelementptr inbounds i32, ptr %ent_row_arr27, i32 %e_alloc3
-  store i32 %row18, ptr %e_row_elem28, align 4
-  %cols_arr29 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont16, i32 0, i32 4
-  %col_slot_Position30 = getelementptr inbounds [3 x ptr], ptr %cols_arr29, i32 0, i32 1
-  %col_raw_Position31 = load ptr, ptr %col_slot_Position30, align 8
-  %elem_Position32 = getelementptr inbounds %struct.Position, ptr %col_raw_Position31, i32 %row18
-  %Position_f0_gep33 = getelementptr inbounds nuw %struct.Position, ptr %elem_Position32, i32 0, i32 0
-  store float 3.000000e+01, ptr %Position_f0_gep33, align 4
-  %Position_f1_gep34 = getelementptr inbounds nuw %struct.Position, ptr %elem_Position32, i32 0, i32 1
-  store float 4.000000e+01, ptr %Position_f1_gep34, align 4
-  %col_slot_Velocity35 = getelementptr inbounds [3 x ptr], ptr %cols_arr29, i32 0, i32 2
-  %col_raw_Velocity36 = load ptr, ptr %col_slot_Velocity35, align 8
-  %elem_Velocity37 = getelementptr inbounds %struct.Velocity, ptr %col_raw_Velocity36, i32 %row18
-  %Velocity_f0_gep38 = getelementptr inbounds nuw %struct.Velocity, ptr %elem_Velocity37, i32 0, i32 0
-  store float 3.000000e+00, ptr %Velocity_f0_gep38, align 4
-  %Velocity_f1_gep39 = getelementptr inbounds nuw %struct.Velocity, ptr %elem_Velocity37, i32 0, i32 1
-  store float 4.000000e+00, ptr %Velocity_f1_gep39, align 4
+bspawn_cont16:                                    ; preds = %bspawn_grow15, %bspawn_cont
+  %tables_base_cont17 = load ptr, ptr %tables_slot7, align 8
+  %arch_ptr_cont18 = getelementptr inbounds %struct.Archetype, ptr %tables_base_cont17, i32 %arch_idx6
+  %cnt_slot_cont19 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont18, i32 0, i32 1
+  %row20 = load i32, ptr %cnt_slot_cont19, align 4
+  %next_cnt21 = add i32 %row20, 1
+  store i32 %next_cnt21, ptr %cnt_slot_cont19, align 4
+  %ent_slot22 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont18, i32 0, i32 3
+  %ent_raw23 = load ptr, ptr %ent_slot22, align 8
+  %ent_elem24 = getelementptr inbounds i32, ptr %ent_raw23, i32 %row20
+  store i32 %e_alloc3, ptr %ent_elem24, align 4
+  %ent_arch_slot25 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world2, i32 0, i32 5
+  %ent_arch_arr26 = load ptr, ptr %ent_arch_slot25, align 8
+  %e_arch_elem27 = getelementptr inbounds i32, ptr %ent_arch_arr26, i32 %e_alloc3
+  store i32 %arch_idx6, ptr %e_arch_elem27, align 4
+  %ent_row_slot28 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world2, i32 0, i32 6
+  %ent_row_arr29 = load ptr, ptr %ent_row_slot28, align 8
+  %e_row_elem30 = getelementptr inbounds i32, ptr %ent_row_arr29, i32 %e_alloc3
+  store i32 %row20, ptr %e_row_elem30, align 4
+  %cols_arr31 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont18, i32 0, i32 4
+  %col_slot_Position32 = getelementptr inbounds [3 x ptr], ptr %cols_arr31, i32 0, i32 1
+  %col_raw_Position33 = load ptr, ptr %col_slot_Position32, align 8
+  %elem_Position34 = getelementptr inbounds %struct.Position, ptr %col_raw_Position33, i32 %row20
+  %Position_f0_gep35 = getelementptr inbounds nuw %struct.Position, ptr %elem_Position34, i32 0, i32 0
+  store float 3.000000e+01, ptr %Position_f0_gep35, align 4
+  %Position_f1_gep36 = getelementptr inbounds nuw %struct.Position, ptr %elem_Position34, i32 0, i32 1
+  store float 4.000000e+01, ptr %Position_f1_gep36, align 4
+  %col_slot_Velocity37 = getelementptr inbounds [3 x ptr], ptr %cols_arr31, i32 0, i32 2
+  %col_raw_Velocity38 = load ptr, ptr %col_slot_Velocity37, align 8
+  %elem_Velocity39 = getelementptr inbounds %struct.Velocity, ptr %col_raw_Velocity38, i32 %row20
+  %Velocity_f0_gep40 = getelementptr inbounds nuw %struct.Velocity, ptr %elem_Velocity39, i32 0, i32 0
+  store float 3.000000e+00, ptr %Velocity_f0_gep40, align 4
+  %Velocity_f1_gep41 = getelementptr inbounds nuw %struct.Velocity, ptr %elem_Velocity39, i32 0, i32 1
+  store float 4.000000e+00, ptr %Velocity_f1_gep41, align 4
   store i32 %e_alloc3, ptr %e2, align 4
-  %world40 = load ptr, ptr %world, align 8
-  call void @pipeline_MainPipeline(ptr %world40)
+  %world42 = load ptr, ptr %world, align 8
+  call void @pipeline_MainPipeline(ptr %world42)
   %puts_call = call i32 @puts(ptr @str_lit.12)
   %puts_exit = call i32 @puts(ptr @prompt_exit)
   %h_stdin = call ptr @GetStdHandle(i32 -10)
