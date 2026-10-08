@@ -44,23 +44,17 @@ try {
             continue
         }
 
-        # Compile with --emit-ir --emit-obj to temp
-        $outObj = Join-Path $tempDir "$name.obj"
-        & $CliPath build $src --emit-ir --emit-obj -o $outObj 2>&1 | Out-Null
+        # 1. Copy source file into fresh isolated temp directory to guarantee outputDir = $tempDir
+        $tempSrc = Join-Path $tempDir "$name.ecs"
+        Copy-Item -Path $src -Destination $tempSrc -Force
+
+        # 2. Invoke compiler freshly on isolated temp source
+        Write-Host "  -> Compiling fresh $name to $tempDir..." -ForegroundColor DarkGray
+        & $CliPath build $tempSrc --emit-ir --emit-obj 2>&1 | Out-Null
         $genIr = Join-Path $tempDir "$name.ll"
 
         if (-not (Test-Path $genIr)) {
-            # Check source dir if CLI placed it alongside source
-            $srcDir = Split-Path $src -Parent
-            $srcBase = [System.IO.Path]::GetFileNameWithoutExtension($src)
-            $altIr = Join-Path $srcDir "$srcBase.ll"
-            if (Test-Path $altIr) {
-                Move-Item -Path $altIr -Destination $genIr -Force
-            }
-        }
-
-        if (-not (Test-Path $genIr)) {
-            Write-Host "[FAIL] Generated IR not found for $src" -ForegroundColor Red
+            Write-Host "[FAIL] Generated IR not found for $src at $genIr" -ForegroundColor Red
             $allPassed = $false
             continue
         }
