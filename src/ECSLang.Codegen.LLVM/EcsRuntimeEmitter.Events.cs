@@ -11,7 +11,10 @@ public sealed partial class EcsRuntimeEmitter
         LLVMTypeRef worldPtrType,
         LLVMValueRef reallocFunc,
         LLVMTypeRef reallocType,
-        LLVMTypeRef i8PtrType)
+        LLVMTypeRef i8PtrType,
+        LLVMValueRef srwAcquireFunc,
+        LLVMValueRef srwReleaseFunc,
+        LLVMTypeRef srwFuncType)
     {
         // 1. world_emit_Event helpers
         foreach (var (evName, evSym) in _typeChecker.Events)
@@ -37,6 +40,10 @@ public sealed partial class EcsRuntimeEmitter
             var evStoreBB = emitFunc.AppendBasicBlock("store_event");
 
             _builder.PositionAtEnd(evEntryBB);
+
+            // Synchronize event emission under dedicated emit_lock (field 11)
+            var emitLockSlot = _builder.BuildStructGEP2(_worldStructType, wArg, 11, "emit_lock_slot");
+            _builder.BuildCall2(srwFuncType, srwAcquireFunc, new[] { emitLockSlot }, "");
 
             var wCountSlot = _builder.BuildStructGEP2(_worldStructType, wArg, (uint)(evBaseOffset + 3), "wcount_slot");
             var wCapSlot = _builder.BuildStructGEP2(_worldStructType, wArg, (uint)(evBaseOffset + 4), "wcap_slot");
@@ -77,6 +84,8 @@ public sealed partial class EcsRuntimeEmitter
 
             var nextWCount = _builder.BuildAdd(curWCount, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_wcount");
             _builder.BuildStore(nextWCount, wCountSlot);
+
+            _builder.BuildCall2(srwFuncType, srwReleaseFunc, new[] { emitLockSlot }, "");
             _builder.BuildRetVoid();
         }
 
@@ -88,6 +97,9 @@ public sealed partial class EcsRuntimeEmitter
 
         var swapEntryBB = swapFunc.AppendBasicBlock("entry");
         _builder.PositionAtEnd(swapEntryBB);
+
+        var swapEmitLockSlot = _builder.BuildStructGEP2(_worldStructType, swapWorldArg, 11, "swap_emit_lock_slot");
+        _builder.BuildCall2(srwFuncType, srwAcquireFunc, new[] { swapEmitLockSlot }, "");
 
         foreach (var (evName, _) in _typeChecker.Events)
         {
@@ -117,6 +129,7 @@ public sealed partial class EcsRuntimeEmitter
             _builder.BuildStore(rData, wDataSlot);
         }
 
+        _builder.BuildCall2(srwFuncType, srwReleaseFunc, new[] { swapEmitLockSlot }, "");
         _builder.BuildRetVoid();
     }
 }

@@ -247,8 +247,9 @@ public sealed partial class EcsRuntimeEmitter
         // 7: cmd_count (i32)
         // 8: cmd_cap (i32)
         // 9: cmd_data (ptr to i8)
-        // 10: cmd_lock (ptr to i8, Win32 SRWLOCK)
-        // 11+: embedded resource structs
+        // 10: cmd_lock (ptr to i8, Win32 SRWLOCK / POSIX spinlock)
+        // 11: emit_lock (ptr to i8, Win32 SRWLOCK / POSIX spinlock)
+        // 12+: embedded resource structs
         // followed by event buffers (6 fields per event type):
         // read_count, read_cap, read_data, write_count, write_cap, write_data
         var worldFields = new List<LLVMTypeRef>
@@ -263,10 +264,11 @@ public sealed partial class EcsRuntimeEmitter
             _context.Int32Type,
             _context.Int32Type,
             i8PtrType,
+            i8PtrType,
             i8PtrType
         };
 
-        int resOffset = 11;
+        int resOffset = 12;
         foreach (var (resName, _) in _typeChecker.Resources)
         {
             worldFields.Add(_compStructTypes[resName]);

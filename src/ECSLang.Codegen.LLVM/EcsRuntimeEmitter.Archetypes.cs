@@ -1537,7 +1537,7 @@ public sealed partial class EcsRuntimeEmitter
             _builder.BuildRetVoid();
         }
 
-        EmitEventRuntime(worldPtrType, reallocFunc, reallocType, i8PtrType);
+        EmitEventRuntime(worldPtrType, reallocFunc, reallocType, i8PtrType, srwAcquireFunc, srwReleaseFunc, srwFuncType);
     }
 
 }

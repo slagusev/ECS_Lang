@@ -11,7 +11,7 @@
 | **Точка отката Шага 1** | **ВЫПОЛНЕНО** | Тег `a7-step1-green` зафиксирован на коммите `8ffa26e` и запушен в `origin` |
 | **A1: Защита от воскрешения** | **ВЫПОЛНЕНО (Шаг P0.1)** | Разграничены состояния: `-1` pending, `-2` dead в `entity_arch` и `entity_row`. Выделен хелпер `@rt_panic`. Инвариантный тест `tests/verify_a1_invariant.ps1` подтверждает код возврата 1 и диагностику ошибки |
 | **A2: Лимит 64 компонентов** | **ВЫПОЛНЕНО** | `TypeChecker.cs:188-199` (`ValidateComponentLimit`, ошибка компиляции при >64) |
-| **A3: Синхронизация `world_emit_*`** | **ОТСУТСТВУЕТ** | `EcsRuntimeEmitter.Events.cs:40-80` (нет блокировки `cmd_lock`, конкурентный `realloc` не защищен) |
+| **A3: Синхронизация `world_emit_*`** | **ВЫПОЛНЕНО (Шаг P0.3)** | Добавлено отдельное поле `emit_lock: ptr` (поле 11 `%struct.EcsWorld`). Критическая секция `world_emit_*` и `world_swap_events` синхронизирована. Уровень 2 и 3 доказан тестом `tests/verify_a3_emit_lock_invariant.ps1` |
 | **A4: Запрет `world.*` в системах** | **ОТСУТСТВУЕТ** | `TypeChecker.Declarations.cs:356` объявляет `world` в скоупе системы, `TypeChecker.Expressions.cs:421` разрешает любые вызовы кроме `Commands` |
 | **A5: Запрет escape-замыканий** | **ОТСУТСТВУЕТ** | `TypeChecker.Closures.cs:9-56` и `TypeChecker.Statements.cs:48-60` не валидируют возврат замыканий с захватом стека |
 | **A6: Guards (bounds + liveness)** | **ЧАСТИЧНО** | Liveness (`< 0`) есть в `set_/add_/remove_/has_`, но bounds check (`e < 0 \|\| e >= entity_count`) отсутствует во всех функциях манипуляции |
@@ -49,6 +49,7 @@
 - **Объём**: Добавить ОТДЕЛЬНОЕ поле `emit_lock: ptr` (Win32 SRWLOCK / POSIX спинлок) в структуру `%struct.EcsWorld` (поле 11). Смешивание с `cmd_lock` запрещено, так как эмит содержит `realloc`. Обернуть критическую секцию `world_emit_*` (чтение `wcount`, реаллокация буфера, запись события, инкремент `wcount`) в захват и освобождение `emit_lock`.
 - **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.cs`, `EcsRuntimeEmitter.Events.cs`.
 - **Критерий приёмки**: Уровень 3 (IR-дифф: наличие acquire/release вокруг записи событий) + Уровень 1 (`10_ecs_events_and_observers.ecs`).
+- **Статус**: **ВЫПОЛНЕНО** (коммит P0.3; Уровень 2 и 3 IR-тест `tests/verify_a3_emit_lock_invariant.ps1`; Уровень 3 строгий IR-паритет 6/6; Уровень 1 23/23).
 - **Шаблон коммита**: `fix(events): synchronize world_emit_* under dedicated world emit_lock`
 
 #### Шаг P0.4 — Валидация границ сущности и liveness guards во всех операциях (A6-fix)

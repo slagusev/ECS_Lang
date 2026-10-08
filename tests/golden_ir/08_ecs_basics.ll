@@ -3,7 +3,7 @@ source_filename = "ecs_module"
 target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-windows-msvc"
 
-%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, %struct.res.TimeStep, ptr, i32, i32, ptr, ptr }
+%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, ptr, %struct.res.TimeStep, ptr, i32, i32, ptr, ptr }
 %struct.res.TimeStep = type { float }
 %struct.Archetype = type { [1 x i64], i32, i32, ptr, [4 x ptr] }
 %struct.ChildOf = type { i32 }
@@ -353,8 +353,8 @@ skip_col_Velocity:                                ; preds = %grow_col_Velocity, 
 
 define ptr @ecs_create_world() {
 entry:
-  %raw_world = call ptr @malloc(i64 104)
-  %0 = call ptr @memset(ptr %raw_world, i32 0, i64 104)
+  %raw_world = call ptr @malloc(i64 112)
+  %0 = call ptr @memset(ptr %raw_world, i32 0, i64 112)
   %a0_mask = alloca [1 x i64], align 8
   store [1 x i64] zeroinitializer, ptr %a0_mask, align 8
   %a0_init = call i32 @world_get_or_create_archetype(ptr %raw_world, ptr %a0_mask)
@@ -3884,7 +3884,7 @@ rem_case_Velocity:                                ; preds = %op_remove
 
 define void @world_set_TimeStep(ptr %0, float %1) {
 entry:
-  %res_TimeStep_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 11
+  %res_TimeStep_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 12
   %dt_gep = getelementptr inbounds nuw %struct.res.TimeStep, ptr %res_TimeStep_slot, i32 0, i32 0
   store float %1, ptr %dt_gep, align 4
   ret void
@@ -4085,6 +4085,9 @@ skip_sw_sh_Velocity:                              ; preds = %sw_sh_Velocity, %sk
 
 define void @world_swap_events(ptr %world) {
 entry:
+  %swap_emit_lock_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 11
+  call void @AcquireSRWLockExclusive(ptr %swap_emit_lock_slot)
+  call void @ReleaseSRWLockExclusive(ptr %swap_emit_lock_slot)
   ret void
 }
 
@@ -4765,7 +4768,7 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %vel_col_slot = getelementptr inbounds [4 x ptr], ptr %cols_arr, i32 0, i32 3
   %vel_raw = load ptr, ptr %vel_col_slot, align 8
   %vel_elem = getelementptr inbounds %struct.Velocity, ptr %vel_raw, i32 %cur_row
-  %time_res_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 11
+  %time_res_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 12
   %vel_vx = getelementptr inbounds nuw %struct.Velocity, ptr %vel_elem, i32 0, i32 0
   %vx_val = load float, ptr %vel_vx, align 4
   %time_dt = getelementptr inbounds nuw %struct.res.TimeStep, ptr %time_res_slot, i32 0, i32 0
@@ -4920,7 +4923,7 @@ null_world:                                       ; preds = %entry
 valid_world:                                      ; preds = %entry
   %sz_plus_7 = add i64 %1, 7
   %aligned_size = and i64 %sz_plus_7, -8
-  %head_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 15
+  %head_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 16
   %cur_head_raw = load ptr, ptr %head_slot, align 8
   %is_head_null = icmp eq ptr %cur_head_raw, null
   br i1 %is_head_null, label %new_chunk, label %check_fit
@@ -4946,7 +4949,7 @@ new_chunk:                                        ; preds = %check_fit, %valid_w
   %chunk_cap = select i1 %is_large, i64 %aligned_size, i64 65536
   %total_chunk_bytes = add i64 %chunk_cap, 24
   %new_chunk_raw = call ptr @malloc(i64 %total_chunk_bytes)
-  %chunks_list_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 16
+  %chunks_list_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 17
   %cur_chunks_list = load ptr, ptr %chunks_list_slot, align 8
   %n_next_slot = getelementptr inbounds nuw %struct.StringArenaChunk, ptr %new_chunk_raw, i32 0, i32 0
   store ptr %cur_chunks_list, ptr %n_next_slot, align 8

@@ -3,7 +3,7 @@ source_filename = "ecs_module"
 target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-windows-msvc"
 
-%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, ptr, i32, i32, ptr, ptr }
+%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, ptr, ptr, i32, i32, ptr, ptr }
 %struct.Archetype = type { [1 x i64], i32, i32, ptr, [3 x ptr] }
 %struct.ChildOf = type { i32 }
 %struct.NameTag = type { i32 }
@@ -310,8 +310,8 @@ skip_col_Position:                                ; preds = %grow_col_Position, 
 
 define ptr @ecs_create_world() {
 entry:
-  %raw_world = call ptr @malloc(i64 96)
-  %0 = call ptr @memset(ptr %raw_world, i32 0, i64 96)
+  %raw_world = call ptr @malloc(i64 104)
+  %0 = call ptr @memset(ptr %raw_world, i32 0, i64 104)
   %a0_mask = alloca [1 x i64], align 8
   store [1 x i64] zeroinitializer, ptr %a0_mask, align 8
   %a0_init = call i32 @world_get_or_create_archetype(ptr %raw_world, ptr %a0_mask)
@@ -2951,6 +2951,9 @@ skip_sw_sh_Position:                              ; preds = %sw_sh_Position, %sk
 
 define void @world_swap_events(ptr %world) {
 entry:
+  %swap_emit_lock_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 11
+  call void @AcquireSRWLockExclusive(ptr %swap_emit_lock_slot)
+  call void @ReleaseSRWLockExclusive(ptr %swap_emit_lock_slot)
   ret void
 }
 
