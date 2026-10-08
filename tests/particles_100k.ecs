@@ -1,0 +1,45 @@
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+system MovementSystem {
+    query(mut pos: Position, vel: Velocity) {
+        pos.x += vel.vx * 0.016;
+        pos.y += vel.vy * 0.016;
+    }
+}
+
+pipeline GamePipeline {
+    stage Update {
+        MovementSystem;
+    }
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+
+    let entity_count = 100000;
+    let t0 = stopwatch_start();
+    for i in 0..entity_count {
+        let e = world.spawn();
+        world.set_Position(e, 0.0, 0.0);
+        world.set_Velocity(e, 10.0, 5.0);
+    }
+    let spawn_ms = stopwatch_ms(t0);
+    println($"SPAWN_100K: {spawn_ms:.2f} ms");
+
+    let t1 = stopwatch_start();
+    for frame in 0..100 {
+        GamePipeline(world);
+    }
+    let tick_ms = stopwatch_ms(t1);
+    println($"TICK_100_FRAMES: {tick_ms:.2f} ms");
+
+    return 0;
+}
