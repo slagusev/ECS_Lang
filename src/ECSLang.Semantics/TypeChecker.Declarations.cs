@@ -367,7 +367,16 @@ public sealed partial class TypeChecker
             _currentScope.TryDeclare(varSym);
         }
 
-        CheckBlock(sys.Body);
+        bool prevInSystem = _inSystemBody;
+        _inSystemBody = true;
+        try
+        {
+            CheckBlock(sys.Body);
+        }
+        finally
+        {
+            _inSystemBody = prevInSystem;
+        }
         _currentScope = _currentScope.Parent!;
     }
 

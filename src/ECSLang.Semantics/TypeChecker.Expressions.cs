@@ -420,6 +420,18 @@ public sealed partial class TypeChecker
 
         if (targetType == TypeSymbol.World || targetType == TypeSymbol.Commands)
         {
+            if (_inSystemBody && targetType == TypeSymbol.World)
+            {
+                if (!methodCall.MethodName.StartsWith("emit_") && methodCall.MethodName != "emit")
+                {
+                    _diagnostics.ReportError(
+                        $"Calling 'world.{methodCall.MethodName}' is forbidden inside system bodies. In systems, direct world access is restricted to 'world.emit_*' only. Use 'cmd.*' (Commands) for deferred mutations or query components via system parameters.",
+                        methodCall.Span);
+                    _nodeTypes[methodCall] = TypeSymbol.Unknown;
+                    return TypeSymbol.Unknown;
+                }
+            }
+
             if (methodCall.MethodName == "spawn")
             {
                 return TypeSymbol.Entity;

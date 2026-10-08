@@ -154,6 +154,18 @@ fn net_find_entity_by_fd(world: World, fd: i32): Option<entity> {
     return world.find($"net_fd_{fd}");
 }
 
+fn net_is_udp_socket(world: World, fd: i32): bool {
+    let opt_ent = net_find_entity_by_fd(world, fd);
+    match opt_ent {
+        Some(e) => {
+            return world.has_UdpSocket(e);
+        }
+        None => {
+            return false;
+        }
+    }
+}
+
 // -------------------------------------------------------------------------
 // Pure ECS Destructor Helper
 // -------------------------------------------------------------------------

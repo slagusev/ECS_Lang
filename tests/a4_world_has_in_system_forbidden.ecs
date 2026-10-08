@@ -1,0 +1,18 @@
+component Position {
+    x: f32,
+    y: f32,
+}
+
+system IllegalQuerySystem {
+    query(pos: Position) {
+        // Direct query of world inside system body: MUST FAIL COMPILE TIME
+        if world.has_Position(0) {
+            println("has position");
+        }
+    }
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+    return 0;
+}

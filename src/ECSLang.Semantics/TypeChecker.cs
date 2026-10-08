@@ -57,6 +57,7 @@ public sealed partial class TypeChecker
     private TypeSymbol? _currentExpectedReturnType;
     private string? _currentFunctionName;
     private int _loopDepth = 0;
+    private bool _inSystemBody = false;
 
     public List<DeclarationNode> MonomorphizedDeclarations { get; } = new();
 

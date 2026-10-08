@@ -23,4 +23,5 @@ dist/
 test_publish/
 test_aot/
 *.log
+*.bin
 Замечания по языку.txt

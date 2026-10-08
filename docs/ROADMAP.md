@@ -63,6 +63,7 @@
 - **Объём**: В `TypeChecker.Declarations.cs` и `TypeChecker.Expressions.cs` при проверке тела системы применить строгий белый список: разрешен ТОЛЬКО `world.emit_*`. Любое обращение к другим методам мира (`spawn`, `despawn`, `set_*`, `add_*`, `remove_*`, `has_*`, `get_*`, `find`, `sort_hierarchy`, `swap_events`, `apply_commands`, `reset_string_arena`) вызывает ошибку компиляции с подсказкой использовать `cmd.*`.
 - **Файлы**: `src/ECSLang.Semantics/TypeChecker.Declarations.cs`, `TypeChecker.Expressions.cs`.
 - **Критерий приёмки**: Уровень 2 (негативный тест попытки вызова `world.set_*` или `world.has_*` внутри системы падает с диагностической ошибкой компиляции).
+- **Статус**: **ВЫПОЛНЕНО** (коммит P0.5; Уровень 2 подтвержден `tests/verify_a4_system_world_whitelist.ps1` (мутации и запросы); Уровень 3 строгий IR-паритет 6/6; Уровень 1 23/23).
 - **Шаблон коммита**: `feat(semantics): whitelist world methods inside system bodies to emit_* only`
 
 #### Шаг P0.6 — Запрет escape-замыканий на уровне типов (A5-fix)

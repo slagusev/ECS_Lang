@@ -71,16 +71,21 @@ system EchoHandlerSystem {
     }
 }
 
+resource EchoVerifier {
+    tcp_verified: bool,
+    udp_verified: bool,
+}
+
 // System 4: Client response verifier - listens on reactive NetPacketReceived events
 system ClientEchoVerifierSystem {
-    read(packet: NetPacketReceived) {
+    read(packet: NetPacketReceived, mut verifier: EchoVerifier) {
         if packet.payload == "ECHO: Hello ECSLang Network!" {
             println($"[Client System] Received verified TCP response: '{packet.payload}' from fd={packet.fd}");
-            world.set_name(world.spawn(), "tcp_verified");
+            verifier.tcp_verified = true;
         }
         if packet.payload == "ECHO: UDP Datagram to ECS!" {
             println($"[Client System] Received verified UDP response: '{packet.payload}' from fd={packet.fd}");
-            world.set_name(world.spawn(), "udp_verified");
+            verifier.udp_verified = true;
         }
     }
 }
@@ -191,13 +196,15 @@ fn main(): i32 {
 
     // 6. Execution Loop: Dynamic while !server_should_stop with Micro-Sleep
     println("6. Running ECS network pipeline with non-blocking poll & micro-sleep...");
+    world.set_EchoVerifier(false, false);
     let mut server_should_stop = false;
     let mut ticks = 0;
     while !server_should_stop && ticks < 200 {
         NetEchoServerPipeline(world);
         ticks += 1;
 
-        if world.has_name("tcp_verified") && world.has_name("udp_verified") {
+        let verifier = world.get_EchoVerifier();
+        if verifier.tcp_verified && verifier.udp_verified {
             server_should_stop = true;
         }
     }

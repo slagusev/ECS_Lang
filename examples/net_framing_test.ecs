@@ -34,20 +34,26 @@ system FramingSenderSystem {
     }
 }
 
+resource FramingVerifier {
+    p1_received: bool,
+    p2_received: bool,
+    p3_received: bool,
+}
+
 // System 2: Server receives and verifies that each frame is cleanly unpacked
 system FramingReceiverSystem {
-    read(packet: NetPacketReceived) {
+    read(packet: NetPacketReceived, mut verifier: FramingVerifier) {
         if packet.payload == "PACKET_ALPHA: High-frequency order stream payload #1001" {
             println($"[Server Receiver] Frame 1 cleanly unpacked: '{packet.payload}' (len={packet.payload.len()})");
-            world.set_name(world.spawn(), "p1_received");
+            verifier.p1_received = true;
         }
         if packet.payload == "PACKET_BETA: Entity state delta transform [x=42, y=88, z=128]" {
             println($"[Server Receiver] Frame 2 cleanly unpacked: '{packet.payload}' (len={packet.payload.len()})");
-            world.set_name(world.spawn(), "p2_received");
+            verifier.p2_received = true;
         }
         if packet.payload == "PACKET_GAMMA: Finalize distributed transaction hash: 0xDEADBEEF" {
             println($"[Server Receiver] Frame 3 cleanly unpacked: '{packet.payload}' (len={packet.payload.len()})");
-            world.set_name(world.spawn(), "p3_received");
+            verifier.p3_received = true;
         }
     }
 }
@@ -115,13 +121,15 @@ fn main(): i32 {
 
     // 3. Execution loop
     println("4. Running pipeline to send and unpack framed packets...");
+    world.set_FramingVerifier(false, false, false);
     let mut verified = false;
     let mut ticks = 0;
     while !verified && ticks < 200 {
         NetFramingPipeline(world);
         ticks += 1;
 
-        if world.has_name("p1_received") && world.has_name("p2_received") && world.has_name("p3_received") {
+        let v = world.get_FramingVerifier();
+        if v.p1_received && v.p2_received && v.p3_received {
             verified = true;
         }
     }

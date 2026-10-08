@@ -1,0 +1,25 @@
+component Position {
+    x: f32,
+    y: f32,
+}
+
+system IllegalSystem {
+    query(pos: Position) {
+        // Direct mutation of world inside system body: MUST FAIL COMPILE TIME
+        world.set_Position(0, 1.0, 2.0);
+    }
+}
+
+pipeline MainPipeline {
+    stage Update {
+        IllegalSystem;
+    }
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+    let e = world.spawn();
+    world.set_Position(e, 10.0, 20.0);
+    MainPipeline.run(world);
+    return 0;
+}
