@@ -56,6 +56,7 @@
 - **Объём**: Добавить проверки `e < 0 || e >= world.entity_count` (Out of Bounds) и `world.entity_arch[e] < 0` (Dead/Pending) в начало `world_set_*`, `world_add_*`, `world_remove_*`, `world_has_*`. При выходе за границы — вызов `rt_panic`.
 - **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`.
 - **Критерий приёмки**: Уровень 2 (тест с передачей невалидного `entity_id` завершается диагностируемой ошибкой, не SegFault).
+- **Статус**: **ВЫПОЛНЕНО** (коммит P0.4; Уровень 2 подтвержден `tests/verify_a6_bounds_invariant.ps1`; Уровень 3 строгий IR-паритет 6/6; Уровень 1 23/23).
 - **Шаблон коммита**: `fix(runtime): enforce entity bounds and liveness guards across all world operations`
 
 #### Шаг P0.5 — Белый список вызовов `world.*` внутри систем (A4-fix)

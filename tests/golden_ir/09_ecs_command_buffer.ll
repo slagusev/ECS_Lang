@@ -14,36 +14,56 @@ target triple = "x86_64-pc-windows-msvc"
 
 @NvOptimusEnablement = dllexport global i32 1
 @AmdPowerXpressRequestHighPerformance = dllexport global i32 1
+@ecs_err_oob_world_set_ChildOf = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_set_ChildOf.\00", align 1
 @ecs_err_dead_world_set_ChildOf = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_ChildOf.\00", align 1
 @ecs_err_pending_world_set_ChildOf = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_ChildOf.\00", align 1
+@ecs_err_oob_world_add_ChildOf = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_add_ChildOf.\00", align 1
 @ecs_err_dead_world_add_ChildOf = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_ChildOf.\00", align 1
 @ecs_err_pending_world_add_ChildOf = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_ChildOf.\00", align 1
+@ecs_err_oob_rem_ChildOf = private unnamed_addr constant [80 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_remove_ChildOf.\00", align 1
 @ecs_err_dead_rem_ChildOf = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_ChildOf.\00", align 1
 @ecs_err_pending_rem_ChildOf = private unnamed_addr constant [88 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_ChildOf.\00", align 1
+@ecs_err_oob_has_ChildOf = private unnamed_addr constant [76 x i8] c"[ECS Error] Attempted to query out of bounds entity with world_has_ChildOf.\00", align 1
+@ecs_err_oob_world_set_Particle = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_set_Particle.\00", align 1
 @ecs_err_dead_world_set_Particle = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Particle.\00", align 1
 @ecs_err_pending_world_set_Particle = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_Particle.\00", align 1
+@ecs_err_oob_world_add_Particle = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_add_Particle.\00", align 1
 @ecs_err_dead_world_add_Particle = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Particle.\00", align 1
 @ecs_err_pending_world_add_Particle = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_Particle.\00", align 1
+@ecs_err_oob_rem_Particle = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_remove_Particle.\00", align 1
 @ecs_err_dead_rem_Particle = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Particle.\00", align 1
 @ecs_err_pending_rem_Particle = private unnamed_addr constant [89 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_Particle.\00", align 1
+@ecs_err_oob_has_Particle = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to query out of bounds entity with world_has_Particle.\00", align 1
+@ecs_err_oob_world_set_Position = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_set_Position.\00", align 1
 @ecs_err_dead_world_set_Position = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Position.\00", align 1
 @ecs_err_pending_world_set_Position = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_Position.\00", align 1
+@ecs_err_oob_world_add_Position = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_add_Position.\00", align 1
 @ecs_err_dead_world_add_Position = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Position.\00", align 1
 @ecs_err_pending_world_add_Position = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_Position.\00", align 1
+@ecs_err_oob_rem_Position = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_remove_Position.\00", align 1
 @ecs_err_dead_rem_Position = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Position.\00", align 1
 @ecs_err_pending_rem_Position = private unnamed_addr constant [89 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_Position.\00", align 1
+@ecs_err_oob_has_Position = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to query out of bounds entity with world_has_Position.\00", align 1
+@ecs_err_oob_world_set_Spawner = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_set_Spawner.\00", align 1
 @ecs_err_dead_world_set_Spawner = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Spawner.\00", align 1
 @ecs_err_pending_world_set_Spawner = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_Spawner.\00", align 1
+@ecs_err_oob_world_add_Spawner = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_add_Spawner.\00", align 1
 @ecs_err_dead_world_add_Spawner = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Spawner.\00", align 1
 @ecs_err_pending_world_add_Spawner = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_Spawner.\00", align 1
+@ecs_err_oob_rem_Spawner = private unnamed_addr constant [80 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_remove_Spawner.\00", align 1
 @ecs_err_dead_rem_Spawner = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Spawner.\00", align 1
 @ecs_err_pending_rem_Spawner = private unnamed_addr constant [88 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_Spawner.\00", align 1
+@ecs_err_oob_has_Spawner = private unnamed_addr constant [76 x i8] c"[ECS Error] Attempted to query out of bounds entity with world_has_Spawner.\00", align 1
+@ecs_err_oob_world_set_Velocity = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_set_Velocity.\00", align 1
 @ecs_err_dead_world_set_Velocity = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Velocity.\00", align 1
 @ecs_err_pending_world_set_Velocity = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_Velocity.\00", align 1
+@ecs_err_oob_world_add_Velocity = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_add_Velocity.\00", align 1
 @ecs_err_dead_world_add_Velocity = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Velocity.\00", align 1
 @ecs_err_pending_world_add_Velocity = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_Velocity.\00", align 1
+@ecs_err_oob_rem_Velocity = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_remove_Velocity.\00", align 1
 @ecs_err_dead_rem_Velocity = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Velocity.\00", align 1
 @ecs_err_pending_rem_Velocity = private unnamed_addr constant [89 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_Velocity.\00", align 1
+@ecs_err_oob_has_Velocity = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to query out of bounds entity with world_has_Velocity.\00", align 1
 @g_ecs_profiler_visible = internal global i32 0
 @p_title = private unnamed_addr constant [44 x i8] c"[ ECS ARCHETYPE PROFILER & INSPECTOR (F1) ]\00", align 1
 @fps_fmt = private unnamed_addr constant [38 x i8] c"Performance: %d FPS (%.2f ms / frame)\00", align 1
@@ -681,6 +701,14 @@ define void @world_set_ChildOf(ptr %0, i32 %1, i32 %2) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %1, 0
+  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+
+check_arch_set:                                   ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -690,11 +718,15 @@ entry:
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
   br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_err_entity:                                   ; preds = %entry
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_set_ChildOf)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_arch_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %entry
+set_cont:                                         ; preds = %check_arch_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
   %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
@@ -943,6 +975,14 @@ define void @world_add_ChildOf(ptr %0, i32 %1, i32 %2) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %1, 0
+  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+
+check_arch_set:                                   ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -952,11 +992,15 @@ entry:
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
   br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_err_entity:                                   ; preds = %entry
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_add_ChildOf)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_arch_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %entry
+set_cont:                                         ; preds = %check_arch_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
   %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
@@ -1203,6 +1247,14 @@ skip_sw_Velocity:                                 ; preds = %swap_Velocity, %ski
 
 define void @world_remove_ChildOf(ptr %0, i32 %1) {
 entry:
+  %ent_count_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_rem = load i32, ptr %ent_count_slot_rem, align 4
+  %rem_non_neg = icmp sge i32 %1, 0
+  %rem_in_bounds = icmp slt i32 %1, %total_ents_rem
+  %rem_is_valid_id = and i1 %rem_non_neg, %rem_in_bounds
+  br i1 %rem_is_valid_id, label %check_arch_rem, label %rem_oob_error
+
+check_arch_rem:                                   ; preds = %entry
   %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -1212,11 +1264,15 @@ entry:
   %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
   br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
 
-rem_err_entity:                                   ; preds = %entry
+rem_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_rem_ChildOf)
+  unreachable
+
+rem_err_entity:                                   ; preds = %check_arch_rem
   %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
-rem_cont:                                         ; preds = %entry
+rem_cont:                                         ; preds = %check_arch_rem
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
   %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
@@ -1431,6 +1487,14 @@ skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, 
 
 define i1 @world_has_ChildOf(ptr %0, i32 %1) {
 entry:
+  %ent_count_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_has = load i32, ptr %ent_count_slot_has, align 4
+  %has_non_neg = icmp sge i32 %1, 0
+  %has_in_bounds = icmp slt i32 %1, %total_ents_has
+  %has_is_valid_id = and i1 %has_non_neg, %has_in_bounds
+  br i1 %has_is_valid_id, label %check_arch_has, label %has_oob_error
+
+check_arch_has:                                   ; preds = %entry
   %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
@@ -1439,7 +1503,11 @@ entry:
   %is_alive_has = icmp sge i32 %cur_arch_idx_has, 0
   br i1 %is_alive_has, label %check_mask, label %ret_false
 
-check_mask:                                       ; preds = %entry
+has_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_has_ChildOf)
+  unreachable
+
+check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
@@ -1448,7 +1516,7 @@ check_mask:                                       ; preds = %entry
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
 
-ret_false:                                        ; preds = %entry
+ret_false:                                        ; preds = %check_arch_has
   ret i1 false
 }
 
@@ -1531,6 +1599,14 @@ define void @world_set_Particle(ptr %0, i32 %1, i32 %2) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %1, 0
+  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+
+check_arch_set:                                   ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -1540,11 +1616,15 @@ entry:
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
   br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_err_entity:                                   ; preds = %entry
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_set_Particle)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_arch_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %entry
+set_cont:                                         ; preds = %check_arch_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
   %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
@@ -1793,6 +1873,14 @@ define void @world_add_Particle(ptr %0, i32 %1, i32 %2) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %1, 0
+  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+
+check_arch_set:                                   ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -1802,11 +1890,15 @@ entry:
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
   br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_err_entity:                                   ; preds = %entry
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_add_Particle)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_arch_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %entry
+set_cont:                                         ; preds = %check_arch_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
   %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
@@ -2053,6 +2145,14 @@ skip_sw_Velocity:                                 ; preds = %swap_Velocity, %ski
 
 define void @world_remove_Particle(ptr %0, i32 %1) {
 entry:
+  %ent_count_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_rem = load i32, ptr %ent_count_slot_rem, align 4
+  %rem_non_neg = icmp sge i32 %1, 0
+  %rem_in_bounds = icmp slt i32 %1, %total_ents_rem
+  %rem_is_valid_id = and i1 %rem_non_neg, %rem_in_bounds
+  br i1 %rem_is_valid_id, label %check_arch_rem, label %rem_oob_error
+
+check_arch_rem:                                   ; preds = %entry
   %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -2062,11 +2162,15 @@ entry:
   %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
   br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
 
-rem_err_entity:                                   ; preds = %entry
+rem_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_rem_Particle)
+  unreachable
+
+rem_err_entity:                                   ; preds = %check_arch_rem
   %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
-rem_cont:                                         ; preds = %entry
+rem_cont:                                         ; preds = %check_arch_rem
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
   %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
@@ -2281,6 +2385,14 @@ skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, 
 
 define i1 @world_has_Particle(ptr %0, i32 %1) {
 entry:
+  %ent_count_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_has = load i32, ptr %ent_count_slot_has, align 4
+  %has_non_neg = icmp sge i32 %1, 0
+  %has_in_bounds = icmp slt i32 %1, %total_ents_has
+  %has_is_valid_id = and i1 %has_non_neg, %has_in_bounds
+  br i1 %has_is_valid_id, label %check_arch_has, label %has_oob_error
+
+check_arch_has:                                   ; preds = %entry
   %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
@@ -2289,7 +2401,11 @@ entry:
   %is_alive_has = icmp sge i32 %cur_arch_idx_has, 0
   br i1 %is_alive_has, label %check_mask, label %ret_false
 
-check_mask:                                       ; preds = %entry
+has_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_has_Particle)
+  unreachable
+
+check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
@@ -2298,7 +2414,7 @@ check_mask:                                       ; preds = %entry
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
 
-ret_false:                                        ; preds = %entry
+ret_false:                                        ; preds = %check_arch_has
   ret i1 false
 }
 
@@ -2381,6 +2497,14 @@ define void @world_set_Position(ptr %0, i32 %1, float %2, float %3) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %1, 0
+  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+
+check_arch_set:                                   ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -2390,11 +2514,15 @@ entry:
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
   br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_err_entity:                                   ; preds = %entry
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_set_Position)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_arch_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %entry
+set_cont:                                         ; preds = %check_arch_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
   %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
@@ -2645,6 +2773,14 @@ define void @world_add_Position(ptr %0, i32 %1, float %2, float %3) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %1, 0
+  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+
+check_arch_set:                                   ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -2654,11 +2790,15 @@ entry:
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
   br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_err_entity:                                   ; preds = %entry
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_add_Position)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_arch_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %entry
+set_cont:                                         ; preds = %check_arch_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
   %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
@@ -2907,6 +3047,14 @@ skip_sw_Velocity:                                 ; preds = %swap_Velocity, %ski
 
 define void @world_remove_Position(ptr %0, i32 %1) {
 entry:
+  %ent_count_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_rem = load i32, ptr %ent_count_slot_rem, align 4
+  %rem_non_neg = icmp sge i32 %1, 0
+  %rem_in_bounds = icmp slt i32 %1, %total_ents_rem
+  %rem_is_valid_id = and i1 %rem_non_neg, %rem_in_bounds
+  br i1 %rem_is_valid_id, label %check_arch_rem, label %rem_oob_error
+
+check_arch_rem:                                   ; preds = %entry
   %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -2916,11 +3064,15 @@ entry:
   %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
   br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
 
-rem_err_entity:                                   ; preds = %entry
+rem_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_rem_Position)
+  unreachable
+
+rem_err_entity:                                   ; preds = %check_arch_rem
   %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
-rem_cont:                                         ; preds = %entry
+rem_cont:                                         ; preds = %check_arch_rem
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
   %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
@@ -3135,6 +3287,14 @@ skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, 
 
 define i1 @world_has_Position(ptr %0, i32 %1) {
 entry:
+  %ent_count_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_has = load i32, ptr %ent_count_slot_has, align 4
+  %has_non_neg = icmp sge i32 %1, 0
+  %has_in_bounds = icmp slt i32 %1, %total_ents_has
+  %has_is_valid_id = and i1 %has_non_neg, %has_in_bounds
+  br i1 %has_is_valid_id, label %check_arch_has, label %has_oob_error
+
+check_arch_has:                                   ; preds = %entry
   %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
@@ -3143,7 +3303,11 @@ entry:
   %is_alive_has = icmp sge i32 %cur_arch_idx_has, 0
   br i1 %is_alive_has, label %check_mask, label %ret_false
 
-check_mask:                                       ; preds = %entry
+has_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_has_Position)
+  unreachable
+
+check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
@@ -3152,7 +3316,7 @@ check_mask:                                       ; preds = %entry
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
 
-ret_false:                                        ; preds = %entry
+ret_false:                                        ; preds = %check_arch_has
   ret i1 false
 }
 
@@ -3239,6 +3403,14 @@ define void @world_set_Spawner(ptr %0, i32 %1, i32 %2, i32 %3) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %1, 0
+  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+
+check_arch_set:                                   ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -3248,11 +3420,15 @@ entry:
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
   br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_err_entity:                                   ; preds = %entry
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_set_Spawner)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_arch_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %entry
+set_cont:                                         ; preds = %check_arch_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
   %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
@@ -3503,6 +3679,14 @@ define void @world_add_Spawner(ptr %0, i32 %1, i32 %2, i32 %3) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %1, 0
+  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+
+check_arch_set:                                   ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -3512,11 +3696,15 @@ entry:
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
   br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_err_entity:                                   ; preds = %entry
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_add_Spawner)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_arch_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %entry
+set_cont:                                         ; preds = %check_arch_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
   %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
@@ -3765,6 +3953,14 @@ skip_sw_Velocity:                                 ; preds = %swap_Velocity, %ski
 
 define void @world_remove_Spawner(ptr %0, i32 %1) {
 entry:
+  %ent_count_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_rem = load i32, ptr %ent_count_slot_rem, align 4
+  %rem_non_neg = icmp sge i32 %1, 0
+  %rem_in_bounds = icmp slt i32 %1, %total_ents_rem
+  %rem_is_valid_id = and i1 %rem_non_neg, %rem_in_bounds
+  br i1 %rem_is_valid_id, label %check_arch_rem, label %rem_oob_error
+
+check_arch_rem:                                   ; preds = %entry
   %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -3774,11 +3970,15 @@ entry:
   %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
   br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
 
-rem_err_entity:                                   ; preds = %entry
+rem_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_rem_Spawner)
+  unreachable
+
+rem_err_entity:                                   ; preds = %check_arch_rem
   %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
-rem_cont:                                         ; preds = %entry
+rem_cont:                                         ; preds = %check_arch_rem
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
   %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
@@ -3993,6 +4193,14 @@ skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, 
 
 define i1 @world_has_Spawner(ptr %0, i32 %1) {
 entry:
+  %ent_count_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_has = load i32, ptr %ent_count_slot_has, align 4
+  %has_non_neg = icmp sge i32 %1, 0
+  %has_in_bounds = icmp slt i32 %1, %total_ents_has
+  %has_is_valid_id = and i1 %has_non_neg, %has_in_bounds
+  br i1 %has_is_valid_id, label %check_arch_has, label %has_oob_error
+
+check_arch_has:                                   ; preds = %entry
   %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
@@ -4001,7 +4209,11 @@ entry:
   %is_alive_has = icmp sge i32 %cur_arch_idx_has, 0
   br i1 %is_alive_has, label %check_mask, label %ret_false
 
-check_mask:                                       ; preds = %entry
+has_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_has_Spawner)
+  unreachable
+
+check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
@@ -4010,7 +4222,7 @@ check_mask:                                       ; preds = %entry
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
 
-ret_false:                                        ; preds = %entry
+ret_false:                                        ; preds = %check_arch_has
   ret i1 false
 }
 
@@ -4097,6 +4309,14 @@ define void @world_set_Velocity(ptr %0, i32 %1, float %2, float %3) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %1, 0
+  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+
+check_arch_set:                                   ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -4106,11 +4326,15 @@ entry:
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
   br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_err_entity:                                   ; preds = %entry
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_set_Velocity)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_arch_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %entry
+set_cont:                                         ; preds = %check_arch_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
   %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
@@ -4361,6 +4585,14 @@ define void @world_add_Velocity(ptr %0, i32 %1, float %2, float %3) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %1, 0
+  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+
+check_arch_set:                                   ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -4370,11 +4602,15 @@ entry:
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
   br i1 %is_neg_arch, label %set_err_entity, label %set_cont
 
-set_err_entity:                                   ; preds = %entry
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_add_Velocity)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_arch_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %entry
+set_cont:                                         ; preds = %check_arch_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
   %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
   %cur_row = load i32, ptr %ent_row_slot, align 4
@@ -4623,6 +4859,14 @@ skip_sw_Velocity:                                 ; preds = %swap_Velocity, %ski
 
 define void @world_remove_Velocity(ptr %0, i32 %1) {
 entry:
+  %ent_count_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_rem = load i32, ptr %ent_count_slot_rem, align 4
+  %rem_non_neg = icmp sge i32 %1, 0
+  %rem_in_bounds = icmp slt i32 %1, %total_ents_rem
+  %rem_is_valid_id = and i1 %rem_non_neg, %rem_in_bounds
+  br i1 %rem_is_valid_id, label %check_arch_rem, label %rem_oob_error
+
+check_arch_rem:                                   ; preds = %entry
   %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
@@ -4632,11 +4876,15 @@ entry:
   %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
   br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
 
-rem_err_entity:                                   ; preds = %entry
+rem_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_rem_Velocity)
+  unreachable
+
+rem_err_entity:                                   ; preds = %check_arch_rem
   %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
-rem_cont:                                         ; preds = %entry
+rem_cont:                                         ; preds = %check_arch_rem
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
   %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
@@ -4851,6 +5099,14 @@ skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, 
 
 define i1 @world_has_Velocity(ptr %0, i32 %1) {
 entry:
+  %ent_count_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_has = load i32, ptr %ent_count_slot_has, align 4
+  %has_non_neg = icmp sge i32 %1, 0
+  %has_in_bounds = icmp slt i32 %1, %total_ents_has
+  %has_is_valid_id = and i1 %has_non_neg, %has_in_bounds
+  br i1 %has_is_valid_id, label %check_arch_has, label %has_oob_error
+
+check_arch_has:                                   ; preds = %entry
   %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
@@ -4859,7 +5115,11 @@ entry:
   %is_alive_has = icmp sge i32 %cur_arch_idx_has, 0
   br i1 %is_alive_has, label %check_mask, label %ret_false
 
-check_mask:                                       ; preds = %entry
+has_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_has_Velocity)
+  unreachable
+
+check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
@@ -4868,7 +5128,7 @@ check_mask:                                       ; preds = %entry
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
 
-ret_false:                                        ; preds = %entry
+ret_false:                                        ; preds = %check_arch_has
   ret i1 false
 }
 

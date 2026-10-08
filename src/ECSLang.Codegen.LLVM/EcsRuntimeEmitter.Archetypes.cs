@@ -706,6 +706,24 @@ public sealed partial class EcsRuntimeEmitter
                 var worldParamSet = setFunc.GetParam(0);
                 var eParam = setFunc.GetParam(1);
 
+                // Bounds guard: 0 <= e < world.entity_count
+                var entCountSlotSet = _builder.BuildStructGEP2(_worldStructType, worldParamSet, 3, "ent_count_slot_set");
+                var totalEntsSet = _builder.BuildLoad2(_context.Int32Type, entCountSlotSet, "total_ents_set");
+
+                var eNonNegSet = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, eParam, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "e_non_neg_set");
+                var eInBoundsSet = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, eParam, totalEntsSet, "e_in_bounds_set");
+                var isValidIdSet = _builder.BuildAnd(eNonNegSet, eInBoundsSet, "is_valid_id_set");
+
+                var checkArchSetBB = setFunc.AppendBasicBlock("check_arch_set");
+                var oobBB = setFunc.AppendBasicBlock("set_oob_error");
+                _builder.BuildCondBr(isValidIdSet, checkArchSetBB, oobBB);
+
+                _builder.PositionAtEnd(oobBB);
+                var errOobStr = _builder.BuildGlobalStringPtr($"[ECS Error] Attempted to mutate out of bounds entity with {prefix}{compName}.", $"ecs_err_oob_{prefix}{compName}");
+                _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errOobStr }, "");
+                _builder.BuildUnreachable();
+
+                _builder.PositionAtEnd(checkArchSetBB);
                 var entArchSlotSet = _builder.BuildStructGEP2(_worldStructType, worldParamSet, 5, "ent_arch_slot_set");
                 var entRowSlotSet = _builder.BuildStructGEP2(_worldStructType, worldParamSet, 6, "ent_row_slot_set");
                 var tablesSlotSet = _builder.BuildStructGEP2(_worldStructType, worldParamSet, 2, "tables_slot_set");
@@ -979,6 +997,24 @@ public sealed partial class EcsRuntimeEmitter
             var worldParamRem = remFunc.GetParam(0);
             var remE = remFunc.GetParam(1);
 
+            // Bounds guard: 0 <= e < world.entity_count
+            var entCountSlotRem = _builder.BuildStructGEP2(_worldStructType, worldParamRem, 3, "ent_count_slot_rem");
+            var totalEntsRem = _builder.BuildLoad2(_context.Int32Type, entCountSlotRem, "total_ents_rem");
+
+            var eNonNegRem = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, remE, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "rem_non_neg");
+            var eInBoundsRem = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, remE, totalEntsRem, "rem_in_bounds");
+            var isValidIdRem = _builder.BuildAnd(eNonNegRem, eInBoundsRem, "rem_is_valid_id");
+
+            var checkArchRemBB = remFunc.AppendBasicBlock("check_arch_rem");
+            var oobRemBB = remFunc.AppendBasicBlock("rem_oob_error");
+            _builder.BuildCondBr(isValidIdRem, checkArchRemBB, oobRemBB);
+
+            _builder.PositionAtEnd(oobRemBB);
+            var errOobStrRem = _builder.BuildGlobalStringPtr($"[ECS Error] Attempted to mutate out of bounds entity with world_remove_{compName}.", $"ecs_err_oob_rem_{compName}");
+            _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errOobStrRem }, "");
+            _builder.BuildUnreachable();
+
+            _builder.PositionAtEnd(checkArchRemBB);
             var entArchSlotRem = _builder.BuildStructGEP2(_worldStructType, worldParamRem, 5, "ent_arch_slot_rem");
             var entRowSlotRem = _builder.BuildStructGEP2(_worldStructType, worldParamRem, 6, "ent_row_slot_rem");
             var tablesSlotRem = _builder.BuildStructGEP2(_worldStructType, worldParamRem, 2, "tables_slot_rem");
@@ -1215,6 +1251,24 @@ public sealed partial class EcsRuntimeEmitter
             var worldParamHas = hasFunc.GetParam(0);
             var hasEParam = hasFunc.GetParam(1);
 
+            // Bounds guard: 0 <= e < world.entity_count
+            var entCountSlotHas = _builder.BuildStructGEP2(_worldStructType, worldParamHas, 3, "ent_count_slot_has");
+            var totalEntsHas = _builder.BuildLoad2(_context.Int32Type, entCountSlotHas, "total_ents_has");
+
+            var eNonNegHas = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, hasEParam, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "has_non_neg");
+            var eInBoundsHas = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, hasEParam, totalEntsHas, "has_in_bounds");
+            var isValidIdHas = _builder.BuildAnd(eNonNegHas, eInBoundsHas, "has_is_valid_id");
+
+            var checkArchHasBB = hasFunc.AppendBasicBlock("check_arch_has");
+            var oobHasBB = hasFunc.AppendBasicBlock("has_oob_error");
+            _builder.BuildCondBr(isValidIdHas, checkArchHasBB, oobHasBB);
+
+            _builder.PositionAtEnd(oobHasBB);
+            var errOobStrHas = _builder.BuildGlobalStringPtr($"[ECS Error] Attempted to query out of bounds entity with world_has_{compName}.", $"ecs_err_oob_has_{compName}");
+            _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errOobStrHas }, "");
+            _builder.BuildUnreachable();
+
+            _builder.PositionAtEnd(checkArchHasBB);
             var entArchSlotHas = _builder.BuildStructGEP2(_worldStructType, worldParamHas, 5, "ent_arch_slot_has");
             var tablesSlotHas = _builder.BuildStructGEP2(_worldStructType, worldParamHas, 2, "tables_slot_has");
 

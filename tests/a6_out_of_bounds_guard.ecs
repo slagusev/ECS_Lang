@@ -1,0 +1,18 @@
+component Position {
+    x: f32,
+    y: f32,
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+    let e = world.spawn();
+    world.set_Position(e, 10.0, 20.0);
+    println("Entity spawned.");
+
+    // Attempting to mutate out-of-bounds entity (e = 999 while entity_count = 1)
+    println("Attempting set_Position on out of bounds entity...");
+    world.set_Position(999, 1.0, 2.0);
+
+    println("INVARIANT VIOLATION: Out of bounds entity was accessed!");
+    return 0;
+}
