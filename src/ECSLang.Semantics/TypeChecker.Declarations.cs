@@ -219,6 +219,14 @@ public sealed partial class TypeChecker
             {
                 evalValue = (double)i2;
             }
+            else if (targetType == TypeSymbol.F64 && evalValue is float f)
+            {
+                evalValue = (double)f;
+            }
+            else if (targetType == TypeSymbol.F32 && evalValue is double d)
+            {
+                evalValue = (float)d;
+            }
             else if (targetType == TypeSymbol.I64 && evalValue is int i3)
             {
                 evalValue = (long)i3;
