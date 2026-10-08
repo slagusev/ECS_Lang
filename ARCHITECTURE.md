@@ -100,6 +100,15 @@ flowchart LR
 - Синтез низкоуровневых функций манипуляции сущностями и архетипами.
 - Трансляция управляющих конструкций (`if`, `while`, `for`) в базовые блоки LLVM IR.
 - Автоматический предохранитель закрытия консоли: автоматический вызов `@getchar()` перед возвратом из `main`, если не был вызван интерактивный ввод.
+- **Модульная архитектура (Physical Partial Class Isolation)**:
+  * `LlvmCodeGenerator.Expressions.cs` — диспетчер выражений, операторов и базовых вызовов.
+  * `LlvmCodeGenerator.TaggedUnions.cs` — генерация `Option<T>` (`Some`/`None`) и `Result<T, E>` (`Ok`/`Err`) с zero-cost распаковкой.
+  * `LlvmCodeGenerator.Closures.cs` — генерация анонимных лямбд, косвенных вызовов и замыканий fat pointer `{ fn, env }`.
+  * `LlvmCodeGenerator.Collections.cs` — генерация динамических массивов `Vec<T>` и ассоциативных массивов `Map<K, V>`.
+  * `LlvmCodeGenerator.Raylib.cs` — нативная 2D-графика, аудио, текстуры и управление окном.
+  * `EcsRuntimeEmitter.Archetypes.cs` — ядро архетипов, SoA чанки и миграции таблиц.
+  * `EcsRuntimeEmitter.Commands.cs` — многопоточные отложенные буферы команд (`world_cmd_*`, `world_apply_commands`).
+  * `EcsRuntimeEmitter.Events.cs` — двухбуферные очереди событий (`world_emit_*`, `world_swap_events`).
 
 ### 5. Линковка (`LinkerDriver` / `MsvcLinker`)
 - Генерация объектного файла `.obj` под целевую тройку (`x86_64-pc-windows-msvc`).

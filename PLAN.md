@@ -677,6 +677,17 @@ fn main(): i32 {
     * Обязательное коммерческое лицензирование (Commercial Enterprise License) для корпораций и организаций с оборотом или финансированием от 2 000 000 рублей (или $25,000 USD) на рабочие места разработчиков и серверные инсталляции.
     * Архитектурное разделение Open-Core: ядро компилятора и базовые стандартные библиотеки (`std/`) открыты и бесплатны, а специализированные Enterprise-модули распределенной синхронизации кластеров ИИ (Distributed Multi-Node AI Cluster Sync, Enterprise SLA) развиваются как проприетарные закрытые компоненты.
 
+- [x] Пункт 2.18: Рефакторинг ядра и физическая изоляция Code Bloat (Шаг 1 - ECSLang.Codegen.LLVM):
+  - Декомпозиция монолитного `LlvmCodeGenerator.Expressions.cs` (2 692 -> 1 045 строк) с физическим выделением `partial class` модулей:
+    * `LlvmCodeGenerator.TaggedUnions.cs`: генерация конструкторов `Some`, `None`, `Ok`, `Err` и методов `is_some`, `is_none`, `unwrap`, `unwrap_or`, `is_ok`, `is_err`, `unwrap_err`.
+    * `LlvmCodeGenerator.Closures.cs`: компиляция `LambdaExpression`, косвенных вызовов `IndirectCallExpression` и вызовов переменных-замыканий fat pointer `{ fn, env }`.
+    * `LlvmCodeGenerator.Collections.cs`: литералы массивов, индексация `IndexExpression`, конструкторы и методы `Vec`/`List` и `Map`/`HashMap` (`push`, `pop`, `len`, `clear`, `get`, `insert`, `remove`, `contains`, `find`, `for_each`, `map`, `filter`, `any`, `all`).
+    * `LlvmCodeGenerator.Raylib.cs`: единая точка генерации всех Raylib 2D-вызовов (окно, рисование, мышь/клавиатура, текстуры, звук, камера).
+  - Декомпозиция монолитного `EcsRuntimeEmitter.Archetypes.cs` (1 806 -> 1 366 строк) с физическим выделением `partial class` модулей:
+    * `EcsRuntimeEmitter.Commands.cs`: отложенные буферы команд (`world_cmd_ensure_cap`, `world_cmd_spawn`, `world_cmd_despawn`, `world_cmd_set_*`, `world_cmd_add_*`, `world_cmd_remove_*`, `world_apply_commands`).
+    * `EcsRuntimeEmitter.Events.cs`: двухбуферные очереди событий (`world_emit_*`, `world_swap_events`).
+  - Полная верификация сквозной сборки `dotnet build` (0 предупреждений, 0 ошибок) и валидация рантайма на примерах `examples/09_ecs_command_buffer.ecs` и `examples/10_ecs_events_and_observers.ecs` (Exit Code 0).
+
 ### [ ] Этап 34: Комплексная демонстрационная экосистема (Универсальность ECSLang)
 - [ ] Игровой проект: расширенный "Void Defender" с частицами, звуками, музыкой и оверлеем профайлера.
 - [ ] GUI-приложение: редактор уровней или инспектор сцены на ECS GUI компонентах.
