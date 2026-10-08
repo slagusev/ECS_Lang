@@ -978,7 +978,7 @@ public interface ILinker
    - На Linux и macOS генерируется DWARF (`"Dwarf Version", 4`, `"Debug Info Version", 3`).
 3. **Кроссплатформенная синхронизация архетипов**:
    - На Windows используются Win32 SRW-блокировки (`AcquireSRWLockExclusive`/`ReleaseSRWLockExclusive`).
-   - На POSIX-системах и в кросс-режиме генерируется переносимый спинлок на атомарных инструкциях LLVM: `cmpxchg` (acquire-monotonic) для захвата и `atomicrmw sub` (release) для освобождения.
+   - На POSIX-системах и в кросс-режиме генерируется переносимый спинлок (`ecs_spin_acquire` / `ecs_spin_release`) на атомарных инструкциях LLVM: `cmpxchg` (acquire-monotonic) для захвата и `atomicrmw sub` (release) для освобождения. Цикл ожидания (`spin_backoff`) оснащен аппаратной инструкцией разгрузки конвейера: `@llvm.x86.sse2.pause()` на x86_64 (`rep; nop`) и `@llvm.aarch64.hint(i32 1)` (`yield`) на Arm64, что предотвращает pipeline stalls и гипертрединговый перегрев ядер при высокой конкуренции.
 4. **Консольный ввод**:
    - На Windows используется `_getch` из MSVCRT.
    - На POSIX-системах используется стандартный `getchar`.

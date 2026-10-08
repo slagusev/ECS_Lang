@@ -304,6 +304,7 @@ public sealed partial class EcsRuntimeEmitter
                 srwAcquireFunc = _module.AddFunction("ecs_spin_acquire", srwFuncType);
                 var entryBB = srwAcquireFunc.AppendBasicBlock("entry");
                 var spinLoopBB = srwAcquireFunc.AppendBasicBlock("spin_loop");
+                var spinBackoffBB = srwAcquireFunc.AppendBasicBlock("spin_backoff");
                 var lockAcqBB = srwAcquireFunc.AppendBasicBlock("lock_acq");
 
                 var spinBuilder = _context.CreateBuilder();
@@ -322,7 +323,26 @@ public sealed partial class EcsRuntimeEmitter
                     LLVMAtomicOrdering.LLVMAtomicOrderingMonotonic,
                     0);
                 var success = spinBuilder.BuildExtractValue(cmpxchg, 1, "is_locked");
-                spinBuilder.BuildCondBr(success, lockAcqBB, spinLoopBB);
+                spinBuilder.BuildCondBr(success, lockAcqBB, spinBackoffBB);
+
+                spinBuilder.PositionAtEnd(spinBackoffBB);
+                if (_options.Target.Architecture == CpuArchitecture.Arm64)
+                {
+                    var hintType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { _context.Int32Type }, false);
+                    var hintFunc = _module.GetNamedFunction("llvm.aarch64.hint");
+                    if (hintFunc.Handle == IntPtr.Zero)
+                        hintFunc = _module.AddFunction("llvm.aarch64.hint", hintType);
+                    spinBuilder.BuildCall2(hintType, hintFunc, new[] { LLVMValueRef.CreateConstInt(_context.Int32Type, 1) }, "");
+                }
+                else
+                {
+                    var pauseType = LLVMTypeRef.CreateFunction(_context.VoidType, Array.Empty<LLVMTypeRef>(), false);
+                    var pauseFunc = _module.GetNamedFunction("llvm.x86.sse2.pause");
+                    if (pauseFunc.Handle == IntPtr.Zero)
+                        pauseFunc = _module.AddFunction("llvm.x86.sse2.pause", pauseType);
+                    spinBuilder.BuildCall2(pauseType, pauseFunc, Array.Empty<LLVMValueRef>(), "");
+                }
+                spinBuilder.BuildBr(spinLoopBB);
 
                 spinBuilder.PositionAtEnd(lockAcqBB);
                 spinBuilder.BuildRetVoid();

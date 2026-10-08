@@ -15,7 +15,7 @@
 | **A4: Запрет `world.*` в системах** | **ОТСУТСТВУЕТ** | `TypeChecker.Declarations.cs:356` объявляет `world` в скоупе системы, `TypeChecker.Expressions.cs:421` разрешает любые вызовы кроме `Commands` |
 | **A5: Запрет escape-замыканий** | **ОТСУТСТВУЕТ** | `TypeChecker.Closures.cs:9-56` и `TypeChecker.Statements.cs:48-60` не валидируют возврат замыканий с захватом стека |
 | **A6: Guards (bounds + liveness)** | **ЧАСТИЧНО** | Liveness (`< 0`) есть в `set_/add_/remove_/has_`, но bounds check (`e < 0 \|\| e >= entity_count`) отсутствует во всех функциях манипуляции |
-| **B1: `pause` в POSIX-спинлоке** | **ОТСУТСТВУЕТ** | `EcsRuntimeEmitter.Archetypes.cs:315-325` (пустой цикл `cmpxchg` без `pause` / `yield`) |
+| **B1: `pause` в POSIX-спинлоке** | **ВЫПОЛНЕНО (Шаг P0.2)** | Встроен `llvm.x86.sse2.pause` (x86_64) и `llvm.aarch64.hint(1)` (Arm64) в `spin_backoff` базовый блок `ecs_spin_acquire`. Уровень 3 доказан тестом `tests/verify_b1_pause_invariant.ps1` |
 | **A7 У1: Сьют Ур. 1 с исполнением** | **ВЫПОЛНЕНО** | `tests/run_all_examples.ps1` (29 собрано, 23 выполнено ExitCode 0, 6 документированных GUI/Network пропусков; 3 тяжелых I/O-файла удалены по указанию) |
 | **A7 У2: Perf particles_100k** | **БЕЙЗЛАЙН ЗАФИКСИРОВАН** | `tests/particles_100k.ecs` в Release -O3: спавн 100k = ~18.3 мс, 100 тиков = ~74 мс. Сравнение до/после Шага 1 обязательно на шаге A7.Ф через checkout родительского коммита |
 | **A7 У3: Гистограмма диффов Шага 1** | **ВЫПОЛНЕНО** | `tests/diff_histogram.ps1` категоризировал 6 эталонов; 3 хунка задокументированы |
@@ -42,6 +42,7 @@
 - **Объём**: Встроить инструкцию `pause` (`llvm.x86.sse2.pause` или inline asm / rep;nop) в тело цикла `spinLoopBB` функции `ecs_spin_acquire`.
 - **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`.
 - **Критерий приёмки**: Уровень 3 (IR-дифф: наличие инструкции `pause` в цикле ожидания).
+- **Статус**: **ВЫПОЛНЕНО** (коммит P0.2; Уровень 3 IR-тест `tests/verify_b1_pause_invariant.ps1`; Уровень 3 строгий IR-паритет 6/6; Уровень 1 23/23).
 - **Шаблон коммита**: `fix(sync): insert pause instruction into POSIX spinlock backoff loop`
 
 #### Шаг P0.3 — Синхронизация `world_emit_*` через отдельный `emit_lock` (A3-fix)
