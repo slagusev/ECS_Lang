@@ -1381,7 +1381,8 @@ flowchart TD
     2. Все остальные компоненты (включая мономорфизированные специализации `Node_i32`) сортируются в лексикографическом порядке по имени с использованием `StringComparer.Ordinal`.
   - **Статус бита 0 (`ChildOf`)**: Регистрация `ChildOf` под битом 0 является строгой архитектурной **конвенцией детерминизма**, а не load-bearing зависимостью рантайма: все обращения кодогенератора к `ChildOf` (сортировка иерархий `world_sort_hierarchy`, вычисление `childOfBit`) выполняются динамически через `_compIds.TryGetValue("ChildOf", out int childOfId)` без захардкоженных констант.
   - **Политика верификации Golden IR эталонов (`tests/golden_ir/`)**:
-  - Каталог `tests/golden_ir/` содержит эталонные файлы LLVM IR (`.ll`) для 6 репрезентативных программ (`08_ecs_basics`, `09_ecs_command_buffer`, `11_ecs_archetypes_and_filters`, `cast_test`, `hierarchy_childof`, `bulk_spawn_test`).
+  - Каталог `tests/golden_ir/` содержит эталонные файлы LLVM IR (`.ll`) для 7 репрезентативных программ (`08_ecs_basics`, `09_ecs_command_buffer`, `11_ecs_archetypes_and_filters`, `cast_test`, `hierarchy_childof`, `bulk_spawn_test`, `over_64_components`).
+  - **Уровень оптимизации эталонов**: Все файлы `tests/golden_ir/*.ll` фиксируют **до-оптимизационный (pre-optimization) LLVM IR** (эмитируемый при уровне `-O0`, являющемся дефолтным для CLI и `tests/verify_golden_ir.ps1`). Это обеспечивает строгую изоляцию тестирования семантики AST $\to$ IR кодогенерации от недетерминизма и агрессивных трансформаций оптимизационных проходов LLVM (`mem2reg`, inliner, loop/SLP vectorizer).
   - Каждый шаг рефакторинга кодогенерации обязан:
     1. Проходить валидацию `tests/verify_golden_ir.ps1 -Mode refactor` (допускаются только заявленные легальные категории диффа).
     2. Проходить полный прогон всех примеров `examples/` и бинарное выполнение эталонов (Exit Code 0).
