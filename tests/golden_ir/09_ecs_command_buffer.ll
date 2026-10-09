@@ -3,6 +3,7 @@ source_filename = "ecs_module"
 target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-pc-windows-msvc"
 
+%struct.ComponentDesc = type { i64, i64, i32, i32 }
 %struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, ptr, ptr, i32, i32, ptr, ptr }
 %struct.Archetype = type { [1 x i64], i32, i32, ptr, [5 x ptr] }
 %struct.ChildOf = type { i32 }
@@ -14,6 +15,7 @@ target triple = "x86_64-pc-windows-msvc"
 
 @NvOptimusEnablement = dllexport global i32 1
 @AmdPowerXpressRequestHighPerformance = dllexport global i32 1
+@_ecs_component_descriptors = internal constant [5 x %struct.ComponentDesc] [%struct.ComponentDesc { i64 1, i64 4, i32 4, i32 0 }, %struct.ComponentDesc { i64 2, i64 4, i32 4, i32 0 }, %struct.ComponentDesc { i64 4, i64 8, i32 4, i32 0 }, %struct.ComponentDesc { i64 8, i64 8, i32 4, i32 0 }, %struct.ComponentDesc { i64 16, i64 8, i32 4, i32 0 }]
 @_ecs_zero_mask = internal constant [1 x i64] zeroinitializer
 @ecs_err_oob_world_set_ChildOf = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_set_ChildOf.\00", align 1
 @ecs_err_dead_world_set_ChildOf = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_ChildOf.\00", align 1

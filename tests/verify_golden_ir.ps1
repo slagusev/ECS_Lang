@@ -120,6 +120,8 @@ try {
                 if (($line -match "(icmp eq i64|and i1|and i64|br i1)") -and ($line -match "(is_match|existing_mask|target_mask|%1|arch_mask|cur_mask|has_|and_mask|and_without|and_co|sw_co_has|m_val|word_\d+_match)")) { continue }
                 # Legal Category 6: Profiler multi-word HUD bitmask formatting (Step A7.6)
                 if ($line -match "(arch_fmt|str_buf|sprintf\(ptr %str_buf|p_a_mask_w|DrawRectangle\(i32 10, i32 10, i32 (500|620|700|780)|DrawRectangleLines\(i32 10, i32 10, i32 (500|620|700|780))") { continue }
+                # Legal Category 7: Component descriptor table and struct (Step B7.1)
+                if ($line -match "%struct\.ComponentDesc = type \{ i64, i64, i32, i32 \}" -or $line -match "@_ecs_component_descriptors = internal constant \[\d+ x %struct\.ComponentDesc\]") { continue }
                 # Comments / ModuleID line
                 if ($line -match "^; ModuleID") { continue }
 

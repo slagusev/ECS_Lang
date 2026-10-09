@@ -35,10 +35,18 @@ public sealed partial class EcsRuntimeEmitter
     private int _stringArenaHeadWorldOffset = -1;
     private int _stringArenaChunksWorldOffset = -1;
 
+    // Component Descriptor Table (Step B7)
+    private LLVMTypeRef _compDescStructType;
+    private LLVMTypeRef _compDescArrayType;
+    private LLVMValueRef _compDescriptorsGlobal;
+
     public int MaskWords => _maskWords;
     public LLVMTypeRef MaskArrayType => _maskArrayType;
     public LLVMTypeRef GetMaskArrayType() => _maskArrayType;
     public LLVMValueRef ZeroMaskGlobal => _zeroMaskGlobal;
+    public LLVMTypeRef ComponentDescStructType => _compDescStructType;
+    public LLVMTypeRef ComponentDescArrayType => _compDescArrayType;
+    public LLVMValueRef ComponentDescriptorsGlobal => _compDescriptorsGlobal;
 
     public int NameIndexWorldOffset => _nameIndexWorldOffset;
     public int StringArenaHeadWorldOffset => _stringArenaHeadWorldOffset;
@@ -209,8 +217,53 @@ public sealed partial class EcsRuntimeEmitter
             _eventSizes[evName] = Math.Max(1, sizeInBytes);
         }
 
-        // 3. Define %struct.Archetype: { [WORDS x i64] mask, i32 count, i32 cap, ptr entities, [N x ptr] columns }
+        // 3. Define %struct.ComponentDesc: { i64 bitMask, i64 size, i32 align, i32 pad } (24 bytes)
+        _compDescStructType = _context.CreateNamedStruct("struct.ComponentDesc");
+        _compDescStructType.StructSetBody(new[]
+        {
+            _context.Int64Type, // 0: bitMask (1UL << (compId & 63))
+            _context.Int64Type, // 1: size in bytes
+            _context.Int32Type, // 2: align in bytes
+            _context.Int32Type  // 3: padding (total 24 bytes)
+        }, false);
+
+        ulong actualDescSize = LlvmApi.ABISizeOfType(dataLayout, _compDescStructType);
+        if (actualDescSize != 24)
+        {
+            throw new InvalidOperationException(
+                $"ABI mismatch for %struct.ComponentDesc: expected 24 bytes, got {actualDescSize} bytes.");
+        }
+
         uint compCount = (uint)Math.Max(1, _orderedCompNames.Count);
+        _compDescArrayType = LLVMTypeRef.CreateArray(_compDescStructType, compCount);
+        _compDescriptorsGlobal = _module.AddGlobal(_compDescArrayType, "_ecs_component_descriptors");
+        _compDescriptorsGlobal.Linkage = LLVMLinkage.LLVMInternalLinkage;
+        LlvmApi.SetGlobalConstant(_compDescriptorsGlobal, 1);
+
+        var descConstants = new LLVMValueRef[compCount];
+        for (int i = 0; i < compCount; i++)
+        {
+            string compName = (i < _orderedCompNames.Count) ? _orderedCompNames[i] : "";
+            ulong size = _compSizes.TryGetValue(compName, out var s) ? s : 1UL;
+            int align = 8;
+            if (_compStructTypes.TryGetValue(compName, out var stType))
+            {
+                align = (int)LlvmApi.ABIAlignmentOfType(dataLayout, stType);
+            }
+            int bitIdx = i & 63;
+            ulong bitMask = 1UL << bitIdx;
+
+            descConstants[i] = LLVMValueRef.CreateConstStruct(new[]
+            {
+                LLVMValueRef.CreateConstInt(_context.Int64Type, bitMask),
+                LLVMValueRef.CreateConstInt(_context.Int64Type, size),
+                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)align),
+                LLVMValueRef.CreateConstInt(_context.Int32Type, 0)
+            }, false);
+        }
+        _compDescriptorsGlobal.Initializer = LLVMValueRef.CreateConstArray(_compDescStructType, descConstants);
+
+        // 4. Define %struct.Archetype: { [WORDS x i64] mask, i32 count, i32 cap, ptr entities, [N x ptr] columns }
         _maskWords = Math.Max(1, (int)((compCount + 63) / 64));
         _maskArrayType = LLVMTypeRef.CreateArray(_context.Int64Type, (uint)_maskWords);
         _colArrayType = LLVMTypeRef.CreateArray(i8PtrType, compCount);
