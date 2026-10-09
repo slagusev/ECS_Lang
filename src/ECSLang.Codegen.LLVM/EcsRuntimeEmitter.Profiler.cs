@@ -82,12 +82,32 @@ public sealed partial class EcsRuntimeEmitter
         int fpsColor = MakeColor(80, 220, 120, 255);
         int hintColor = MakeColor(140, 150, 170, 255);
 
+        int words = _maskWords;
+        int displayWords = Math.Min(words, 8);
+        int truncatedWords = words - displayWords;
+
+        // HUD panel width calculation:
+        // Base prefix: "  Archetype #%d: count=%d, cap=%d, mask=[" (~45 chars)
+        // Each word: "0x%llX " (up to 19 chars)
+        // Suffix: "] ...(+N words)" (~16 chars)
+        // Raylib default font size 15 has glyph width ~9px.
+        // For 1 word: ~65 chars (~500px).
+        // For 2 words: ~85 chars (~620px).
+        // For up to 8 words: max 780px.
+        int hudWidth = displayWords switch
+        {
+            1 => 500,
+            2 => 620,
+            3 => 700,
+            _ => 780
+        };
+
         // Draw HUD background panel
         _builder.BuildCall2(drawRectType, drawRectFunc, new[]
         {
             LLVMValueRef.CreateConstInt(_context.Int32Type, 10),
             LLVMValueRef.CreateConstInt(_context.Int32Type, 10),
-            LLVMValueRef.CreateConstInt(_context.Int32Type, 500),
+            LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)hudWidth),
             LLVMValueRef.CreateConstInt(_context.Int32Type, 320),
             LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)bgColor)
         }, "");
@@ -96,7 +116,7 @@ public sealed partial class EcsRuntimeEmitter
         {
             LLVMValueRef.CreateConstInt(_context.Int32Type, 10),
             LLVMValueRef.CreateConstInt(_context.Int32Type, 10),
-            LLVMValueRef.CreateConstInt(_context.Int32Type, 500),
+            LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)hudWidth),
             LLVMValueRef.CreateConstInt(_context.Int32Type, 320),
             LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)borderColor)
         }, "");
@@ -112,8 +132,8 @@ public sealed partial class EcsRuntimeEmitter
             LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)titleColor)
         }, "");
 
-        // Buffer for formatted strings
-        var bufAlloca = _builder.BuildAlloca(LLVMTypeRef.CreateArray(_context.Int8Type, 256), "str_buf");
+        // Buffer for formatted strings (512 bytes handles up to 8 words + prefix comfortably)
+        var bufAlloca = _builder.BuildAlloca(LLVMTypeRef.CreateArray(_context.Int8Type, 512), "str_buf");
         var bufPtr = _builder.BuildBitCast(bufAlloca, i8PtrType, "buf_ptr");
 
         // FPS and Frame Time
@@ -179,16 +199,54 @@ public sealed partial class EcsRuntimeEmitter
         var aCountSlot = _builder.BuildStructGEP2(_archStructType, archPtr, 1, "p_a_count_slot");
         var aCapSlot = _builder.BuildStructGEP2(_archStructType, archPtr, 2, "p_a_cap_slot");
 
-        var aMask = _builder.BuildLoad2(_context.Int64Type, aMaskSlot, "p_a_mask");
         var aCount = _builder.BuildLoad2(_context.Int32Type, aCountSlot, "p_a_count");
         var aCap = _builder.BuildLoad2(_context.Int32Type, aCapSlot, "p_a_cap");
+
+        // Multi-word mask loading (up to displayWords)
+        var loadedMaskWords = new List<LLVMValueRef>(displayWords);
+        for (int w = 0; w < displayWords; w++)
+        {
+            var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, aMaskSlot, new[]
+            {
+                LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)w)
+            }, $"p_a_mask_w{w}_ptr");
+            var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"p_a_mask_w{w}");
+            loadedMaskWords.Add(maskWVal);
+        }
+
+        // Format string construction with displayWords hex specifiers
+        var sbFmt = new System.Text.StringBuilder();
+        sbFmt.Append("  Archetype #%d: count=%d, cap=%d, mask=[");
+        for (int w = 0; w < displayWords; w++)
+        {
+            if (w > 0) sbFmt.Append(' ');
+            sbFmt.Append("0x%llX");
+        }
+        sbFmt.Append(']');
+        if (truncatedWords > 0)
+        {
+            sbFmt.Append($" ...(+{truncatedWords} words)");
+        }
+
+        var archFmt = _builder.BuildGlobalStringPtr(sbFmt.ToString(), "arch_fmt");
+
+        var sprintfArgs = new List<LLVMValueRef>(4 + displayWords)
+        {
+            bufPtr,
+            archFmt,
+            curA,
+            aCount,
+            aCap
+        };
+        sprintfArgs.AddRange(loadedMaskWords);
+
+        _builder.BuildCall2(sprintfType, sprintfFunc, sprintfArgs.ToArray(), "");
 
         // Y coordinate: 104 + curA * 24
         var yOffset = _builder.BuildAdd(LLVMValueRef.CreateConstInt(_context.Int32Type, 104),
             _builder.BuildMul(curA, LLVMValueRef.CreateConstInt(_context.Int32Type, 24), "a_y_mul"), "a_y");
 
-        var archFmt = _builder.BuildGlobalStringPtr("  Archetype #%d: count=%d, cap=%d, mask=0x%llX", "arch_fmt");
-        _builder.BuildCall2(sprintfType, sprintfFunc, new[] { bufPtr, archFmt, curA, aCount, aCap, aMask }, "");
         _builder.BuildCall2(drawTextType, drawTextFunc, new[]
         {
             bufPtr,

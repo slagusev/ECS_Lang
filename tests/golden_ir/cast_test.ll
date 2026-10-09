@@ -47,7 +47,7 @@ target triple = "x86_64-pc-windows-msvc"
 @p_title = private unnamed_addr constant [44 x i8] c"[ ECS ARCHETYPE PROFILER & INSPECTOR (F1) ]\00", align 1
 @fps_fmt = private unnamed_addr constant [38 x i8] c"Performance: %d FPS (%.2f ms / frame)\00", align 1
 @stats_fmt = private unnamed_addr constant [47 x i8] c"World Stats: %d live entities in %d archetypes\00", align 1
-@arch_fmt = private unnamed_addr constant [47 x i8] c"  Archetype #%d: count=%d, cap=%d, mask=0x%llX\00", align 1
+@arch_fmt = private unnamed_addr constant [49 x i8] c"  Archetype #%d: count=%d, cap=%d, mask=[0x%llX]\00", align 1
 @p_hint = private unnamed_addr constant [30 x i8] c"[F1] Toggle ECS Inspector HUD\00", align 1
 @net_empty = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 @net_udp_empty = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
@@ -3295,7 +3295,7 @@ do_render:                                        ; preds = %render_check
   call void @DrawRectangle(i32 10, i32 10, i32 500, i32 320, i32 -350350321)
   call void @DrawRectangleLines(i32 10, i32 10, i32 500, i32 320, i32 -1012686)
   call void @DrawText(ptr @p_title, i32 22, i32 20, i32 18, i32 -11656)
-  %str_buf = alloca [256 x i8], align 1
+  %str_buf = alloca [512 x i8], align 1
   %cur_fps = call i32 @GetFPS()
   %cur_ft_sec = call float @GetFrameTime()
   %ft_ms = fmul float %cur_ft_sec, 1.000000e+03
@@ -3335,12 +3335,13 @@ p_a_body:                                         ; preds = %p_a_cond
   %p_a_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %p_arch, i32 0, i32 0
   %p_a_count_slot = getelementptr inbounds nuw %struct.Archetype, ptr %p_arch, i32 0, i32 1
   %p_a_cap_slot = getelementptr inbounds nuw %struct.Archetype, ptr %p_arch, i32 0, i32 2
-  %p_a_mask = load i64, ptr %p_a_mask_slot, align 8
   %p_a_count = load i32, ptr %p_a_count_slot, align 4
   %p_a_cap = load i32, ptr %p_a_cap_slot, align 4
+  %p_a_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %p_a_mask_slot, i32 0, i32 0
+  %p_a_mask_w0 = load i64, ptr %p_a_mask_w0_ptr, align 8
+  %2 = call i32 (ptr, ptr, ...) @sprintf(ptr %str_buf, ptr @arch_fmt, i32 %cur_a, i32 %p_a_count, i32 %p_a_cap, i64 %p_a_mask_w0)
   %a_y_mul = mul i32 %cur_a, 24
   %a_y = add i32 104, %a_y_mul
-  %2 = call i32 (ptr, ptr, ...) @sprintf(ptr %str_buf, ptr @arch_fmt, i32 %cur_a, i32 %p_a_count, i32 %p_a_cap, i64 %p_a_mask)
   call void @DrawText(ptr %str_buf, i32 24, i32 %a_y, i32 15, i32 -1318436)
   %next_a = add i32 %cur_a, 1
   store i32 %next_a, ptr %p_a_i, align 4

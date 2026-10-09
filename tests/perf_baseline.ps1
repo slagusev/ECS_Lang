@@ -24,9 +24,13 @@ if (-not (Test-Path $CliPath)) {
 
 Write-Host "=== ECSLang Perf Baseline ($Iterations runs, Release -O3) ===" -ForegroundColor Cyan
 
-# 1. Compile benchmark binary once in Release mode
+# 1. Compile benchmark binary once in Release mode with codegen timing
 Write-Host "Compiling $SourcePath in Release mode..." -ForegroundColor DarkGray
+$swBuild = [System.Diagnostics.Stopwatch]::StartNew()
 & $CliPath build $SourcePath -r --no-wait 2>&1 | Out-Null
+$swBuild.Stop()
+$buildTimeMs = $swBuild.Elapsed.TotalMilliseconds
+Write-Host "  Codegen/Build: $($buildTimeMs.ToString('F2')) ms" -ForegroundColor DarkGray
 $exePath = "tests/particles_100k.exe"
 
 if (-not (Test-Path $exePath)) {
@@ -79,13 +83,22 @@ $dateStr = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss")
 
 # 6. CSV record
 if (-not (Test-Path $CsvPath)) {
-    "Commit,Date,Runs,SpawnMinMs,SpawnMedianMs,TickMinMs,TickMedianMs,Notes" | Out-File -FilePath $CsvPath -Encoding utf8
+    "Commit,Date,Runs,BuildMs,SpawnMinMs,SpawnMedianMs,TickMinMs,TickMedianMs,Notes" | Out-File -FilePath $CsvPath -Encoding utf8
+} else {
+    $header = (Get-Content $CsvPath -TotalCount 1)
+    if ($header -notmatch "BuildMs") {
+        # Migrate header
+        $lines = Get-Content $CsvPath
+        $lines[0] = "Commit,Date,Runs,BuildMs,SpawnMinMs,SpawnMedianMs,TickMinMs,TickMedianMs,Notes"
+        $lines | Set-Content $CsvPath -Encoding utf8
+    }
 }
 
-"$commitHash,$dateStr,$Iterations,$($spawnMin.ToString('F2')),$($spawnMed.ToString('F2')),$($tickMin.ToString('F2')),$($tickMed.ToString('F2')),`"$Notes`"" | Out-File -FilePath $CsvPath -Append -Encoding utf8
+"$commitHash,$dateStr,$Iterations,$($buildTimeMs.ToString('F2')),$($spawnMin.ToString('F2')),$($spawnMed.ToString('F2')),$($tickMin.ToString('F2')),$($tickMed.ToString('F2')),`"$Notes`"" | Out-File -FilePath $CsvPath -Append -Encoding utf8
 
 Write-Host "`n--- Benchmark Results ---" -ForegroundColor Green
 Write-Host "Commit        : $commitHash"
+Write-Host "Codegen/Build : $($buildTimeMs.ToString('F2')) ms"
 Write-Host "Samples       : $Iterations"
 Write-Host "Spawn (Min)   : $($spawnMin.ToString('F2')) ms"
 Write-Host "Spawn (Median): $($spawnMed.ToString('F2')) ms"

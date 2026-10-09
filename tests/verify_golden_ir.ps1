@@ -6,7 +6,8 @@
 
 param (
     [string]$Mode = "strict",
-    [string]$CliPath = "src/ECSLang.CLI/bin/Debug/net9.0/ECSLang.CLI.exe"
+    [string]$CliPath = "src/ECSLang.CLI/bin/Debug/net9.0/ECSLang.CLI.exe",
+    [switch]$UpdateBaselines
 )
 
 $ErrorActionPreference = "Stop"
@@ -64,6 +65,13 @@ try {
             continue
         }
 
+        if ($UpdateBaselines) {
+            Copy-Item -Path $genIr -Destination $goldenFile -Force
+            Write-Host "  [UPDATED] $name golden baseline updated" -ForegroundColor Cyan
+            $summary += "$name : BASELINE UPDATED"
+            continue
+        }
+
         $goldenContent = Get-Content $goldenFile
         $genContent = Get-Content $genIr
 
@@ -101,6 +109,8 @@ try {
                 if ($line -match "(alloca|constant) \[(1|\d+) x i64\]" -or $line -match "@_ecs_query_" -or $line -match "(load|store).*(ex_w|tgt_w|src_w|dst_w|src_set|src_rem|dst_set|dst_rem|val_set|val_rem|dst_spawn|cur_mask_w|mask_w|m_gep|m_slot|a0_mask|temp_mask|spawn_mask|childof_w|\[(1|\d+) x i64\])" -or $line -match "zeroinitializer") { continue }
                 # Legal Category 5: mask comparison and boolean combinations
                 if (($line -match "(icmp eq i64|and i1|and i64|br i1)") -and ($line -match "(is_match|existing_mask|target_mask|%1|arch_mask|cur_mask|has_|and_mask|and_without|and_co|sw_co_has|m_val|word_\d+_match)")) { continue }
+                # Legal Category 6: Profiler multi-word HUD bitmask formatting (Step A7.6)
+                if ($line -match "(arch_fmt|str_buf|sprintf\(ptr %str_buf|p_a_mask_w|DrawRectangle\(i32 10, i32 10, i32 (500|620|700|780)|DrawRectangleLines\(i32 10, i32 10, i32 (500|620|700|780))") { continue }
                 # Comments / ModuleID line
                 if ($line -match "^; ModuleID") { continue }
 

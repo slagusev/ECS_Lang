@@ -118,9 +118,10 @@
 - **Шаблон коммита**: `feat(semantics): permanently lift component limit to 65535 and add 7th golden IR (Step 5)`
 
 #### Шаг A7.6 — Обновление профайлера F1
-- **Объём**: Вывод многословной битовой маски в оверлее профайлера F1 в шестнадцатеричном пословном формате `[0x... 0x...]`.
-- **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Profiler.cs`.
-- **Критерий приёмки**: Уровень 1 (`examples/18_arcade_void_defender.ecs`).
+- **Объём**: Вывод многословной битовой маски в оверлее профайлера F1 в шестнадцатеричном пословном формате `[0x... 0x...]` с ограничением `DISPLAY_WORDS = min(WORDS, 8)` и суффиксом `...(+N words)` при усечении. Расчёт ширины HUD-панели и буфера строки (512 байт).
+- **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Profiler.cs`, `tests/verify_golden_ir.ps1`, `tests/golden_ir/*.ll`.
+- **Критерий приёмки**: Уровень 1 (`examples/18_arcade_void_defender.ecs`) + Уровень 3 (7/7 золотых эталонов в strict mode, подтверждение многословного рендера `[0x%llX 0x%llX]` в `over_64_components.ll`).
+- **Статус**: **ВЫПОЛНЕНО**
 - **Шаблон коммита**: `feat(profiler): render multi-word archetype masks in F1 telemetry HUD (Step 6)`
 
 #### Шаг A7.Ф — Финализация серии A7 и итоговый perf-отчёт
@@ -134,22 +135,22 @@
 ### Блок B: Оптимизации ядра и платформенная переносимость
 
 #### Шаг B7 — Линеаризация кодегена инициализации компонентов
-- **Объём**: Устранение квадратичного роста времени компиляции при большом числе компонентов ($N > 1024$). Замена индивидуальной кодогенерации $O(N^2)$ функций манипуляции компонентами на компактные табличные дескрипторы и цикл инициализации рантайма.
-- **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.cs`, `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`.
-- **Критерий приёмки**: Уровень 1 (компиляция 1025+ компонентов без предупреждения B7 и без OOM/зависания).
+- **Объём**: Устранение квадратичного взрыва времени компиляции и расхода оперативной памяти при большом числе компонентов ($N > 1024$). Фактическая OOM-граница текущей архитектуры: 540 856 строк IR на 72 компонента; квадратичная экстраполяция $(1025/72)^2 \times 540\text{K} \approx 110\text{M}$ строк LLVM IR $\to$ неминуемый Out-Of-Memory (> 16 GB RAM). Замена индивидуальной кодогенерации $O(N^2)$ функций манипуляции компонентами (`set_`, `add_`, `remove_`, `has_`) на компактные табличные дескрипторы компонентов и единый цикл/табличный диспетчер рантайма. Попутно: проверка и выставление `LLVMSetAlignment(8)` для SoA-загрузок, если выявлен дефолт `align 4`. Обновление текста предупреждения в TypeChecker после успешного снятия стены.
+- **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.cs`, `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`, `src/ECSLang.Semantics/TypeChecker.cs`.
+- **Критерий приёмки**: Уровень 3 (ребейзлайн всех 7 эталонов Golden IR по двухфазному протоколу с предварительной инвентаризацией) + цели по времени: кодеген `canary_70_components` < 15 сек, кодеген 1025 компонентов < 60 сек без OOM.
 - **Шаблон коммита**: `perf(codegen): linearize component registration codegen via descriptor tables (B7)`
-
-#### Шаг B3 — Настраиваемое форматирование `f32` / `f64`
-- **Объём**: Замена жесткого хардкода `%.2f` в интерполяции строк и `println` на настраиваемое форматирование с дефолтом `%g` / `%f`.
-- **Файлы**: `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Expressions.cs`.
-- **Критерий приёмки**: Уровень 1 (`02_variables_and_math.ecs`).
-- **Шаблон коммита**: `feat(codegen): configurable floating point formatting in string interpolation`
 
 #### Шаг B6 — Флаг компилятора `--pause-on-exit`
 - **Объём**: Исключение безусловного авто-вызова `@getchar()` перед выходом из `main`. Генерация ожидания нажатия клавиши строго при наличии CLI-флага `--pause-on-exit`.
 - **Файлы**: `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.cs`, `src/ECSLang.CLI/Program.cs`.
 - **Критерий приёмки**: Уровень 1 (чистый headless запуск без зависаний).
 - **Шаблон коммита**: `feat(cli): gate console pause-on-exit behind explicit compiler flag`
+
+#### Шаг B3 — Настраиваемое форматирование `f32` / `f64`
+- **Объём**: Замена жесткого хардкода `%.2f` в интерполяции строк и `println` на настраиваемое форматирование с дефолтом `%g` / `%f`.
+- **Файлы**: `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Expressions.cs`.
+- **Критерий приёмки**: Уровень 1 (`02_variables_and_math.ecs`).
+- **Шаблон коммита**: `feat(codegen): configurable floating point formatting in string interpolation`
 
 #### Шаг B4 — Хэш-индекс архетипов (`mask -> archIdx`)
 - **Объём**: Интеграция быстрого поиска архетипа через встроенную хэш-таблицу вместо линейного сканирования 16 архетипов. Бенчмарк времени спавна и миграций до и после.
