@@ -6,7 +6,7 @@
 
 param (
     [string]$Mode = "strict",
-    [string]$CliPath = "src/ECSLang.CLI/bin/Debug/net9.0/ECSLang.CLI.exe",
+    [string]$CliPath = $(if (Test-Path "src/ECSLang.CLI/bin/Release/net9.0/ECSLang.CLI.exe") { "src/ECSLang.CLI/bin/Release/net9.0/ECSLang.CLI.exe" } else { "src/ECSLang.CLI/bin/Debug/net9.0/ECSLang.CLI.exe" }),
     [switch]$UpdateBaselines
 )
 
@@ -72,30 +72,39 @@ try {
             continue
         }
 
-        $goldenContent = Get-Content $goldenFile
-        $genContent = Get-Content $genIr
+        if ($Mode -eq "strict" -or $Mode -eq "fast") {
+            # Fast exact match via SHA256 hash comparison
+            $goldenHash = (Get-FileHash -Path $goldenFile -Algorithm SHA256).Hash
+            $genHash = (Get-FileHash -Path $genIr -Algorithm SHA256).Hash
 
-        if ($Mode -eq "strict") {
-            # Exact line diff
-            $diff = Compare-Object $goldenContent $genContent
-            if ($null -eq $diff -or $diff.Count -eq 0) {
+            if ($goldenHash -eq $genHash) {
                 Write-Host "  [OK] $name matches golden baseline exactly" -ForegroundColor Green
                 $summary += "$name : EXACT MATCH"
             } else {
-                Write-Host "  [FAIL] $name differs from golden baseline ($($diff.Count) diff lines)" -ForegroundColor Red
+                # Mismatch detected: perform line diff for detailed diagnostics
+                $goldenContent = Get-Content $goldenFile
+                $genContent = Get-Content $genIr
+                $diff = Compare-Object $goldenContent $genContent -CaseSensitive
+                Write-Host "  [FAIL] $name differs from golden baseline ($($diff.Count) diff lines, Hash Mismatch)" -ForegroundColor Red
                 $allPassed = $false
                 $summary += "$name : MISMATCH ($($diff.Count) lines)"
             }
         }
         elseif ($Mode -eq "refactor") {
-            # Classify diff lines into allowed categories
-            $diff = Compare-Object $goldenContent $genContent
-            if ($null -eq $diff -or $diff.Count -eq 0) {
+            # Fast path: exact match check via hash first
+            $goldenHash = (Get-FileHash -Path $goldenFile -Algorithm SHA256).Hash
+            $genHash = (Get-FileHash -Path $genIr -Algorithm SHA256).Hash
+
+            if ($goldenHash -eq $genHash) {
                 Write-Host "  [OK] $name matches golden baseline exactly" -ForegroundColor Green
                 $summary += "$name : EXACT MATCH"
                 continue
             }
 
+            # Hashes differ: classify diff lines into allowed categories
+            $goldenContent = Get-Content $goldenFile
+            $genContent = Get-Content $genIr
+            $diff = Compare-Object $goldenContent $genContent -CaseSensitive
             $illegalDiffs = @()
             foreach ($d in $diff) {
                 $line = $d.InputObject.Trim()
