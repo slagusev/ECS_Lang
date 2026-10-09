@@ -111,10 +111,11 @@
 ### 🛑 КПП-2: Снятие лимита компонентов (Архитектурное решение)
 
 #### Шаг A7.5 — Постоянное снятие предела 64 компонентов
-- **Объём**: Замена лимита 64 в `TypeChecker.cs` на потолок 65 535 компонентов с предупреждением компилятора при > 1024. Перевод `tests/canary_70_components.ecs` в статус 7-го эталона `tests/golden_ir/over_64_components.ll`.
-- **Файлы**: `src/ECSLang.Semantics/TypeChecker.cs`, `tests/verify_golden_ir.ps1`, `tests/golden_ir/over_64_components.ll`.
-- **Критерий приёмки**: Уровень 3 (7/7 золотых эталонов в strict mode).
-- **Шаблон коммита**: `feat(semantics): permanently lift 64-component limit to 65535 and add 70-comp golden IR (Step 5)`
+- **Объём**: Замена лимита 64 в `TypeChecker.cs` на потолок 65 535 компонентов с предупреждением компилятора при > 1024 ("compile time grows quadratically with component count (see B7)"). Перевод `tests/canary_70_components.ecs` в статус 7-го эталона `tests/golden_ir/over_64_components.ll`. Добавление двухуровневого режима в `verify_golden_ir.ps1` (`-Mode fast` и `-Mode strict`).
+- **Файлы**: `src/ECSLang.Semantics/TypeChecker.cs`, `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.cs`, `src/ECSLang.CLI/Program.cs`, `tests/verify_golden_ir.ps1`, `tests/golden_ir/over_64_components.ll`, `tests/verify_a7_5_thresholds.ps1`, `tests/verify_boundary_components.ps1`.
+- **Критерий приёмки**: Уровень 3 (7/7 золотых эталонов в strict mode, 6/6 в fast mode) + Уровень 2 (инвариантный тест порогов 65536/1025; граничные тесты 63, 64, 65, 127, 128, 129 с проверкой значений).
+- **Статус**: **ВЫПОЛНЕНО**
+- **Шаблон коммита**: `feat(semantics): permanently lift component limit to 65535 and add 7th golden IR (Step 5)`
 
 #### Шаг A7.6 — Обновление профайлера F1
 - **Объём**: Вывод многословной битовой маски в оверлее профайлера F1 в шестнадцатеричном пословном формате `[0x... 0x...]`.
@@ -122,15 +123,21 @@
 - **Критерий приёмки**: Уровень 1 (`examples/18_arcade_void_defender.ecs`).
 - **Шаблон коммита**: `feat(profiler): render multi-word archetype masks in F1 telemetry HUD (Step 6)`
 
-#### Шаг A7.Ф — Финализация серии A7 и граничное тестирование
-- **Объём**: Синтетический стресс-тест на границах слов: 63, 64, 65, 127, 128, 129 компонентов. Финальный замер `particles_100k`. Итоговый аудит соответствия `ARCHITECTURE.md`.
-- **Файлы**: `tests/boundary_components_test.ecs`, `ARCHITECTURE.md`.
-- **Критерий приёмки**: Уровень 4 (граничные стресс-тесты пройдены с кодом 0).
-- **Шаблон коммита**: `test(stress): verify component boundary masks (63/64/65/127/128/129) and update architecture docs`
+#### Шаг A7.Ф — Финализация серии A7 и итоговый perf-отчёт
+- **Объём**: Итоговый замер производительности `particles_100k` до/после всей A7-серии (checkout родительского коммита тега `a7-step1-green`, прогон `tests/perf_baseline.ps1`). Итоговый аудит соответствия `ARCHITECTURE.md`.
+- **Файлы**: `ARCHITECTURE.md`, `tests/perf_baseline.ps1`.
+- **Критерий приёмки**: Уровень 4 (perf-сравнение зафиксировано, регрессий spawn/tick нет).
+- **Шаблон коммита**: `test(perf): finalize A7 series performance comparison against pre-A7 baseline`
 
 ---
 
 ### Блок B: Оптимизации ядра и платформенная переносимость
+
+#### Шаг B7 — Линеаризация кодегена инициализации компонентов
+- **Объём**: Устранение квадратичного роста времени компиляции при большом числе компонентов ($N > 1024$). Замена индивидуальной кодогенерации $O(N^2)$ функций манипуляции компонентами на компактные табличные дескрипторы и цикл инициализации рантайма.
+- **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.cs`, `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`.
+- **Критерий приёмки**: Уровень 1 (компиляция 1025+ компонентов без предупреждения B7 и без OOM/зависания).
+- **Шаблон коммита**: `perf(codegen): linearize component registration codegen via descriptor tables (B7)`
 
 #### Шаг B3 — Настраиваемое форматирование `f32` / `f64`
 - **Объём**: Замена жесткого хардкода `%.2f` в интерполяции строк и `println` на настраиваемое форматирование с дефолтом `%g` / `%f`.

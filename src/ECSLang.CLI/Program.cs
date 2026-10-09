@@ -53,6 +53,7 @@ public static class Program
         var options = new CompilerOptions();
         bool explicitWait = false;
         bool emitObjOnly = false;
+        bool checkOnly = false;
 
         for (int i = 2; i < args.Length; i++)
         {
@@ -105,6 +106,10 @@ public static class Program
                 options.NoWaitOnExit = false;
                 explicitWait = true;
             }
+            else if (arg is "--check" or "--syntax-only")
+            {
+                checkOnly = true;
+            }
         }
 
         string outputExe = customOutputExe ?? Path.Combine(outputDir, $"{baseName}{options.Target.ExecutableExtension}");
@@ -153,6 +158,12 @@ public static class Program
         {
             diagnostics.PrintToConsole();
             return 1;
+        }
+
+        if (checkOnly)
+        {
+            diagnostics.PrintToConsole();
+            return diagnostics.HasErrors ? 1 : 0;
         }
 
         // 3. LLVM Codegen
@@ -263,6 +274,7 @@ public static class Program
         Console.WriteLine("  -g, --debug     Generate debug information (CodeView PDB / DWARF)");
         Console.WriteLine("  --no-wait       Do not wait for Enter key on exit");
         Console.WriteLine("  --wait-key      Wait for Enter key before exiting console");
+        Console.WriteLine("  --check         Validate syntax and semantics without LLVM codegen");
         Console.WriteLine("  -c, --emit-obj  Emit object file (.obj / .o) without linking");
         Console.WriteLine("  --emit-ir       Emit LLVM IR (.ll) file");
     }

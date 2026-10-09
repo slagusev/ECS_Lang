@@ -1,11 +1,8 @@
 # Verification script for D1 Golden LLVM IR baselines
 # Modes:
-#   -strict   : Exact line-by-line equality against golden files (default)
-#   -refactor : Validates that diffs only contain legal architectural changes:
-#               1. Mask type definition ([1 x i64] vs i64 in %struct.Archetype)
-#               2. world_get_or_create_archetype signature (ptr vs i64)
-#               3. GEP pattern for word 0 access in [1 x i64]
-#               4. alloca/load/store mask buffer patterns
+#   -strict   : Exact line-by-line equality against all 7 golden files (including 70+ components)
+#   -fast     : Rapid inner-loop check against 6 small golden files (< 5 seconds)
+#   -refactor : Validates that diffs only contain legal architectural categories
 
 param (
     [string]$Mode = "strict",
@@ -15,7 +12,7 @@ param (
 $ErrorActionPreference = "Stop"
 $goldenDir = "tests/golden_ir"
 
-$testFiles = @(
+$baseTestFiles = @(
     @{ Name = "08_ecs_basics"; Source = "examples/08_ecs_basics.ecs" },
     @{ Name = "09_ecs_command_buffer"; Source = "examples/09_ecs_command_buffer.ecs" },
     @{ Name = "11_ecs_archetypes_and_filters"; Source = "examples/11_ecs_archetypes_and_filters.ecs" },
@@ -24,7 +21,15 @@ $testFiles = @(
     @{ Name = "bulk_spawn_test"; Source = "tests/bulk_spawn_test.ecs" }
 )
 
-Write-Host "=== Running Golden IR Verification (Mode: $Mode) ===" -ForegroundColor Cyan
+$over64Test = @{ Name = "over_64_components"; Source = "tests/canary_70_components.ecs" }
+
+$testFiles = if ($Mode -eq "fast") {
+    $baseTestFiles
+} else {
+    $baseTestFiles + $over64Test
+}
+
+Write-Host "=== Running Golden IR Verification (Mode: $Mode, Tests: $($testFiles.Count)) ===" -ForegroundColor Cyan
 
 $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ecslang_ir_test_" + [System.Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null

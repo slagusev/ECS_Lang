@@ -151,11 +151,11 @@ public sealed partial class EcsRuntimeEmitter
                 continue;
             }
 
-            if (compIndex >= 128)
+            if (compIndex >= 65535)
             {
                 int totalCount = _typeChecker.Components.Values.Distinct().Count();
                 _diagnostics.ReportError(
-                    $"Maximum component limit of 128 exceeded (project has {totalCount} components, limit is 128). Archetype bitmask overflow.",
+                    $"Maximum component limit of 65535 exceeded (project has {totalCount} components, limit is 65535). Archetype bitmask overflow.",
                     compSym.Span);
                 return;
             }
