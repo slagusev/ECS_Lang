@@ -14,6 +14,7 @@ target triple = "x86_64-pc-windows-msvc"
 
 @NvOptimusEnablement = dllexport global i32 1
 @AmdPowerXpressRequestHighPerformance = dllexport global i32 1
+@_ecs_zero_mask = internal constant [1 x i64] zeroinitializer
 @ecs_err_oob_world_set_ChildOf = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_set_ChildOf.\00", align 1
 @ecs_err_dead_world_set_ChildOf = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_ChildOf.\00", align 1
 @ecs_err_pending_world_set_ChildOf = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_ChildOf.\00", align 1
@@ -319,9 +320,10 @@ entry:
   %new_ent_raw = call ptr @realloc(ptr %cur_ent_raw, i64 %ent_bytes)
   store ptr %new_ent_raw, ptr %ent_slot, align 8
   %mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %arch_elem, i32 0, i32 0
-  %arch_mask = load i64, ptr %mask_slot, align 8
   %cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %arch_elem, i32 0, i32 4
-  %has_ChildOf = and i64 %arch_mask, 1
+  %mask_w_ChildOf = getelementptr inbounds [1 x i64], ptr %mask_slot, i32 0, i32 0
+  %arch_mask_ChildOf = load i64, ptr %mask_w_ChildOf, align 8
+  %has_ChildOf = and i64 %arch_mask_ChildOf, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %grow_col_ChildOf, label %skip_col_ChildOf
 
@@ -334,7 +336,9 @@ grow_col_ChildOf:                                 ; preds = %entry
   br label %skip_col_ChildOf
 
 skip_col_ChildOf:                                 ; preds = %grow_col_ChildOf, %entry
-  %has_Particle = and i64 %arch_mask, 2
+  %mask_w_Particle = getelementptr inbounds [1 x i64], ptr %mask_slot, i32 0, i32 0
+  %arch_mask_Particle = load i64, ptr %mask_w_Particle, align 8
+  %has_Particle = and i64 %arch_mask_Particle, 2
   %is_has_Particle = icmp ne i64 %has_Particle, 0
   br i1 %is_has_Particle, label %grow_col_Particle, label %skip_col_Particle
 
@@ -347,7 +351,9 @@ grow_col_Particle:                                ; preds = %skip_col_ChildOf
   br label %skip_col_Particle
 
 skip_col_Particle:                                ; preds = %grow_col_Particle, %skip_col_ChildOf
-  %has_Position = and i64 %arch_mask, 4
+  %mask_w_Position = getelementptr inbounds [1 x i64], ptr %mask_slot, i32 0, i32 0
+  %arch_mask_Position = load i64, ptr %mask_w_Position, align 8
+  %has_Position = and i64 %arch_mask_Position, 4
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %grow_col_Position, label %skip_col_Position
 
@@ -360,7 +366,9 @@ grow_col_Position:                                ; preds = %skip_col_Particle
   br label %skip_col_Position
 
 skip_col_Position:                                ; preds = %grow_col_Position, %skip_col_Particle
-  %has_Spawner = and i64 %arch_mask, 8
+  %mask_w_Spawner = getelementptr inbounds [1 x i64], ptr %mask_slot, i32 0, i32 0
+  %arch_mask_Spawner = load i64, ptr %mask_w_Spawner, align 8
+  %has_Spawner = and i64 %arch_mask_Spawner, 8
   %is_has_Spawner = icmp ne i64 %has_Spawner, 0
   br i1 %is_has_Spawner, label %grow_col_Spawner, label %skip_col_Spawner
 
@@ -373,7 +381,9 @@ grow_col_Spawner:                                 ; preds = %skip_col_Position
   br label %skip_col_Spawner
 
 skip_col_Spawner:                                 ; preds = %grow_col_Spawner, %skip_col_Position
-  %has_Velocity = and i64 %arch_mask, 16
+  %mask_w_Velocity = getelementptr inbounds [1 x i64], ptr %mask_slot, i32 0, i32 0
+  %arch_mask_Velocity = load i64, ptr %mask_w_Velocity, align 8
+  %has_Velocity = and i64 %arch_mask_Velocity, 16
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %grow_col_Velocity, label %skip_col_Velocity
 
@@ -393,9 +403,7 @@ define ptr @ecs_create_world() {
 entry:
   %raw_world = call ptr @malloc(i64 104)
   %0 = call ptr @memset(ptr %raw_world, i32 0, i64 104)
-  %a0_mask = alloca [1 x i64], align 8
-  store [1 x i64] zeroinitializer, ptr %a0_mask, align 8
-  %a0_init = call i32 @world_get_or_create_archetype(ptr %raw_world, ptr %a0_mask)
+  %a0_init = call i32 @world_get_or_create_archetype(ptr %raw_world, ptr @_ecs_zero_mask)
   ret ptr %raw_world
 }
 
@@ -460,9 +468,7 @@ entry:
   br i1 %is_unassigned, label %do_assign, label %exit_a0
 
 do_assign:                                        ; preds = %entry
-  %a0_mask_assign = alloca [1 x i64], align 8
-  store [1 x i64] zeroinitializer, ptr %a0_mask_assign, align 8
-  %a0 = call i32 @world_get_or_create_archetype(ptr %0, ptr %a0_mask_assign)
+  %a0 = call i32 @world_get_or_create_archetype(ptr %0, ptr @_ecs_zero_mask)
   %tables_slot_a0 = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %tables_a0 = load ptr, ptr %tables_slot_a0, align 8
   %a0_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_a0, i32 %a0
@@ -549,9 +555,10 @@ do_swap_ds:                                       ; preds = %do_despawn
   %cur_ent_elem_ds = getelementptr inbounds i32, ptr %cur_ent_raw_ds, i32 %cur_row_ds
   store i32 %moved_e_ds, ptr %cur_ent_elem_ds, align 4
   %cur_mask_slot_ds = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_ds, i32 0, i32 0
-  %cur_mask_ds = load i64, ptr %cur_mask_slot_ds, align 8
   %cur_cols_arr_ds = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_ds, i32 0, i32 4
-  %has_sw_ds_ChildOf = and i64 %cur_mask_ds, 1
+  %mask_w_ChildOf_ds = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_ds, i32 0, i32 0
+  %cur_mask_ChildOf_ds = load i64, ptr %mask_w_ChildOf_ds, align 8
+  %has_sw_ds_ChildOf = and i64 %cur_mask_ChildOf_ds, 1
   %is_has_sw_ds_ChildOf = icmp ne i64 %has_sw_ds_ChildOf, 0
   br i1 %is_has_sw_ds_ChildOf, label %swap_ds_ChildOf, label %skip_sw_ds_ChildOf
 
@@ -569,7 +576,9 @@ swap_ds_ChildOf:                                  ; preds = %do_swap_ds
   br label %skip_sw_ds_ChildOf
 
 skip_sw_ds_ChildOf:                               ; preds = %swap_ds_ChildOf, %do_swap_ds
-  %has_sw_ds_Particle = and i64 %cur_mask_ds, 2
+  %mask_w_Particle_ds = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_ds, i32 0, i32 0
+  %cur_mask_Particle_ds = load i64, ptr %mask_w_Particle_ds, align 8
+  %has_sw_ds_Particle = and i64 %cur_mask_Particle_ds, 2
   %is_has_sw_ds_Particle = icmp ne i64 %has_sw_ds_Particle, 0
   br i1 %is_has_sw_ds_Particle, label %swap_ds_Particle, label %skip_sw_ds_Particle
 
@@ -582,7 +591,9 @@ swap_ds_Particle:                                 ; preds = %skip_sw_ds_ChildOf
   br label %skip_sw_ds_Particle
 
 skip_sw_ds_Particle:                              ; preds = %swap_ds_Particle, %skip_sw_ds_ChildOf
-  %has_sw_ds_Position = and i64 %cur_mask_ds, 4
+  %mask_w_Position_ds = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_ds, i32 0, i32 0
+  %cur_mask_Position_ds = load i64, ptr %mask_w_Position_ds, align 8
+  %has_sw_ds_Position = and i64 %cur_mask_Position_ds, 4
   %is_has_sw_ds_Position = icmp ne i64 %has_sw_ds_Position, 0
   br i1 %is_has_sw_ds_Position, label %swap_ds_Position, label %skip_sw_ds_Position
 
@@ -595,7 +606,9 @@ swap_ds_Position:                                 ; preds = %skip_sw_ds_Particle
   br label %skip_sw_ds_Position
 
 skip_sw_ds_Position:                              ; preds = %swap_ds_Position, %skip_sw_ds_Particle
-  %has_sw_ds_Spawner = and i64 %cur_mask_ds, 8
+  %mask_w_Spawner_ds = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_ds, i32 0, i32 0
+  %cur_mask_Spawner_ds = load i64, ptr %mask_w_Spawner_ds, align 8
+  %has_sw_ds_Spawner = and i64 %cur_mask_Spawner_ds, 8
   %is_has_sw_ds_Spawner = icmp ne i64 %has_sw_ds_Spawner, 0
   br i1 %is_has_sw_ds_Spawner, label %swap_ds_Spawner, label %skip_sw_ds_Spawner
 
@@ -608,7 +621,9 @@ swap_ds_Spawner:                                  ; preds = %skip_sw_ds_Position
   br label %skip_sw_ds_Spawner
 
 skip_sw_ds_Spawner:                               ; preds = %swap_ds_Spawner, %skip_sw_ds_Position
-  %has_sw_ds_Velocity = and i64 %cur_mask_ds, 16
+  %mask_w_Velocity_ds = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_ds, i32 0, i32 0
+  %cur_mask_Velocity_ds = load i64, ptr %mask_w_Velocity_ds, align 8
+  %has_sw_ds_Velocity = and i64 %cur_mask_Velocity_ds, 16
   %is_has_sw_ds_Velocity = icmp ne i64 %has_sw_ds_Velocity, 0
   br i1 %is_has_sw_ds_Velocity, label %swap_ds_Velocity, label %skip_sw_ds_Velocity
 

@@ -226,17 +226,25 @@ public sealed partial class EcsRuntimeEmitter
 
         // Reallocate active component columns
         var maskSlotGr = _builder.BuildStructGEP2(_archStructType, archElemGr, 0, "mask_slot");
-        var archMaskGr = _builder.BuildLoad2(_context.Int64Type, maskSlotGr, "arch_mask");
         var colsArrGr = _builder.BuildStructGEP2(_archStructType, archElemGr, 4, "cols_arr");
 
         for (int k = 0; k < totalComps; k++)
         {
             var compName = compNames[k];
             ulong compSize = _compSizes[compName];
-            ulong compBit = 1UL << k;
+            int wordIdx = k >> 6;
+            int bitIdx = k & 63;
+            ulong compBit = 1UL << bitIdx;
+
+            var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, maskSlotGr, new[]
+            {
+                LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)wordIdx)
+            }, $"mask_w_{compName}");
+            var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"arch_mask_{compName}");
 
             var bitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, compBit);
-            var andRes = _builder.BuildAnd(archMaskGr, bitVal, $"has_{compName}");
+            var andRes = _builder.BuildAnd(maskWVal, bitVal, $"has_{compName}");
             var hasComp = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, andRes, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_has_{compName}");
 
             var growColBB = growArchFunc.AppendBasicBlock($"grow_col_{compName}");
@@ -273,11 +281,8 @@ public sealed partial class EcsRuntimeEmitter
         _builder.BuildCall2(memsetType, memsetFunc, new[] { rawWorld, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), worldStructSizeVal }, "");
         var typedWorld = _builder.BuildBitCast(rawWorld, worldPtrType, "typed_world");
 
-        // Initialize empty Archetype 0 in this world
-        var a0MaskAlloca = _builder.BuildAlloca(_maskArrayType, "a0_mask");
-        var zeroWordsCw = Enumerable.Repeat(LLVMValueRef.CreateConstInt(_context.Int64Type, 0), _maskWords).ToArray();
-        _builder.BuildStore(LLVMValueRef.CreateConstArray(_context.Int64Type, zeroWordsCw), a0MaskAlloca);
-        _builder.BuildCall2(getArchType, getArchFunc, new[] { typedWorld, a0MaskAlloca }, "a0_init");
+        // Initialize empty Archetype 0 in this world using global zero mask
+        _builder.BuildCall2(getArchType, getArchFunc, new[] { typedWorld, _zeroMaskGlobal }, "a0_init");
         _builder.BuildRet(typedWorld);
 
         // =========================================================================
@@ -483,10 +488,7 @@ public sealed partial class EcsRuntimeEmitter
         _builder.BuildCondBr(isUnassigned, doAssignBB, exitA0BB);
 
         _builder.PositionAtEnd(doAssignBB);
-        var a0MaskAllocaA0 = _builder.BuildAlloca(_maskArrayType, "a0_mask_assign");
-        var zeroWordsA0 = Enumerable.Repeat(LLVMValueRef.CreateConstInt(_context.Int64Type, 0), _maskWords).ToArray();
-        _builder.BuildStore(LLVMValueRef.CreateConstArray(_context.Int64Type, zeroWordsA0), a0MaskAllocaA0);
-        var a0 = _builder.BuildCall2(getArchType, getArchFunc, new[] { wArgA0, a0MaskAllocaA0 }, "a0");
+        var a0 = _builder.BuildCall2(getArchType, getArchFunc, new[] { wArgA0, _zeroMaskGlobal }, "a0");
 
         var tablesSlotA0 = _builder.BuildStructGEP2(_worldStructType, wArgA0, 2, "tables_slot_a0");
         var tablesBaseA0 = _builder.BuildLoad2(archPtrType, tablesSlotA0, "tables_a0");
@@ -611,17 +613,25 @@ public sealed partial class EcsRuntimeEmitter
 
         // Copy all active components from lastRow to curRow
         var curMaskSlotDs = _builder.BuildStructGEP2(_archStructType, curArchPtrDs, 0, "cur_mask_slot_ds");
-        var curMaskDs = _builder.BuildLoad2(_context.Int64Type, curMaskSlotDs, "cur_mask_ds");
         var curColsArrDs = _builder.BuildStructGEP2(_archStructType, curArchPtrDs, 4, "cur_cols_arr_ds");
 
         for (int c = 0; c < totalComps; c++)
         {
             var cName = compNames[c];
-            ulong cBit = 1UL << c;
+            int wordIdx = c >> 6;
+            int bitIdx = c & 63;
+            ulong cBit = 1UL << bitIdx;
             ulong cSize = _compSizes[cName];
-            var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
 
-            var cAnd = _builder.BuildAnd(curMaskDs, cBitVal, $"has_sw_ds_{cName}");
+            var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlotDs, new[]
+            {
+                LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)wordIdx)
+            }, $"mask_w_{cName}_ds");
+            var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"cur_mask_{cName}_ds");
+
+            var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
+            var cAnd = _builder.BuildAnd(maskWVal, cBitVal, $"has_sw_ds_{cName}");
             var hasC = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, cAnd, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_has_sw_ds_{cName}");
 
             var swapCBB = despawnFunc.AppendBasicBlock($"swap_ds_{cName}");

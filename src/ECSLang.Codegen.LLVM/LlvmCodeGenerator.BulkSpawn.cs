@@ -66,7 +66,7 @@ public sealed partial class LlvmCodeGenerator
 
         // 1. Pre-evaluate all component arguments
         var evaluatedComps = new List<(string Name, int Id, LLVMTypeRef StructType, List<LLVMValueRef> ArgValues, LLVMValueRef? WholeVal)>();
-        ulong targetMask = 0UL;
+        var targetWords = new ulong[ecs.MaskWords];
 
         foreach (var compExpr in node.Components)
         {
@@ -83,7 +83,10 @@ public sealed partial class LlvmCodeGenerator
 
                 if (compId >= 0)
                 {
-                    targetMask |= (1UL << compId);
+                    int wIdx = compId >> 6;
+                    int bIdx = compId & 63;
+                    if (wIdx < targetWords.Length)
+                        targetWords[wIdx] |= (1UL << bIdx);
                     var compStructType = ecs.GetComponentStructType(compName);
                     var argVals = new List<LLVMValueRef>();
                     for (int f = 0; f < call.Arguments.Count; f++)
@@ -122,7 +125,10 @@ public sealed partial class LlvmCodeGenerator
 
                 if (compId >= 0)
                 {
-                    targetMask |= (1UL << compId);
+                    int wIdx = compId >> 6;
+                    int bIdx = compId & 63;
+                    if (wIdx < targetWords.Length)
+                        targetWords[wIdx] |= (1UL << bIdx);
                     var compStructType = ecs.GetComponentStructType(compName);
                     var wholeVal = CompileExpression(context, module, builder, function, compExpr, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                     evaluatedComps.Add((compName, compId, compStructType, new List<LLVMValueRef>(), wholeVal));
@@ -150,8 +156,7 @@ public sealed partial class LlvmCodeGenerator
                 LLVMValueRef.CreateConstInt(context.Int32Type, 0),
                 LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)w)
             }, $"dst_spawn_w{w}");
-            var wordVal = (w == 0) ? targetMask : 0UL;
-            builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int64Type, wordVal), dstW);
+            builder.BuildStore(LLVMValueRef.CreateConstInt(context.Int64Type, targetWords[w]), dstW);
         }
         var getArchFunc = module.GetNamedFunction("world_get_or_create_archetype");
         var getArchType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(getArchFunc);

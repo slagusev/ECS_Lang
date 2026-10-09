@@ -27,6 +27,7 @@ public sealed partial class EcsRuntimeEmitter
     // Multi-Archetype Structs
     private int _maskWords = 1;
     private LLVMTypeRef _maskArrayType;
+    private LLVMValueRef _zeroMaskGlobal;
     private LLVMTypeRef _archStructType;
     private LLVMTypeRef _colArrayType;
     private LLVMTypeRef _worldStructType;
@@ -37,6 +38,7 @@ public sealed partial class EcsRuntimeEmitter
     public int MaskWords => _maskWords;
     public LLVMTypeRef MaskArrayType => _maskArrayType;
     public LLVMTypeRef GetMaskArrayType() => _maskArrayType;
+    public LLVMValueRef ZeroMaskGlobal => _zeroMaskGlobal;
 
     public int NameIndexWorldOffset => _nameIndexWorldOffset;
     public int StringArenaHeadWorldOffset => _stringArenaHeadWorldOffset;
@@ -212,6 +214,11 @@ public sealed partial class EcsRuntimeEmitter
         _maskWords = Math.Max(1, (int)((compCount + 63) / 64));
         _maskArrayType = LLVMTypeRef.CreateArray(_context.Int64Type, (uint)_maskWords);
         _colArrayType = LLVMTypeRef.CreateArray(i8PtrType, compCount);
+
+        _zeroMaskGlobal = _module.AddGlobal(_maskArrayType, "_ecs_zero_mask");
+        _zeroMaskGlobal.Initializer = LLVMValueRef.CreateConstNull(_maskArrayType);
+        _zeroMaskGlobal.Linkage = LLVMLinkage.LLVMInternalLinkage;
+        LlvmApi.SetGlobalConstant(_zeroMaskGlobal, 1);
 
         _archStructType = _context.CreateNamedStruct("struct.Archetype");
         _archStructType.StructSetBody(new[]

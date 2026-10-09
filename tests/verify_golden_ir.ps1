@@ -95,7 +95,7 @@ try {
                 # Legal Category 4: alloca / store / load of mask array and words
                 if ($line -match "alloca \[(1|\d+) x i64\]" -or $line -match "(load|store).*(ex_w|tgt_w|src_w|dst_w|src_set|src_rem|dst_set|dst_rem|val_set|val_rem|dst_spawn|cur_mask_w|mask_w|m_gep|a0_mask|temp_mask|spawn_mask|\[(1|\d+) x i64\])" -or $line -match "zeroinitializer") { continue }
                 # Legal Category 5: mask comparison and boolean combinations
-                if ($line -match "(icmp eq i64|and i1).*(is_match|existing_mask|target_mask|%1)") { continue }
+                if ($line -match "(icmp eq i64|and i1|and i64).*(is_match|existing_mask|target_mask|%1|arch_mask|cur_mask|has_)") { continue }
                 # Comments / ModuleID line
                 if ($line -match "^; ModuleID") { continue }
 

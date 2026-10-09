@@ -88,6 +88,7 @@
 - **Объём**: Внедрение глобальной константы `@_ecs_zero_mask = internal constant [WORDS x i64] zeroinitializer` вместо per-call `alloca` в `ecs_create_world` и `world_assign_a0`. Обновление `spawn_with` (`LlvmCodeGenerator.BulkSpawn.cs`), `despawn` swap-copy и `world_grow_archetype` на пословную адресацию.
 - **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.cs`, `EcsRuntimeEmitter.Archetypes.cs`, `LlvmCodeGenerator.BulkSpawn.cs`.
 - **Критерий приёмки**: Уровень 3 (дифф-гистограмма + strict match после ребейзлайна) + Уровень 1 (`particles_100k`).
+- **Статус**: **ВЫПОЛНЕНО** (коммит A7.3; Уровень 3 refactor mode 6/6 + strict mode 6/6 после ребейзлайна; Уровень 1 29/29 built, 23/23 runned exit code 0; perf particles_100k Release 7.80 ms spawn / 29.04 ms tick).
 - **Шаблон коммита**: `feat(codegen): migrate despawn, bulk spawn and runtime zero mask to multi-word arrays (Step 3)`
 
 #### Шаг A7.4 — Многословная фильтрация запросов систем (`query`)
