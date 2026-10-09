@@ -683,7 +683,9 @@ public sealed partial class EcsRuntimeEmitter
             var compSym = _typeChecker.Components[compName];
             var compStructType = _compStructTypes[compName];
             ulong compSize = _compSizes[compName];
-            ulong compBit = 1UL << k;
+            int wordIdx = k >> 6;
+            int bitIdx = k & 63;
+            ulong compBit = 1UL << bitIdx;
             var compBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, compBit);
 
             // 1. world_set_Comp and world_add_Comp
@@ -765,12 +767,12 @@ public sealed partial class EcsRuntimeEmitter
                 var curArchPtr = _builder.BuildInBoundsGEP2(_archStructType, tablesBaseSet, new[] { curArchIdx }, "cur_arch_ptr");
 
                 var curMaskSlot = _builder.BuildStructGEP2(_archStructType, curArchPtr, 0, "cur_mask_slot");
-                var curMaskW0Ptr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlot, new[]
+                var curMaskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlot, new[]
                 {
                     LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                    LLVMValueRef.CreateConstInt(_context.Int32Type, 0)
-                }, "cur_mask_w0_ptr");
-                var curMask = _builder.BuildLoad2(_context.Int64Type, curMaskW0Ptr, "cur_mask");
+                    LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)wordIdx)
+                }, $"cur_mask_w{wordIdx}_ptr");
+                var curMask = _builder.BuildLoad2(_context.Int64Type, curMaskWPtr, "cur_mask");
 
                 var hasBit = _builder.BuildAnd(curMask, compBitVal, "has_bit");
                 var alreadyHas = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, hasBit, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), "already_has");
@@ -804,7 +806,7 @@ public sealed partial class EcsRuntimeEmitter
                         LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
                         LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)w)
                     }, $"dst_set_w{w}");
-                    _builder.BuildStore(w == 0 ? newMask : valW, dstW);
+                    _builder.BuildStore(w == wordIdx ? newMask : valW, dstW);
                 }
                 var newArchIdx = _builder.BuildCall2(getArchType, getArchFunc, new[] { worldParamSet, tempMaskSetAlloca }, "new_arch_idx");
 
@@ -1053,12 +1055,12 @@ public sealed partial class EcsRuntimeEmitter
             var tablesBaseRem = _builder.BuildLoad2(archPtrType, tablesSlotRem, "tables_rem");
             var curArchPtrRem = _builder.BuildInBoundsGEP2(_archStructType, tablesBaseRem, new[] { curArchIdxRem }, "cur_arch_ptr_rem");
             var curMaskSlotRem = _builder.BuildStructGEP2(_archStructType, curArchPtrRem, 0, "cur_mask_rem");
-            var curMaskW0RemPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlotRem, new[]
+            var curMaskWRemPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlotRem, new[]
             {
                 LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                LLVMValueRef.CreateConstInt(_context.Int32Type, 0)
-            }, "cur_mask_w0_rem_ptr");
-            var curMaskRem = _builder.BuildLoad2(_context.Int64Type, curMaskW0RemPtr, "cur_mask_val_rem");
+                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)wordIdx)
+            }, $"cur_mask_w{wordIdx}_rem_ptr");
+            var curMaskRem = _builder.BuildLoad2(_context.Int64Type, curMaskWRemPtr, "cur_mask_val_rem");
 
             var hasCompRem = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE,
                 _builder.BuildAnd(curMaskRem, compBitVal, "rem_has_bit"),
@@ -1085,7 +1087,7 @@ public sealed partial class EcsRuntimeEmitter
                     LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
                     LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)w)
                 }, $"dst_rem_w{w}");
-                _builder.BuildStore(w == 0 ? newMaskRem : valW, dstW);
+                _builder.BuildStore(w == wordIdx ? newMaskRem : valW, dstW);
             }
             var newArchIdxRem = _builder.BuildCall2(getArchType, getArchFunc, new[] { worldParamRem, tempMaskRemAlloca }, "new_arch_rem");
 
@@ -1285,7 +1287,12 @@ public sealed partial class EcsRuntimeEmitter
             var tablesBaseHas = _builder.BuildLoad2(archPtrType, tablesSlotHas, "tables_has");
             var archPtrHas = _builder.BuildInBoundsGEP2(_archStructType, tablesBaseHas, new[] { curArchIdxHas }, "arch_ptr_has");
             var maskSlotHas = _builder.BuildStructGEP2(_archStructType, archPtrHas, 0, "mask_slot_has");
-            var archMaskHas = _builder.BuildLoad2(_context.Int64Type, maskSlotHas, "arch_mask_has");
+            var maskWHasPtr = _builder.BuildInBoundsGEP2(_maskArrayType, maskSlotHas, new[]
+            {
+                LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)wordIdx)
+            }, $"mask_w{wordIdx}_has_ptr");
+            var archMaskHas = _builder.BuildLoad2(_context.Int64Type, maskWHasPtr, "arch_mask_has");
 
             var bitAndHas = _builder.BuildAnd(archMaskHas, compBitVal, "bit_and_has");
             var resultHas = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, bitAndHas, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), "res_has");

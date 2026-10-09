@@ -81,6 +81,7 @@
 - **Объём**: Замена хардкода слова 0. Реализация `wordIdx = compId >> 6`, `bitIdx = compId & 63`. Пословное копирование маски, вычисление целевого слова через `OR` / `AND-NOT`, fast-path проверка наличия компонента через целевое слово.
 - **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`.
 - **Критерий приёмки**: Уровень 3 (рефактор-режим `verify_golden_ir.ps1`, ребейзлайн) + Уровень 1 (`run_all_examples.ps1`).
+- **Статус**: **ВЫПОЛНЕНО** (коммит A7.2; Уровень 3 refactor mode 6/6 + strict mode 6/6 после ребейзлайна; Уровень 1 29/29 built, 23/23 runned exit code 0; гистограмма диффов: 0 неклассифицированных строк).
 - **Шаблон коммита**: `feat(codegen): implement multi-word target mask calculation in world_set, add, remove, has (Step 2)`
 
 #### Шаг A7.3 — Многословные маски в `despawn`, `grow_archetype`, `spawn_with` и глобальный `@_ecs_zero_mask`

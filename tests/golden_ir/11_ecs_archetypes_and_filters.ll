@@ -1645,7 +1645,8 @@ check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
-  %arch_mask_has = load i64, ptr %mask_slot_has, align 8
+  %mask_w0_has_ptr = getelementptr inbounds [1 x i64], ptr %mask_slot_has, i32 0, i32 0
+  %arch_mask_has = load i64, ptr %mask_w0_has_ptr, align 8
   %bit_and_has = and i64 %arch_mask_has, 1
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
@@ -2627,7 +2628,8 @@ check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
-  %arch_mask_has = load i64, ptr %mask_slot_has, align 8
+  %mask_w0_has_ptr = getelementptr inbounds [1 x i64], ptr %mask_slot_has, i32 0, i32 0
+  %arch_mask_has = load i64, ptr %mask_w0_has_ptr, align 8
   %bit_and_has = and i64 %arch_mask_has, 2
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
@@ -3609,7 +3611,8 @@ check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
-  %arch_mask_has = load i64, ptr %mask_slot_has, align 8
+  %mask_w0_has_ptr = getelementptr inbounds [1 x i64], ptr %mask_slot_has, i32 0, i32 0
+  %arch_mask_has = load i64, ptr %mask_w0_has_ptr, align 8
   %bit_and_has = and i64 %arch_mask_has, 4
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
@@ -4595,7 +4598,8 @@ check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
-  %arch_mask_has = load i64, ptr %mask_slot_has, align 8
+  %mask_w0_has_ptr = getelementptr inbounds [1 x i64], ptr %mask_slot_has, i32 0, i32 0
+  %arch_mask_has = load i64, ptr %mask_w0_has_ptr, align 8
   %bit_and_has = and i64 %arch_mask_has, 8
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
@@ -5581,7 +5585,8 @@ check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
-  %arch_mask_has = load i64, ptr %mask_slot_has, align 8
+  %mask_w0_has_ptr = getelementptr inbounds [1 x i64], ptr %mask_slot_has, i32 0, i32 0
+  %arch_mask_has = load i64, ptr %mask_w0_has_ptr, align 8
   %bit_and_has = and i64 %arch_mask_has, 16
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
@@ -6567,7 +6572,8 @@ check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
   %arch_ptr_has = getelementptr inbounds %struct.Archetype, ptr %tables_has, i32 %cur_arch_idx_has
   %mask_slot_has = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_has, i32 0, i32 0
-  %arch_mask_has = load i64, ptr %mask_slot_has, align 8
+  %mask_w0_has_ptr = getelementptr inbounds [1 x i64], ptr %mask_slot_has, i32 0, i32 0
+  %arch_mask_has = load i64, ptr %mask_w0_has_ptr, align 8
   %bit_and_has = and i64 %arch_mask_has, 32
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has

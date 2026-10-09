@@ -93,7 +93,7 @@ try {
                 # Legal Category 3: GEP mask patterns (e.g. getelementptr inbounds [1 x i64], mask slots/words)
                 if ($line -match "getelementptr.*\[(1|\d+) x i64\]" -or $line -match "(mask_slot|mask_gep|m_gep|ex_w|tgt_w|src_w|dst_w|src_set|src_rem|dst_set|dst_rem|dst_spawn|cur_mask_w)") { continue }
                 # Legal Category 4: alloca / store / load of mask array and words
-                if ($line -match "alloca \[(1|\d+) x i64\]" -or $line -match "(load|store).*(ex_w|tgt_w|src_w|dst_w|src_set|src_rem|dst_set|dst_rem|val_set|val_rem|dst_spawn|cur_mask_w|m_gep|a0_mask|temp_mask|spawn_mask|\[(1|\d+) x i64\])" -or $line -match "zeroinitializer") { continue }
+                if ($line -match "alloca \[(1|\d+) x i64\]" -or $line -match "(load|store).*(ex_w|tgt_w|src_w|dst_w|src_set|src_rem|dst_set|dst_rem|val_set|val_rem|dst_spawn|cur_mask_w|mask_w|m_gep|a0_mask|temp_mask|spawn_mask|\[(1|\d+) x i64\])" -or $line -match "zeroinitializer") { continue }
                 # Legal Category 5: mask comparison and boolean combinations
                 if ($line -match "(icmp eq i64|and i1).*(is_match|existing_mask|target_mask|%1)") { continue }
                 # Comments / ModuleID line
