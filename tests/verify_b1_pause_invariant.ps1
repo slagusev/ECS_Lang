@@ -8,7 +8,8 @@ try {
     $outLL = "$tempDir\out.ll"
 
     Write-Host "Compiling 08_ecs_basics.ecs with --target x86_64-unknown-linux-gnu --emit-llvm..."
-    & dotnet run --project "$PSScriptRoot\..\src\ECSLang.CLI" -- build $srcFile --target x86_64-unknown-linux-gnu --emit-llvm -o $outLL
+    $cli = "$PSScriptRoot\..\src\ECSLang.CLI\bin\Release\net9.0\ECSLang.CLI.exe"
+    & $cli build $srcFile --target x86_64-unknown-linux-gnu --emit-llvm -o $outLL
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Compilation for Linux target failed"
         exit 1

@@ -9,7 +9,8 @@ try {
     $outExe = "$tempDir\events.exe"
 
     Write-Host "Compiling 10_ecs_events_and_observers.ecs to LLVM IR..."
-    & dotnet run --project "$PSScriptRoot\..\src\ECSLang.CLI" -- build $srcFile --no-wait --emit-llvm -o $outExe
+    $cli = "$PSScriptRoot\..\src\ECSLang.CLI\bin\Release\net9.0\ECSLang.CLI.exe"
+    & $cli build $srcFile --no-wait --emit-llvm -o $outExe
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to compile 10_ecs_events_and_observers.ecs"
         exit 1

@@ -6,7 +6,8 @@ $exe = Join-Path $tempDir "bounds_test.exe"
 
 try {
     Write-Host "Compiling tests/a6_out_of_bounds_guard.ecs..."
-    & dotnet run --project "$PSScriptRoot\..\src\ECSLang.CLI" -- build "$PSScriptRoot\a6_out_of_bounds_guard.ecs" -o $exe --no-wait
+    $cli = "$PSScriptRoot\..\src\ECSLang.CLI\bin\Release\net9.0\ECSLang.CLI.exe"
+    & $cli build "$PSScriptRoot\a6_out_of_bounds_guard.ecs" -o $exe --no-wait
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Failed to compile a6_out_of_bounds_guard.ecs"
         exit 1

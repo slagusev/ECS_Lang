@@ -2,7 +2,18 @@
 # Validates structural ABI properties and values of @_ecs_component_descriptors
 
 $ErrorActionPreference = "Stop"
-$cli = $(if (Test-Path "src/ECSLang.CLI/bin/Release/net9.0/ECSLang.CLI.exe") { "src/ECSLang.CLI/bin/Release/net9.0/ECSLang.CLI.exe" } else { "src/ECSLang.CLI/bin/Debug/net9.0/ECSLang.CLI.exe" })
+$cli = "src/ECSLang.CLI/bin/Release/net9.0/ECSLang.CLI.exe"
+$cliDll = [System.IO.Path]::ChangeExtension($cli, ".dll")
+if (-not (Test-Path $cliDll)) {
+    throw "STALE COMPILER — binary '$cliDll' not found. Run 'dotnet build -c Release' first."
+}
+$binMtime = (Get-Item $cliDll).LastWriteTime
+$newestSrc = Get-ChildItem -Path "src" -Recurse -Include *.cs |
+    Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if ($newestSrc -and $newestSrc.LastWriteTime -gt $binMtime) {
+    throw "STALE COMPILER DETECTED! Source '$($newestSrc.FullName)' ($($newestSrc.LastWriteTime)) is newer than binary '$cliDll' ($binMtime). Run 'dotnet build -c Release' before verification."
+}
 $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ecslang_b7_1_test_" + [System.Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 

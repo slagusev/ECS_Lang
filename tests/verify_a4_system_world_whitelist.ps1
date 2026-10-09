@@ -5,10 +5,11 @@ New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 $exe = Join-Path $tempDir "illegal_sys.exe"
 
 try {
+    $cli = "$PSScriptRoot\..\src\ECSLang.CLI\bin\Release\net9.0\ECSLang.CLI.exe"
     Write-Host "Compiling negative test tests/a4_world_in_system_forbidden.ecs..."
     $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = "dotnet"
-    $psi.Arguments = "run --project `"$PSScriptRoot\..\src\ECSLang.CLI`" -- build `"$PSScriptRoot\a4_world_in_system_forbidden.ecs`" -o `"$exe`" --no-wait"
+    $psi.FileName = $cli
+    $psi.Arguments = "build `"$PSScriptRoot\a4_world_in_system_forbidden.ecs`" -o `"$exe`" --no-wait"
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
@@ -42,8 +43,8 @@ try {
 
     Write-Host "Compiling negative test tests/a4_world_has_in_system_forbidden.ecs..."
     $psi2 = New-Object System.Diagnostics.ProcessStartInfo
-    $psi2.FileName = "dotnet"
-    $psi2.Arguments = "run --project `"$PSScriptRoot\..\src\ECSLang.CLI`" -- build `"$PSScriptRoot\a4_world_has_in_system_forbidden.ecs`" -o `"$exe`" --no-wait"
+    $psi2.FileName = $cli
+    $psi2.Arguments = "build `"$PSScriptRoot\a4_world_has_in_system_forbidden.ecs`" -o `"$exe`" --no-wait"
     $psi2.UseShellExecute = $false
     $psi2.RedirectStandardOutput = $true
     $psi2.RedirectStandardError = $true

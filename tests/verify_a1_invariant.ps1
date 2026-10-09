@@ -3,7 +3,8 @@ $exe = "$PSScriptRoot\a1_test.exe"
 
 Remove-Item -Path $exe -ErrorAction SilentlyContinue
 Write-Host "Compiling tests/a1_no_resurrect_dead_entity.ecs..."
-& dotnet run --project "$PSScriptRoot\..\src\ECSLang.CLI" -- build "$PSScriptRoot\a1_no_resurrect_dead_entity.ecs" -o $exe
+$cli = "$PSScriptRoot\..\src\ECSLang.CLI\bin\Release\net9.0\ECSLang.CLI.exe"
+& $cli build "$PSScriptRoot\a1_no_resurrect_dead_entity.ecs" -o $exe --no-wait
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to compile a1_no_resurrect_dead_entity.ecs"
     exit 1

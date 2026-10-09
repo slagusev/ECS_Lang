@@ -4,6 +4,12 @@ $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ecslang_a5_closure_" + 
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 $exe = Join-Path $tempDir "out.exe"
 
+$cli = "$PSScriptRoot\..\src\ECSLang.CLI\bin\Release\net9.0\ECSLang.CLI.exe"
+if (-not (Test-Path $cli)) {
+    Write-Error "Release CLI not found at $cli. Run dotnet build -c Release first."
+    exit 1
+}
+
 function Assert-NegativeTest {
     param(
         [string]$TestFile,
@@ -12,8 +18,8 @@ function Assert-NegativeTest {
 
     Write-Host "Verifying negative test $TestFile..."
     $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = "dotnet"
-    $psi.Arguments = "run --project `"$PSScriptRoot\..\src\ECSLang.CLI`" -- build `"$PSScriptRoot\$TestFile`" -o `"$exe`" --no-wait"
+    $psi.FileName = $cli
+    $psi.Arguments = "build `"$PSScriptRoot\$TestFile`" -o `"$exe`" --no-wait"
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
@@ -58,8 +64,8 @@ try {
     # 7. Allowed closure test (positive test)
     Write-Host "Compiling allowed closure test tests/a5_closure_allowed.ecs..."
     $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = "dotnet"
-    $psi.Arguments = "run --project `"$PSScriptRoot\..\src\ECSLang.CLI`" -- build `"$PSScriptRoot\a5_closure_allowed.ecs`" -o `"$exe`" --no-wait"
+    $psi.FileName = $cli
+    $psi.Arguments = "build `"$PSScriptRoot\a5_closure_allowed.ecs`" -o `"$exe`" --no-wait"
     $psi.UseShellExecute = $false
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true

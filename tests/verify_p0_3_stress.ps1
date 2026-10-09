@@ -2,7 +2,7 @@
 # Runs 2 parallel worker systems x 100,000 event emissions (total 200,000) for 3 runs in Release -O3.
 
 $ErrorActionPreference = "Stop"
-$CliPath = "src/ECSLang.CLI/bin/Debug/net9.0/ECSLang.CLI.exe"
+$CliPath = "src/ECSLang.CLI/bin/Release/net9.0/ECSLang.CLI.exe"
 $SourcePath = "tests/stress_emit_parallel.ecs"
 
 Write-Host "=== P0.3S Stress Test: Parallel Event Emission under dedicated emit_lock ===" -ForegroundColor Cyan
