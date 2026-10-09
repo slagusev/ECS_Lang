@@ -2963,8 +2963,9 @@ arch_loop_body:                                   ; preds = %arch_loop_cond
   %t_base = load ptr, ptr %tables_slot_sh, align 8
   %cur_a = getelementptr inbounds %struct.Archetype, ptr %t_base, i32 %cur_a_idx
   %m_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_a, i32 0, i32 0
-  %m_val = load i64, ptr %m_slot, align 8
-  %and_co = and i64 %m_val, 1
+  %childof_w_ptr = getelementptr inbounds [1 x i64], ptr %m_slot, i32 0, i32 0
+  %childof_w_val = load i64, ptr %childof_w_ptr, align 8
+  %and_co = and i64 %childof_w_val, 1
   %has_co = icmp ne i64 %and_co, 0
   br i1 %has_co, label %check_sort, label %next_arch
 
@@ -3062,7 +3063,9 @@ do_swap_row:                                      ; preds = %sort_inner_body
   %ej_row_slot = getelementptr inbounds i32, ptr %row_arr_sh, i32 %ej
   store i32 %cur_sort_j, ptr %ei_row_slot, align 4
   store i32 %cur_sort_i, ptr %ej_row_slot, align 4
-  %sw_co_has_ChildOf = and i64 %m_val, 1
+  %mask_w_ChildOf_sh = getelementptr inbounds [1 x i64], ptr %m_slot, i32 0, i32 0
+  %cur_mask_ChildOf_sh = load i64, ptr %mask_w_ChildOf_sh, align 8
+  %sw_co_has_ChildOf = and i64 %cur_mask_ChildOf_sh, 1
   %is_sw_co_ChildOf = icmp ne i64 %sw_co_has_ChildOf, 0
   br i1 %is_sw_co_ChildOf, label %sw_sh_ChildOf, label %skip_sw_sh_ChildOf
 
@@ -3082,7 +3085,9 @@ sw_sh_ChildOf:                                    ; preds = %do_swap_row
   br label %skip_sw_sh_ChildOf
 
 skip_sw_sh_ChildOf:                               ; preds = %sw_sh_ChildOf, %do_swap_row
-  %sw_co_has_NameTag = and i64 %m_val, 2
+  %mask_w_NameTag_sh = getelementptr inbounds [1 x i64], ptr %m_slot, i32 0, i32 0
+  %cur_mask_NameTag_sh = load i64, ptr %mask_w_NameTag_sh, align 8
+  %sw_co_has_NameTag = and i64 %cur_mask_NameTag_sh, 2
   %is_sw_co_NameTag = icmp ne i64 %sw_co_has_NameTag, 0
   br i1 %is_sw_co_NameTag, label %sw_sh_NameTag, label %skip_sw_sh_NameTag
 
@@ -3097,7 +3102,9 @@ sw_sh_NameTag:                                    ; preds = %skip_sw_sh_ChildOf
   br label %skip_sw_sh_NameTag
 
 skip_sw_sh_NameTag:                               ; preds = %sw_sh_NameTag, %skip_sw_sh_ChildOf
-  %sw_co_has_Position = and i64 %m_val, 4
+  %mask_w_Position_sh = getelementptr inbounds [1 x i64], ptr %m_slot, i32 0, i32 0
+  %cur_mask_Position_sh = load i64, ptr %mask_w_Position_sh, align 8
+  %sw_co_has_Position = and i64 %cur_mask_Position_sh, 4
   %is_sw_co_Position = icmp ne i64 %sw_co_has_Position, 0
   br i1 %is_sw_co_Position, label %sw_sh_Position, label %skip_sw_sh_Position
 

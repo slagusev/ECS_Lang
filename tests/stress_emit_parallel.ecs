@@ -1,0 +1,81 @@
+// P0.3S Stress Test: Parallel Event Emission under dedicated emit_lock
+// 2 parallel worker systems x 100,000 emits of PingEvent
+// After swap_events in pipeline, CounterObserver must process exactly 200,000 events.
+
+event PingEvent {
+    val: i32,
+}
+
+component WorkerA {
+    id: i32,
+}
+
+component WorkerB {
+    id: i32,
+}
+
+resource CounterStats {
+    total: i32,
+}
+
+system WorkerASystem {
+    query(w: WorkerA) {
+        for i in 0..100000 {
+            world.emit_PingEvent(i);
+        }
+    }
+}
+
+system WorkerBSystem {
+    query(w: WorkerB) {
+        for i in 0..100000 {
+            world.emit_PingEvent(i);
+        }
+    }
+}
+
+system CounterObserver {
+    read(ev: PingEvent, mut stats: CounterStats) {
+        stats.total += 1;
+    }
+}
+
+pipeline StressPipeline {
+    stage ParallelEmit {
+        parallel {
+            WorkerASystem;
+            WorkerBSystem;
+        }
+    }
+    stage ConsumeEvents {
+        swap_events;
+        CounterObserver;
+    }
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+    world.set_CounterStats(0);
+
+    let e1 = world.spawn();
+    world.set_WorkerA(e1, 1);
+
+    let e2 = world.spawn();
+    world.set_WorkerB(e2, 2);
+
+    let t0 = stopwatch_start();
+    StressPipeline(world);
+    let total_ms = stopwatch_ms(t0);
+
+    let stats = world.get_CounterStats();
+    println($"TOTAL_TIME: {total_ms:.2f} ms");
+    println($"TOTAL_EVENTS: {stats.total}");
+
+    if stats.total == 200000 {
+        println("STRESS_TEST_PASSED: 200000/200000 events recorded without loss");
+        return 0;
+    }
+
+    println($"STRESS_TEST_FAILED: expected 200000, got {stats.total}");
+    return 1;
+}

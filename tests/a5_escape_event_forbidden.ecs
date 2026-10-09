@@ -1,0 +1,9 @@
+// Negative Test: Capturing closure cannot be stored in event fields
+
+event UserEvent {
+    handler: closure(i32): i32,
+}
+
+fn main(): i32 {
+    return 0;
+}

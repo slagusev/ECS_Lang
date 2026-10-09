@@ -1,0 +1,9 @@
+// Negative Test: Capturing closure cannot be assigned to array or collection element via indexing
+
+fn main(): i32 {
+    let mut arr = [0, 1, 2];
+    let offset = 42;
+    let c = |x: i32| x + offset;
+    arr[0] = c;
+    return 0;
+}

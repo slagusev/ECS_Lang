@@ -92,9 +92,10 @@
 - **Шаблон коммита**: `feat(codegen): migrate despawn, bulk spawn and runtime zero mask to multi-word arrays (Step 3)`
 
 #### Шаг A7.4 — Многословная фильтрация запросов систем (`query`)
-- **Объём**: Представление `allMask`, `anyMask`, `noneMask` как `[WORDS x i64]`. Пословное сопоставление в цикле фильтрации архетипов с пропуском нулевых слов (`zero-word skip`).
-- **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.cs`, `LlvmCodeGenerator.Pipelines.cs`.
+- **Объём**: Представление `allMask`, `anyMask`, `noneMask` как `[WORDS x i64]`. Пословное сопоставление в цикле фильтрации архетипов с пропуском нулевых слов (`zero-word skip`). Миграция строк №20–21 (`world_sort_hierarchy`) на пословную адресацию.
+- **Файлы**: `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Ecs.cs`, `EcsRuntimeEmitter.Archetypes.cs`.
 - **Критерий приёмки**: Уровень 3 (сохранение корректности всех 6 golden IR) + Уровень 1 (`11_ecs_archetypes_and_filters.ecs`).
+- **Статус**: **ВЫПОЛНЕНО** (коммит A7.4; Уровень 3 refactor mode 6/6 + strict mode 6/6 после ребейзлайна; Уровень 1 29/29 built, 23/23 runned exit code 0; perf particles_100k Release min 6.36 / median 6.81 ms spawn, min 24.59 / median 29.61 ms tick; P0.3S параллельный стресс-тест эмита 200 000/200 000 пройден 3/3; инварианты A1 и A5 расширены).
 - **Шаблон коммита**: `feat(codegen): implement multi-word query filtering with zero-word skip (Step 4)`
 
 ---

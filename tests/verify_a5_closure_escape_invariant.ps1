@@ -49,7 +49,13 @@ try {
     # 4. Escape via collection push
     Assert-NegativeTest "a5_escape_collection_forbidden.ecs" "Capturing closure cannot"
 
-    # 5. Allowed closure test (positive test)
+    # 5. Escape via event field
+    Assert-NegativeTest "a5_escape_event_forbidden.ecs" "cannot escape their enclosing frame"
+
+    # 6. Escape via index assignment
+    Assert-NegativeTest "a5_escape_index_assign_forbidden.ecs" "cannot escape their enclosing frame"
+
+    # 7. Allowed closure test (positive test)
     Write-Host "Compiling allowed closure test tests/a5_closure_allowed.ecs..."
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = "dotnet"

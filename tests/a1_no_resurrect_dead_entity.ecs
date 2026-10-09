@@ -9,9 +9,23 @@ fn main(): i32 {
     world.set_Position(e, 10.0, 20.0);
     println("Entity spawned and initialized.");
 
+    let has_before = world.has_Position(e);
+    if !has_before {
+        println("INVARIANT VIOLATION: has_Position returned false on alive entity!");
+        return 0;
+    }
+
     // Despawn entity
     world.despawn(e);
     println("Entity despawned.");
+
+    // Invariant: has_* on dead entity MUST return false
+    let has_after = world.has_Position(e);
+    if has_after {
+        println("INVARIANT VIOLATION: has_Position returned true on dead entity!");
+        return 0;
+    }
+    println("has_Position returned false on dead entity as required.");
 
     // Attempting to set component on dead entity: MUST ABORT with error message
     println("Attempting to resurrect entity via set_Position...");

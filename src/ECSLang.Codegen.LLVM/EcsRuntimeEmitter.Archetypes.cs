@@ -1384,7 +1384,9 @@ public sealed partial class EcsRuntimeEmitter
             var tablesSlotSh = _builder.BuildStructGEP2(_worldStructType, worldParamSh, 2, "tables_slot_sh");
             var entRowSlotSh = _builder.BuildStructGEP2(_worldStructType, worldParamSh, 6, "ent_row_slot_sh");
 
-            ulong childOfBit = 1UL << childOfId;
+            int childOfWord = childOfId >> 6;
+            int childOfBitIdx = childOfId & 63;
+            ulong childOfBit = 1UL << childOfBitIdx;
             var childOfBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, childOfBit);
 
             var numArchs = _builder.BuildLoad2(_context.Int32Type, archCountSlotSh, "num_archs");
@@ -1416,10 +1418,15 @@ public sealed partial class EcsRuntimeEmitter
             var tBase = _builder.BuildLoad2(archPtrType, tablesSlotSh, "t_base");
             var curArch = _builder.BuildInBoundsGEP2(_archStructType, tBase, new[] { curAIdx }, "cur_a");
             var mSlot = _builder.BuildStructGEP2(_archStructType, curArch, 0, "m_slot");
-            var mVal = _builder.BuildLoad2(_context.Int64Type, mSlot, "m_val");
+            var childOfWordPtr = _builder.BuildInBoundsGEP2(_maskArrayType, mSlot, new[]
+            {
+                LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)childOfWord)
+            }, "childof_w_ptr");
+            var childOfWordVal = _builder.BuildLoad2(_context.Int64Type, childOfWordPtr, "childof_w_val");
 
             var hasChildOf = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE,
-                _builder.BuildAnd(mVal, childOfBitVal, "and_co"),
+                _builder.BuildAnd(childOfWordVal, childOfBitVal, "and_co"),
                 LLVMValueRef.CreateConstInt(_context.Int64Type, 0), "has_co");
 
             var checkSortBB = sortFunc.AppendBasicBlock("check_sort");
@@ -1546,11 +1553,20 @@ public sealed partial class EcsRuntimeEmitter
             for (int c = 0; c < totalComps; c++)
             {
                 var cName = compNames[c];
-                ulong cBit = 1UL << c;
+                int cWord = c >> 6;
+                int cBitIdx = c & 63;
+                ulong cBit = 1UL << cBitIdx;
                 ulong cSize = _compSizes[cName];
                 var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
 
-                var cAnd = _builder.BuildAnd(mVal, cBitVal, $"sw_co_has_{cName}");
+                var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, mSlot, new[]
+                {
+                    LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                    LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)cWord)
+                }, $"mask_w_{cName}_sh");
+                var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"cur_mask_{cName}_sh");
+
+                var cAnd = _builder.BuildAnd(maskWVal, cBitVal, $"sw_co_has_{cName}");
                 var hasC = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, cAnd, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_sw_co_{cName}");
 
                 var swShBB = sortFunc.AppendBasicBlock($"sw_sh_{cName}");

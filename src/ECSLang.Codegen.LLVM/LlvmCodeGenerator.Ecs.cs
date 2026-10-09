@@ -139,27 +139,64 @@ public sealed partial class LlvmCodeGenerator
         }
 
         // Compute required query component mask and without mask
-        ulong requiredMask = 0;
+        int maskWords = ecs.MaskWords;
+        var requiredWords = new ulong[maskWords];
+        var withoutWords = new ulong[maskWords];
+
         foreach (var qp in sys.QueryParams)
         {
             if (_typeChecker.Components.ContainsKey(qp.TypeName))
             {
-                requiredMask |= ecs.GetComponentMask(qp.TypeName);
+                int compId = ecs.GetComponentId(qp.TypeName);
+                if (compId >= 0)
+                {
+                    int wIdx = compId >> 6;
+                    int bIdx = compId & 63;
+                    if (wIdx < maskWords)
+                        requiredWords[wIdx] |= (1UL << bIdx);
+                }
             }
         }
-        ulong withoutMask = 0;
+
         foreach (var filter in sys.Filters)
         {
             if (filter.Kind == QueryFilterKind.With && _typeChecker.Components.ContainsKey(filter.ComponentName))
             {
-                requiredMask |= ecs.GetComponentMask(filter.ComponentName);
+                int compId = ecs.GetComponentId(filter.ComponentName);
+                if (compId >= 0)
+                {
+                    int wIdx = compId >> 6;
+                    int bIdx = compId & 63;
+                    if (wIdx < maskWords)
+                        requiredWords[wIdx] |= (1UL << bIdx);
+                }
             }
             else if (filter.Kind == QueryFilterKind.Without && _typeChecker.Components.ContainsKey(filter.ComponentName))
             {
-                withoutMask |= ecs.GetComponentMask(filter.ComponentName);
+                int compId = ecs.GetComponentId(filter.ComponentName);
+                if (compId >= 0)
+                {
+                    int wIdx = compId >> 6;
+                    int bIdx = compId & 63;
+                    if (wIdx < maskWords)
+                        withoutWords[wIdx] |= (1UL << bIdx);
+                }
             }
         }
-        var reqMaskVal = LLVMValueRef.CreateConstInt(context.Int64Type, requiredMask);
+
+        // Global constant query masks for introspection/metadata
+        string cleanSysName = sysFunc.Name;
+        var reqConstArr = requiredWords.Select(w => LLVMValueRef.CreateConstInt(context.Int64Type, w)).ToArray();
+        var reqGlobal = module.AddGlobal(ecs.MaskArrayType, $"_ecs_query_req_{cleanSysName}");
+        reqGlobal.Initializer = LLVMValueRef.CreateConstArray(context.Int64Type, reqConstArr);
+        reqGlobal.Linkage = LLVMLinkage.LLVMInternalLinkage;
+        LlvmApi.SetGlobalConstant(reqGlobal, 1);
+
+        var withoutConstArr = withoutWords.Select(w => LLVMValueRef.CreateConstInt(context.Int64Type, w)).ToArray();
+        var withoutGlobal = module.AddGlobal(ecs.MaskArrayType, $"_ecs_query_without_{cleanSysName}");
+        withoutGlobal.Initializer = LLVMValueRef.CreateConstArray(context.Int64Type, withoutConstArr);
+        withoutGlobal.Linkage = LLVMLinkage.LLVMInternalLinkage;
+        LlvmApi.SetGlobalConstant(withoutGlobal, 1);
 
         // Outer loop: iterate over all archetypes
         var archCountSlot = builder.BuildStructGEP2(ecs.GetWorldStructType(), worldParam, 0, "world_arch_count_slot");
@@ -188,25 +225,60 @@ public sealed partial class LlvmCodeGenerator
         var curArchPtr = builder.BuildInBoundsGEP2(ecs.GetArchetypeStructType(), tablesBase, new[] { curArchIdx }, "cur_arch_ptr");
 
         var maskSlot = builder.BuildStructGEP2(ecs.GetArchetypeStructType(), curArchPtr, 0, "mask_slot");
-        var archMask = builder.BuildLoad2(context.Int64Type, maskSlot, "arch_mask");
 
-        var andMask = builder.BuildAnd(archMask, reqMaskVal, "and_mask");
-        var hasReq = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, andMask, reqMaskVal, "has_req");
-        LLVMValueRef isMatch;
-        if (withoutMask != 0)
+        // Multi-word matching with zero-word skip:
+        LLVMValueRef? isMatch = null;
+        for (int w = 0; w < maskWords; w++)
         {
-            var withoutMaskVal = LLVMValueRef.CreateConstInt(context.Int64Type, withoutMask);
-            var andWithout = builder.BuildAnd(archMask, withoutMaskVal, "and_without");
-            var hasNoWithout = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, andWithout, LLVMValueRef.CreateConstInt(context.Int64Type, 0), "has_no_without");
-            isMatch = builder.BuildAnd(hasReq, hasNoWithout, "is_match");
+            ulong reqW = requiredWords[w];
+            ulong withoutW = withoutWords[w];
+
+            // Zero-word skip: if both are zero, this word imposes no constraints on the archetype
+            if (reqW == 0 && withoutW == 0)
+                continue;
+
+            var maskWPtr = builder.BuildInBoundsGEP2(ecs.MaskArrayType, maskSlot, new[]
+            {
+                LLVMValueRef.CreateConstInt(context.Int32Type, 0),
+                LLVMValueRef.CreateConstInt(context.Int32Type, (ulong)w)
+            }, $"mask_w{w}_ptr");
+            var archMaskW = builder.BuildLoad2(context.Int64Type, maskWPtr, $"arch_mask_w{w}");
+
+            LLVMValueRef wordMatch;
+            if (reqW != 0)
+            {
+                var reqValW = LLVMValueRef.CreateConstInt(context.Int64Type, reqW);
+                var andMaskW = builder.BuildAnd(archMaskW, reqValW, $"and_mask_w{w}");
+                var hasReqW = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, andMaskW, reqValW, $"has_req_w{w}");
+
+                if (withoutW != 0)
+                {
+                    var withoutValW = LLVMValueRef.CreateConstInt(context.Int64Type, withoutW);
+                    var andWithoutW = builder.BuildAnd(archMaskW, withoutValW, $"and_without_w{w}");
+                    var hasNoWithoutW = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, andWithoutW, LLVMValueRef.CreateConstInt(context.Int64Type, 0), $"has_no_without_w{w}");
+                    wordMatch = builder.BuildAnd(hasReqW, hasNoWithoutW, $"word_{w}_match");
+                }
+                else
+                {
+                    wordMatch = hasReqW;
+                }
+            }
+            else
+            {
+                var withoutValW = LLVMValueRef.CreateConstInt(context.Int64Type, withoutW);
+                var andWithoutW = builder.BuildAnd(archMaskW, withoutValW, $"and_without_w{w}");
+                wordMatch = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, andWithoutW, LLVMValueRef.CreateConstInt(context.Int64Type, 0), $"has_no_without_w{w}");
+            }
+
+            isMatch = isMatch == null
+                ? wordMatch
+                : builder.BuildAnd(isMatch.Value, wordMatch, $"is_match_w{w}");
         }
-        else
-        {
-            isMatch = hasReq;
-        }
+
+        var finalMatch = isMatch ?? LLVMValueRef.CreateConstInt(context.Int1Type, 1);
 
         var checkCountBB = sysFunc.AppendBasicBlock("check_count");
-        builder.BuildCondBr(isMatch, checkCountBB, nextArchBB);
+        builder.BuildCondBr(finalMatch, checkCountBB, nextArchBB);
 
         // check_count: if (arch.count > 0)
         builder.PositionAtEnd(checkCountBB);
