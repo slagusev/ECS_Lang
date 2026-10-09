@@ -721,7 +721,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -736,7 +739,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Position = and i64 %cur_mask, 2
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 2
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -751,7 +756,9 @@ copy_Position:                                    ; preds = %skip_ChildOf
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
-  %has_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 4
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -780,7 +787,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -804,7 +813,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Position = and i64 %cur_mask, 2
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 2
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -817,7 +828,9 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
-  %has_sw_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 4
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -939,7 +952,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -954,7 +970,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Position = and i64 %cur_mask, 2
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 2
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -969,7 +987,9 @@ copy_Position:                                    ; preds = %skip_ChildOf
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
-  %has_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 4
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -998,7 +1018,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -1022,7 +1044,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Position = and i64 %cur_mask, 2
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 2
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -1035,7 +1059,9 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
-  %has_sw_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 4
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -1140,7 +1166,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
-  %rem_has_Position = and i64 %cur_mask_val_rem, 2
+  %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
+  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
+  %rem_has_Position = and i64 %cur_mask_Position_rem, 2
   %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
   br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
 
@@ -1155,7 +1184,9 @@ copy_rem_Position:                                ; preds = %after_grow_rem_arch
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %after_grow_rem_arch
-  %rem_has_Velocity = and i64 %cur_mask_val_rem, 4
+  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
+  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 4
   %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
   br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
 
@@ -1184,7 +1215,9 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %moved_e_rem = load i32, ptr %last_ent_rem, align 4
   %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
   store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
-  %sw_rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %mask_w_ChildOf_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_rem = load i64, ptr %mask_w_ChildOf_sw_rem, align 8
+  %sw_rem_has_ChildOf = and i64 %cur_mask_ChildOf_sw_rem, 1
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
@@ -1206,7 +1239,9 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
-  %sw_rem_has_Position = and i64 %cur_mask_val_rem, 2
+  %mask_w_Position_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_sw_rem = load i64, ptr %mask_w_Position_sw_rem, align 8
+  %sw_rem_has_Position = and i64 %cur_mask_Position_sw_rem, 2
   %is_sw_rem_Position = icmp ne i64 %sw_rem_has_Position, 0
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
@@ -1219,7 +1254,9 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_ChildOf
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_ChildOf
-  %sw_rem_has_Velocity = and i64 %cur_mask_val_rem, 4
+  %mask_w_Velocity_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_sw_rem = load i64, ptr %mask_w_Velocity_sw_rem, align 8
+  %sw_rem_has_Velocity = and i64 %cur_mask_Velocity_sw_rem, 4
   %is_sw_rem_Velocity = icmp ne i64 %sw_rem_has_Velocity, 0
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 
@@ -1454,7 +1491,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -1469,7 +1509,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Position = and i64 %cur_mask, 2
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 2
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -1484,7 +1526,9 @@ copy_Position:                                    ; preds = %skip_ChildOf
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
-  %has_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 4
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -1513,7 +1557,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -1537,7 +1583,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Position = and i64 %cur_mask, 2
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 2
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -1550,7 +1598,9 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
-  %has_sw_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 4
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -1674,7 +1724,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -1689,7 +1742,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Position = and i64 %cur_mask, 2
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 2
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -1704,7 +1759,9 @@ copy_Position:                                    ; preds = %skip_ChildOf
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
-  %has_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 4
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -1733,7 +1790,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -1757,7 +1816,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Position = and i64 %cur_mask, 2
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 2
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -1770,7 +1831,9 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
-  %has_sw_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 4
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -1875,7 +1938,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
-  %rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
+  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
+  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
   %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
   br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
 
@@ -1890,7 +1956,9 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %rem_has_Velocity = and i64 %cur_mask_val_rem, 4
+  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
+  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 4
   %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
   br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
 
@@ -1919,7 +1987,9 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %moved_e_rem = load i32, ptr %last_ent_rem, align 4
   %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
   store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
-  %sw_rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %mask_w_ChildOf_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_rem = load i64, ptr %mask_w_ChildOf_sw_rem, align 8
+  %sw_rem_has_ChildOf = and i64 %cur_mask_ChildOf_sw_rem, 1
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
@@ -1941,7 +2011,9 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
-  %sw_rem_has_Position = and i64 %cur_mask_val_rem, 2
+  %mask_w_Position_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_sw_rem = load i64, ptr %mask_w_Position_sw_rem, align 8
+  %sw_rem_has_Position = and i64 %cur_mask_Position_sw_rem, 2
   %is_sw_rem_Position = icmp ne i64 %sw_rem_has_Position, 0
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
@@ -1954,7 +2026,9 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_ChildOf
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_ChildOf
-  %sw_rem_has_Velocity = and i64 %cur_mask_val_rem, 4
+  %mask_w_Velocity_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_sw_rem = load i64, ptr %mask_w_Velocity_sw_rem, align 8
+  %sw_rem_has_Velocity = and i64 %cur_mask_Velocity_sw_rem, 4
   %is_sw_rem_Velocity = icmp ne i64 %sw_rem_has_Velocity, 0
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 
@@ -2193,7 +2267,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -2208,7 +2285,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Position = and i64 %cur_mask, 2
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 2
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -2223,7 +2302,9 @@ copy_Position:                                    ; preds = %skip_ChildOf
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
-  %has_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 4
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -2252,7 +2333,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -2276,7 +2359,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Position = and i64 %cur_mask, 2
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 2
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -2289,7 +2374,9 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
-  %has_sw_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 4
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -2413,7 +2500,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -2428,7 +2518,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Position = and i64 %cur_mask, 2
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 2
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -2443,7 +2535,9 @@ copy_Position:                                    ; preds = %skip_ChildOf
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_ChildOf
-  %has_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 4
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -2472,7 +2566,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -2496,7 +2592,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Position = and i64 %cur_mask, 2
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 2
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -2509,7 +2607,9 @@ swap_Position:                                    ; preds = %skip_sw_ChildOf
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_ChildOf
-  %has_sw_Velocity = and i64 %cur_mask, 4
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 4
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -2614,7 +2714,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
-  %rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
+  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
+  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
   %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
   br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
 
@@ -2629,7 +2732,9 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %rem_has_Position = and i64 %cur_mask_val_rem, 2
+  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
+  %rem_has_Position = and i64 %cur_mask_Position_rem, 2
   %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
   br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
 
@@ -2658,7 +2763,9 @@ do_swap_rem:                                      ; preds = %skip_rem_Position
   %moved_e_rem = load i32, ptr %last_ent_rem, align 4
   %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
   store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
-  %sw_rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %mask_w_ChildOf_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_rem = load i64, ptr %mask_w_ChildOf_sw_rem, align 8
+  %sw_rem_has_ChildOf = and i64 %cur_mask_ChildOf_sw_rem, 1
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
@@ -2680,7 +2787,9 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
-  %sw_rem_has_Position = and i64 %cur_mask_val_rem, 2
+  %mask_w_Position_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_sw_rem = load i64, ptr %mask_w_Position_sw_rem, align 8
+  %sw_rem_has_Position = and i64 %cur_mask_Position_sw_rem, 2
   %is_sw_rem_Position = icmp ne i64 %sw_rem_has_Position, 0
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
@@ -2693,7 +2802,9 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_ChildOf
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_ChildOf
-  %sw_rem_has_Velocity = and i64 %cur_mask_val_rem, 4
+  %mask_w_Velocity_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_sw_rem = load i64, ptr %mask_w_Velocity_sw_rem, align 8
+  %sw_rem_has_Velocity = and i64 %cur_mask_Velocity_sw_rem, 4
   %is_sw_rem_Velocity = icmp ne i64 %sw_rem_has_Velocity, 0
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 

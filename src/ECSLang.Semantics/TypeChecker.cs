@@ -189,12 +189,12 @@ public sealed partial class TypeChecker
     private void ValidateComponentLimit()
     {
         var distinctComps = _components.Values.Distinct().ToList();
-        if (distinctComps.Count > 64)
+        if (distinctComps.Count > 128)
         {
-            var overflowingComp = distinctComps.Skip(64).FirstOrDefault();
+            var overflowingComp = distinctComps.Skip(128).FirstOrDefault();
             var span = overflowingComp?.Span ?? SourceSpan.None;
             _diagnostics.ReportError(
-                $"Maximum component limit of 64 exceeded (project has {distinctComps.Count} components, limit is 64). 64-bit archetype bitmask overflow.",
+                $"Maximum component limit of 128 exceeded (project has {distinctComps.Count} components, limit is 128). Archetype bitmask overflow.",
                 span);
         }
     }

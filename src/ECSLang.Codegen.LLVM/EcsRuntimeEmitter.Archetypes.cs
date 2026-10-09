@@ -857,15 +857,25 @@ public sealed partial class EcsRuntimeEmitter
                 // Copy all existing components from curArch[curRow] to newArch[newRow]
                 var curColsArr = _builder.BuildStructGEP2(_archStructType, curArchPtr2, 4, "cur_cols_arr");
                 var newColsArr = _builder.BuildStructGEP2(_archStructType, newArchPtr2, 4, "new_cols_arr");
+                var curMaskSlot2 = _builder.BuildStructGEP2(_archStructType, curArchPtr2, 0, "cur_mask_slot2");
 
                 for (int c = 0; c < totalComps; c++)
                 {
                     var cName = compNames[c];
-                    ulong cBit = 1UL << c;
+                    int cWord = c >> 6;
+                    int cBitIdx = c & 63;
+                    ulong cBit = 1UL << cBitIdx;
                     ulong cSize = _compSizes[cName];
                     var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
 
-                    var cAnd = _builder.BuildAnd(curMask, cBitVal, $"has_{cName}");
+                    var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlot2, new[]
+                    {
+                        LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                        LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)cWord)
+                    }, $"mask_w_{cName}_set");
+                    var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"cur_mask_{cName}_set");
+
+                    var cAnd = _builder.BuildAnd(maskWVal, cBitVal, $"has_{cName}");
                     var hasC = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, cAnd, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_has_{cName}");
 
                     var copyCBB = setFunc.AppendBasicBlock($"copy_{cName}");
@@ -924,11 +934,20 @@ public sealed partial class EcsRuntimeEmitter
                 for (int c = 0; c < totalComps; c++)
                 {
                     var cName = compNames[c];
-                    ulong cBit = 1UL << c;
+                    int cWord = c >> 6;
+                    int cBitIdx = c & 63;
+                    ulong cBit = 1UL << cBitIdx;
                     ulong cSize = _compSizes[cName];
                     var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
 
-                    var cAnd = _builder.BuildAnd(curMask, cBitVal, $"has_sw_{cName}");
+                    var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlot2, new[]
+                    {
+                        LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                        LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)cWord)
+                    }, $"mask_w_{cName}_sw_set");
+                    var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"cur_mask_{cName}_sw_set");
+
+                    var cAnd = _builder.BuildAnd(maskWVal, cBitVal, $"has_sw_{cName}");
                     var hasC = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, cAnd, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_has_sw_{cName}");
 
                     var swapCBB = setFunc.AppendBasicBlock($"swap_{cName}");
@@ -1134,20 +1153,29 @@ public sealed partial class EcsRuntimeEmitter
             var newEntElemRem2 = _builder.BuildInBoundsGEP2(_context.Int32Type, newEntTypedRem2, new[] { newRowRem }, "new_ent_elem_rem");
             _builder.BuildStore(remE, newEntElemRem2);
 
-            // Copy all components EXCEPT component k
             var curColsArrRem = _builder.BuildStructGEP2(_archStructType, curArchPtrRem2, 4, "cur_cols_rem");
             var newColsArrRem = _builder.BuildStructGEP2(_archStructType, newArchPtrRem2, 4, "new_cols_rem");
+            var curMaskSlotRem2 = _builder.BuildStructGEP2(_archStructType, curArchPtrRem2, 0, "cur_mask_slot_rem2");
 
             for (int c = 0; c < totalComps; c++)
             {
                 if (c == k) continue; // skip removed component
 
                 var cName = compNames[c];
-                ulong cBit = 1UL << c;
+                int cWord = c >> 6;
+                int cBitIdx = c & 63;
+                ulong cBit = 1UL << cBitIdx;
                 ulong cSize = _compSizes[cName];
                 var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
 
-                var cAnd = _builder.BuildAnd(curMaskRem, cBitVal, $"rem_has_{cName}");
+                var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlotRem2, new[]
+                {
+                    LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                    LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)cWord)
+                }, $"mask_w_{cName}_rem");
+                var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"cur_mask_{cName}_rem");
+
+                var cAnd = _builder.BuildAnd(maskWVal, cBitVal, $"rem_has_{cName}");
                 var hasC = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, cAnd, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_has_rem_{cName}");
 
                 var copyRemCBB = remFunc.AppendBasicBlock($"copy_rem_{cName}");
@@ -1205,11 +1233,20 @@ public sealed partial class EcsRuntimeEmitter
             for (int c = 0; c < totalComps; c++)
             {
                 var cName = compNames[c];
-                ulong cBit = 1UL << c;
+                int cWord = c >> 6;
+                int cBitIdx = c & 63;
+                ulong cBit = 1UL << cBitIdx;
                 ulong cSize = _compSizes[cName];
                 var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
 
-                var cAnd = _builder.BuildAnd(curMaskRem, cBitVal, $"sw_rem_has_{cName}");
+                var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlotRem2, new[]
+                {
+                    LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                    LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)cWord)
+                }, $"mask_w_{cName}_sw_rem");
+                var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"cur_mask_{cName}_sw_rem");
+
+                var cAnd = _builder.BuildAnd(maskWVal, cBitVal, $"sw_rem_has_{cName}");
                 var hasC = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, cAnd, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_sw_rem_{cName}");
 
                 var swapRemCBB = remFunc.AppendBasicBlock($"swap_rem_{cName}");

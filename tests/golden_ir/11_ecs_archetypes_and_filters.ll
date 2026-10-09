@@ -875,7 +875,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -890,7 +893,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -905,7 +910,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -920,7 +927,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -935,7 +944,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -950,7 +961,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -979,7 +992,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -1003,7 +1018,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -1016,7 +1033,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -1029,7 +1048,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -1042,7 +1063,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -1055,7 +1078,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -1177,7 +1202,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -1192,7 +1220,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -1207,7 +1237,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -1222,7 +1254,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -1237,7 +1271,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -1252,7 +1288,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -1281,7 +1319,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -1305,7 +1345,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -1318,7 +1360,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -1331,7 +1375,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -1344,7 +1390,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -1357,7 +1405,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -1462,7 +1512,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
-  %rem_has_Frozen = and i64 %cur_mask_val_rem, 2
+  %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
+  %mask_w_Frozen_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Frozen_rem = load i64, ptr %mask_w_Frozen_rem, align 8
+  %rem_has_Frozen = and i64 %cur_mask_Frozen_rem, 2
   %is_has_rem_Frozen = icmp ne i64 %rem_has_Frozen, 0
   br i1 %is_has_rem_Frozen, label %copy_rem_Frozen, label %skip_rem_Frozen
 
@@ -1477,7 +1530,9 @@ copy_rem_Frozen:                                  ; preds = %after_grow_rem_arch
   br label %skip_rem_Frozen
 
 skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %after_grow_rem_arch
-  %rem_has_PlayerTag = and i64 %cur_mask_val_rem, 4
+  %mask_w_PlayerTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_PlayerTag_rem = load i64, ptr %mask_w_PlayerTag_rem, align 8
+  %rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_rem, 4
   %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
   br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
 
@@ -1492,7 +1547,9 @@ copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
   br label %skip_rem_PlayerTag
 
 skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
-  %rem_has_Position = and i64 %cur_mask_val_rem, 8
+  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
+  %rem_has_Position = and i64 %cur_mask_Position_rem, 8
   %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
   br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
 
@@ -1507,7 +1564,9 @@ copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
-  %rem_has_StunnedTag = and i64 %cur_mask_val_rem, 16
+  %mask_w_StunnedTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_StunnedTag_rem = load i64, ptr %mask_w_StunnedTag_rem, align 8
+  %rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_rem, 16
   %is_has_rem_StunnedTag = icmp ne i64 %rem_has_StunnedTag, 0
   br i1 %is_has_rem_StunnedTag, label %copy_rem_StunnedTag, label %skip_rem_StunnedTag
 
@@ -1522,7 +1581,9 @@ copy_rem_StunnedTag:                              ; preds = %skip_rem_Position
   br label %skip_rem_StunnedTag
 
 skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_Position
-  %rem_has_Velocity = and i64 %cur_mask_val_rem, 32
+  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
+  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 32
   %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
   br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
 
@@ -1551,7 +1612,9 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %moved_e_rem = load i32, ptr %last_ent_rem, align 4
   %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
   store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
-  %sw_rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %mask_w_ChildOf_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_rem = load i64, ptr %mask_w_ChildOf_sw_rem, align 8
+  %sw_rem_has_ChildOf = and i64 %cur_mask_ChildOf_sw_rem, 1
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
@@ -1573,7 +1636,9 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
-  %sw_rem_has_Frozen = and i64 %cur_mask_val_rem, 2
+  %mask_w_Frozen_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Frozen_sw_rem = load i64, ptr %mask_w_Frozen_sw_rem, align 8
+  %sw_rem_has_Frozen = and i64 %cur_mask_Frozen_sw_rem, 2
   %is_sw_rem_Frozen = icmp ne i64 %sw_rem_has_Frozen, 0
   br i1 %is_sw_rem_Frozen, label %swap_rem_Frozen, label %skip_sw_rem_Frozen
 
@@ -1586,7 +1651,9 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
-  %sw_rem_has_PlayerTag = and i64 %cur_mask_val_rem, 4
+  %mask_w_PlayerTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_rem = load i64, ptr %mask_w_PlayerTag_sw_rem, align 8
+  %sw_rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_sw_rem, 4
   %is_sw_rem_PlayerTag = icmp ne i64 %sw_rem_has_PlayerTag, 0
   br i1 %is_sw_rem_PlayerTag, label %swap_rem_PlayerTag, label %skip_sw_rem_PlayerTag
 
@@ -1599,7 +1666,9 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
-  %sw_rem_has_Position = and i64 %cur_mask_val_rem, 8
+  %mask_w_Position_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_sw_rem = load i64, ptr %mask_w_Position_sw_rem, align 8
+  %sw_rem_has_Position = and i64 %cur_mask_Position_sw_rem, 8
   %is_sw_rem_Position = icmp ne i64 %sw_rem_has_Position, 0
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
@@ -1612,7 +1681,9 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
-  %sw_rem_has_StunnedTag = and i64 %cur_mask_val_rem, 16
+  %mask_w_StunnedTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_rem = load i64, ptr %mask_w_StunnedTag_sw_rem, align 8
+  %sw_rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_sw_rem, 16
   %is_sw_rem_StunnedTag = icmp ne i64 %sw_rem_has_StunnedTag, 0
   br i1 %is_sw_rem_StunnedTag, label %swap_rem_StunnedTag, label %skip_sw_rem_StunnedTag
 
@@ -1625,7 +1696,9 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
-  %sw_rem_has_Velocity = and i64 %cur_mask_val_rem, 32
+  %mask_w_Velocity_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_sw_rem = load i64, ptr %mask_w_Velocity_sw_rem, align 8
+  %sw_rem_has_Velocity = and i64 %cur_mask_Velocity_sw_rem, 32
   %is_sw_rem_Velocity = icmp ne i64 %sw_rem_has_Velocity, 0
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 
@@ -1858,7 +1931,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -1873,7 +1949,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -1888,7 +1966,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -1903,7 +1983,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -1918,7 +2000,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -1933,7 +2017,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -1962,7 +2048,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -1986,7 +2074,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -1999,7 +2089,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -2012,7 +2104,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -2025,7 +2119,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -2038,7 +2134,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -2160,7 +2258,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -2175,7 +2276,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -2190,7 +2293,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -2205,7 +2310,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -2220,7 +2327,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -2235,7 +2344,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -2264,7 +2375,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -2288,7 +2401,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -2301,7 +2416,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -2314,7 +2431,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -2327,7 +2446,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -2340,7 +2461,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -2445,7 +2568,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
-  %rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
+  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
+  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
   %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
   br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
 
@@ -2460,7 +2586,9 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %rem_has_PlayerTag = and i64 %cur_mask_val_rem, 4
+  %mask_w_PlayerTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_PlayerTag_rem = load i64, ptr %mask_w_PlayerTag_rem, align 8
+  %rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_rem, 4
   %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
   br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
 
@@ -2475,7 +2603,9 @@ copy_rem_PlayerTag:                               ; preds = %skip_rem_ChildOf
   br label %skip_rem_PlayerTag
 
 skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_ChildOf
-  %rem_has_Position = and i64 %cur_mask_val_rem, 8
+  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
+  %rem_has_Position = and i64 %cur_mask_Position_rem, 8
   %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
   br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
 
@@ -2490,7 +2620,9 @@ copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
-  %rem_has_StunnedTag = and i64 %cur_mask_val_rem, 16
+  %mask_w_StunnedTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_StunnedTag_rem = load i64, ptr %mask_w_StunnedTag_rem, align 8
+  %rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_rem, 16
   %is_has_rem_StunnedTag = icmp ne i64 %rem_has_StunnedTag, 0
   br i1 %is_has_rem_StunnedTag, label %copy_rem_StunnedTag, label %skip_rem_StunnedTag
 
@@ -2505,7 +2637,9 @@ copy_rem_StunnedTag:                              ; preds = %skip_rem_Position
   br label %skip_rem_StunnedTag
 
 skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_Position
-  %rem_has_Velocity = and i64 %cur_mask_val_rem, 32
+  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
+  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 32
   %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
   br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
 
@@ -2534,7 +2668,9 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %moved_e_rem = load i32, ptr %last_ent_rem, align 4
   %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
   store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
-  %sw_rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %mask_w_ChildOf_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_rem = load i64, ptr %mask_w_ChildOf_sw_rem, align 8
+  %sw_rem_has_ChildOf = and i64 %cur_mask_ChildOf_sw_rem, 1
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
@@ -2556,7 +2692,9 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
-  %sw_rem_has_Frozen = and i64 %cur_mask_val_rem, 2
+  %mask_w_Frozen_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Frozen_sw_rem = load i64, ptr %mask_w_Frozen_sw_rem, align 8
+  %sw_rem_has_Frozen = and i64 %cur_mask_Frozen_sw_rem, 2
   %is_sw_rem_Frozen = icmp ne i64 %sw_rem_has_Frozen, 0
   br i1 %is_sw_rem_Frozen, label %swap_rem_Frozen, label %skip_sw_rem_Frozen
 
@@ -2569,7 +2707,9 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
-  %sw_rem_has_PlayerTag = and i64 %cur_mask_val_rem, 4
+  %mask_w_PlayerTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_rem = load i64, ptr %mask_w_PlayerTag_sw_rem, align 8
+  %sw_rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_sw_rem, 4
   %is_sw_rem_PlayerTag = icmp ne i64 %sw_rem_has_PlayerTag, 0
   br i1 %is_sw_rem_PlayerTag, label %swap_rem_PlayerTag, label %skip_sw_rem_PlayerTag
 
@@ -2582,7 +2722,9 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
-  %sw_rem_has_Position = and i64 %cur_mask_val_rem, 8
+  %mask_w_Position_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_sw_rem = load i64, ptr %mask_w_Position_sw_rem, align 8
+  %sw_rem_has_Position = and i64 %cur_mask_Position_sw_rem, 8
   %is_sw_rem_Position = icmp ne i64 %sw_rem_has_Position, 0
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
@@ -2595,7 +2737,9 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
-  %sw_rem_has_StunnedTag = and i64 %cur_mask_val_rem, 16
+  %mask_w_StunnedTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_rem = load i64, ptr %mask_w_StunnedTag_sw_rem, align 8
+  %sw_rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_sw_rem, 16
   %is_sw_rem_StunnedTag = icmp ne i64 %sw_rem_has_StunnedTag, 0
   br i1 %is_sw_rem_StunnedTag, label %swap_rem_StunnedTag, label %skip_sw_rem_StunnedTag
 
@@ -2608,7 +2752,9 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
-  %sw_rem_has_Velocity = and i64 %cur_mask_val_rem, 32
+  %mask_w_Velocity_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_sw_rem = load i64, ptr %mask_w_Velocity_sw_rem, align 8
+  %sw_rem_has_Velocity = and i64 %cur_mask_Velocity_sw_rem, 32
   %is_sw_rem_Velocity = icmp ne i64 %sw_rem_has_Velocity, 0
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 
@@ -2841,7 +2987,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -2856,7 +3005,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -2871,7 +3022,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -2886,7 +3039,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -2901,7 +3056,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -2916,7 +3073,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -2945,7 +3104,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -2969,7 +3130,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -2982,7 +3145,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -2995,7 +3160,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -3008,7 +3175,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -3021,7 +3190,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -3143,7 +3314,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -3158,7 +3332,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -3173,7 +3349,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -3188,7 +3366,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -3203,7 +3383,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -3218,7 +3400,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -3247,7 +3431,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -3271,7 +3457,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -3284,7 +3472,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -3297,7 +3487,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -3310,7 +3502,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -3323,7 +3517,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -3428,7 +3624,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
-  %rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
+  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
+  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
   %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
   br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
 
@@ -3443,7 +3642,9 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %rem_has_Frozen = and i64 %cur_mask_val_rem, 2
+  %mask_w_Frozen_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Frozen_rem = load i64, ptr %mask_w_Frozen_rem, align 8
+  %rem_has_Frozen = and i64 %cur_mask_Frozen_rem, 2
   %is_has_rem_Frozen = icmp ne i64 %rem_has_Frozen, 0
   br i1 %is_has_rem_Frozen, label %copy_rem_Frozen, label %skip_rem_Frozen
 
@@ -3458,7 +3659,9 @@ copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
   br label %skip_rem_Frozen
 
 skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
-  %rem_has_Position = and i64 %cur_mask_val_rem, 8
+  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
+  %rem_has_Position = and i64 %cur_mask_Position_rem, 8
   %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
   br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
 
@@ -3473,7 +3676,9 @@ copy_rem_Position:                                ; preds = %skip_rem_Frozen
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_Frozen
-  %rem_has_StunnedTag = and i64 %cur_mask_val_rem, 16
+  %mask_w_StunnedTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_StunnedTag_rem = load i64, ptr %mask_w_StunnedTag_rem, align 8
+  %rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_rem, 16
   %is_has_rem_StunnedTag = icmp ne i64 %rem_has_StunnedTag, 0
   br i1 %is_has_rem_StunnedTag, label %copy_rem_StunnedTag, label %skip_rem_StunnedTag
 
@@ -3488,7 +3693,9 @@ copy_rem_StunnedTag:                              ; preds = %skip_rem_Position
   br label %skip_rem_StunnedTag
 
 skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_Position
-  %rem_has_Velocity = and i64 %cur_mask_val_rem, 32
+  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
+  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 32
   %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
   br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
 
@@ -3517,7 +3724,9 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %moved_e_rem = load i32, ptr %last_ent_rem, align 4
   %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
   store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
-  %sw_rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %mask_w_ChildOf_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_rem = load i64, ptr %mask_w_ChildOf_sw_rem, align 8
+  %sw_rem_has_ChildOf = and i64 %cur_mask_ChildOf_sw_rem, 1
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
@@ -3539,7 +3748,9 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
-  %sw_rem_has_Frozen = and i64 %cur_mask_val_rem, 2
+  %mask_w_Frozen_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Frozen_sw_rem = load i64, ptr %mask_w_Frozen_sw_rem, align 8
+  %sw_rem_has_Frozen = and i64 %cur_mask_Frozen_sw_rem, 2
   %is_sw_rem_Frozen = icmp ne i64 %sw_rem_has_Frozen, 0
   br i1 %is_sw_rem_Frozen, label %swap_rem_Frozen, label %skip_sw_rem_Frozen
 
@@ -3552,7 +3763,9 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
-  %sw_rem_has_PlayerTag = and i64 %cur_mask_val_rem, 4
+  %mask_w_PlayerTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_rem = load i64, ptr %mask_w_PlayerTag_sw_rem, align 8
+  %sw_rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_sw_rem, 4
   %is_sw_rem_PlayerTag = icmp ne i64 %sw_rem_has_PlayerTag, 0
   br i1 %is_sw_rem_PlayerTag, label %swap_rem_PlayerTag, label %skip_sw_rem_PlayerTag
 
@@ -3565,7 +3778,9 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
-  %sw_rem_has_Position = and i64 %cur_mask_val_rem, 8
+  %mask_w_Position_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_sw_rem = load i64, ptr %mask_w_Position_sw_rem, align 8
+  %sw_rem_has_Position = and i64 %cur_mask_Position_sw_rem, 8
   %is_sw_rem_Position = icmp ne i64 %sw_rem_has_Position, 0
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
@@ -3578,7 +3793,9 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
-  %sw_rem_has_StunnedTag = and i64 %cur_mask_val_rem, 16
+  %mask_w_StunnedTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_rem = load i64, ptr %mask_w_StunnedTag_sw_rem, align 8
+  %sw_rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_sw_rem, 16
   %is_sw_rem_StunnedTag = icmp ne i64 %sw_rem_has_StunnedTag, 0
   br i1 %is_sw_rem_StunnedTag, label %swap_rem_StunnedTag, label %skip_sw_rem_StunnedTag
 
@@ -3591,7 +3808,9 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
-  %sw_rem_has_Velocity = and i64 %cur_mask_val_rem, 32
+  %mask_w_Velocity_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_sw_rem = load i64, ptr %mask_w_Velocity_sw_rem, align 8
+  %sw_rem_has_Velocity = and i64 %cur_mask_Velocity_sw_rem, 32
   %is_sw_rem_Velocity = icmp ne i64 %sw_rem_has_Velocity, 0
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 
@@ -3826,7 +4045,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -3841,7 +4063,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -3856,7 +4080,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -3871,7 +4097,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -3886,7 +4114,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -3901,7 +4131,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -3930,7 +4162,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -3954,7 +4188,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -3967,7 +4203,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -3980,7 +4218,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -3993,7 +4233,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -4006,7 +4248,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -4130,7 +4374,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -4145,7 +4392,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -4160,7 +4409,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -4175,7 +4426,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -4190,7 +4443,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -4205,7 +4460,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -4234,7 +4491,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -4258,7 +4517,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -4271,7 +4532,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -4284,7 +4547,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -4297,7 +4562,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -4310,7 +4577,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -4415,7 +4684,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
-  %rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
+  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
+  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
   %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
   br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
 
@@ -4430,7 +4702,9 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %rem_has_Frozen = and i64 %cur_mask_val_rem, 2
+  %mask_w_Frozen_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Frozen_rem = load i64, ptr %mask_w_Frozen_rem, align 8
+  %rem_has_Frozen = and i64 %cur_mask_Frozen_rem, 2
   %is_has_rem_Frozen = icmp ne i64 %rem_has_Frozen, 0
   br i1 %is_has_rem_Frozen, label %copy_rem_Frozen, label %skip_rem_Frozen
 
@@ -4445,7 +4719,9 @@ copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
   br label %skip_rem_Frozen
 
 skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
-  %rem_has_PlayerTag = and i64 %cur_mask_val_rem, 4
+  %mask_w_PlayerTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_PlayerTag_rem = load i64, ptr %mask_w_PlayerTag_rem, align 8
+  %rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_rem, 4
   %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
   br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
 
@@ -4460,7 +4736,9 @@ copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
   br label %skip_rem_PlayerTag
 
 skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
-  %rem_has_StunnedTag = and i64 %cur_mask_val_rem, 16
+  %mask_w_StunnedTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_StunnedTag_rem = load i64, ptr %mask_w_StunnedTag_rem, align 8
+  %rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_rem, 16
   %is_has_rem_StunnedTag = icmp ne i64 %rem_has_StunnedTag, 0
   br i1 %is_has_rem_StunnedTag, label %copy_rem_StunnedTag, label %skip_rem_StunnedTag
 
@@ -4475,7 +4753,9 @@ copy_rem_StunnedTag:                              ; preds = %skip_rem_PlayerTag
   br label %skip_rem_StunnedTag
 
 skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_PlayerTag
-  %rem_has_Velocity = and i64 %cur_mask_val_rem, 32
+  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
+  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 32
   %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
   br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
 
@@ -4504,7 +4784,9 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %moved_e_rem = load i32, ptr %last_ent_rem, align 4
   %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
   store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
-  %sw_rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %mask_w_ChildOf_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_rem = load i64, ptr %mask_w_ChildOf_sw_rem, align 8
+  %sw_rem_has_ChildOf = and i64 %cur_mask_ChildOf_sw_rem, 1
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
@@ -4526,7 +4808,9 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
-  %sw_rem_has_Frozen = and i64 %cur_mask_val_rem, 2
+  %mask_w_Frozen_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Frozen_sw_rem = load i64, ptr %mask_w_Frozen_sw_rem, align 8
+  %sw_rem_has_Frozen = and i64 %cur_mask_Frozen_sw_rem, 2
   %is_sw_rem_Frozen = icmp ne i64 %sw_rem_has_Frozen, 0
   br i1 %is_sw_rem_Frozen, label %swap_rem_Frozen, label %skip_sw_rem_Frozen
 
@@ -4539,7 +4823,9 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
-  %sw_rem_has_PlayerTag = and i64 %cur_mask_val_rem, 4
+  %mask_w_PlayerTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_rem = load i64, ptr %mask_w_PlayerTag_sw_rem, align 8
+  %sw_rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_sw_rem, 4
   %is_sw_rem_PlayerTag = icmp ne i64 %sw_rem_has_PlayerTag, 0
   br i1 %is_sw_rem_PlayerTag, label %swap_rem_PlayerTag, label %skip_sw_rem_PlayerTag
 
@@ -4552,7 +4838,9 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
-  %sw_rem_has_Position = and i64 %cur_mask_val_rem, 8
+  %mask_w_Position_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_sw_rem = load i64, ptr %mask_w_Position_sw_rem, align 8
+  %sw_rem_has_Position = and i64 %cur_mask_Position_sw_rem, 8
   %is_sw_rem_Position = icmp ne i64 %sw_rem_has_Position, 0
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
@@ -4565,7 +4853,9 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
-  %sw_rem_has_StunnedTag = and i64 %cur_mask_val_rem, 16
+  %mask_w_StunnedTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_rem = load i64, ptr %mask_w_StunnedTag_sw_rem, align 8
+  %sw_rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_sw_rem, 16
   %is_sw_rem_StunnedTag = icmp ne i64 %sw_rem_has_StunnedTag, 0
   br i1 %is_sw_rem_StunnedTag, label %swap_rem_StunnedTag, label %skip_sw_rem_StunnedTag
 
@@ -4578,7 +4868,9 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
-  %sw_rem_has_Velocity = and i64 %cur_mask_val_rem, 32
+  %mask_w_Velocity_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_sw_rem = load i64, ptr %mask_w_Velocity_sw_rem, align 8
+  %sw_rem_has_Velocity = and i64 %cur_mask_Velocity_sw_rem, 32
   %is_sw_rem_Velocity = icmp ne i64 %sw_rem_has_Velocity, 0
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 
@@ -4815,7 +5107,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -4830,7 +5125,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -4845,7 +5142,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -4860,7 +5159,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -4875,7 +5176,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -4890,7 +5193,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -4919,7 +5224,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -4943,7 +5250,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -4956,7 +5265,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -4969,7 +5280,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -4982,7 +5295,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -4995,7 +5310,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -5117,7 +5434,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -5132,7 +5452,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -5147,7 +5469,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -5162,7 +5486,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -5177,7 +5503,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -5192,7 +5520,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -5221,7 +5551,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -5245,7 +5577,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -5258,7 +5592,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -5271,7 +5607,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -5284,7 +5622,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -5297,7 +5637,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -5402,7 +5744,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
-  %rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
+  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
+  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
   %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
   br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
 
@@ -5417,7 +5762,9 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %rem_has_Frozen = and i64 %cur_mask_val_rem, 2
+  %mask_w_Frozen_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Frozen_rem = load i64, ptr %mask_w_Frozen_rem, align 8
+  %rem_has_Frozen = and i64 %cur_mask_Frozen_rem, 2
   %is_has_rem_Frozen = icmp ne i64 %rem_has_Frozen, 0
   br i1 %is_has_rem_Frozen, label %copy_rem_Frozen, label %skip_rem_Frozen
 
@@ -5432,7 +5779,9 @@ copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
   br label %skip_rem_Frozen
 
 skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
-  %rem_has_PlayerTag = and i64 %cur_mask_val_rem, 4
+  %mask_w_PlayerTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_PlayerTag_rem = load i64, ptr %mask_w_PlayerTag_rem, align 8
+  %rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_rem, 4
   %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
   br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
 
@@ -5447,7 +5796,9 @@ copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
   br label %skip_rem_PlayerTag
 
 skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
-  %rem_has_Position = and i64 %cur_mask_val_rem, 8
+  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
+  %rem_has_Position = and i64 %cur_mask_Position_rem, 8
   %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
   br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
 
@@ -5462,7 +5813,9 @@ copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
-  %rem_has_Velocity = and i64 %cur_mask_val_rem, 32
+  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
+  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 32
   %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
   br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
 
@@ -5491,7 +5844,9 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %moved_e_rem = load i32, ptr %last_ent_rem, align 4
   %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
   store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
-  %sw_rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %mask_w_ChildOf_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_rem = load i64, ptr %mask_w_ChildOf_sw_rem, align 8
+  %sw_rem_has_ChildOf = and i64 %cur_mask_ChildOf_sw_rem, 1
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
@@ -5513,7 +5868,9 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
-  %sw_rem_has_Frozen = and i64 %cur_mask_val_rem, 2
+  %mask_w_Frozen_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Frozen_sw_rem = load i64, ptr %mask_w_Frozen_sw_rem, align 8
+  %sw_rem_has_Frozen = and i64 %cur_mask_Frozen_sw_rem, 2
   %is_sw_rem_Frozen = icmp ne i64 %sw_rem_has_Frozen, 0
   br i1 %is_sw_rem_Frozen, label %swap_rem_Frozen, label %skip_sw_rem_Frozen
 
@@ -5526,7 +5883,9 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
-  %sw_rem_has_PlayerTag = and i64 %cur_mask_val_rem, 4
+  %mask_w_PlayerTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_rem = load i64, ptr %mask_w_PlayerTag_sw_rem, align 8
+  %sw_rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_sw_rem, 4
   %is_sw_rem_PlayerTag = icmp ne i64 %sw_rem_has_PlayerTag, 0
   br i1 %is_sw_rem_PlayerTag, label %swap_rem_PlayerTag, label %skip_sw_rem_PlayerTag
 
@@ -5539,7 +5898,9 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
-  %sw_rem_has_Position = and i64 %cur_mask_val_rem, 8
+  %mask_w_Position_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_sw_rem = load i64, ptr %mask_w_Position_sw_rem, align 8
+  %sw_rem_has_Position = and i64 %cur_mask_Position_sw_rem, 8
   %is_sw_rem_Position = icmp ne i64 %sw_rem_has_Position, 0
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
@@ -5552,7 +5913,9 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
-  %sw_rem_has_StunnedTag = and i64 %cur_mask_val_rem, 16
+  %mask_w_StunnedTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_rem = load i64, ptr %mask_w_StunnedTag_sw_rem, align 8
+  %sw_rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_sw_rem, 16
   %is_sw_rem_StunnedTag = icmp ne i64 %sw_rem_has_StunnedTag, 0
   br i1 %is_sw_rem_StunnedTag, label %swap_rem_StunnedTag, label %skip_sw_rem_StunnedTag
 
@@ -5565,7 +5928,9 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
-  %sw_rem_has_Velocity = and i64 %cur_mask_val_rem, 32
+  %mask_w_Velocity_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_sw_rem = load i64, ptr %mask_w_Velocity_sw_rem, align 8
+  %sw_rem_has_Velocity = and i64 %cur_mask_Velocity_sw_rem, 32
   %is_sw_rem_Velocity = icmp ne i64 %sw_rem_has_Velocity, 0
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 
@@ -5800,7 +6165,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -5815,7 +6183,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -5830,7 +6200,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -5845,7 +6217,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -5860,7 +6234,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -5875,7 +6251,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -5904,7 +6282,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -5928,7 +6308,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -5941,7 +6323,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -5954,7 +6338,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -5967,7 +6353,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -5980,7 +6368,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -6104,7 +6494,10 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %1, ptr %new_ent_elem2, align 4
   %cur_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 4
   %new_cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 4
-  %has_ChildOf = and i64 %cur_mask, 1
+  %cur_mask_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 0
+  %mask_w_ChildOf_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_set = load i64, ptr %mask_w_ChildOf_set, align 8
+  %has_ChildOf = and i64 %cur_mask_ChildOf_set, 1
   %is_has_ChildOf = icmp ne i64 %has_ChildOf, 0
   br i1 %is_has_ChildOf, label %copy_ChildOf, label %skip_ChildOf
 
@@ -6119,7 +6512,9 @@ copy_ChildOf:                                     ; preds = %after_grow_new_arch
   br label %skip_ChildOf
 
 skip_ChildOf:                                     ; preds = %copy_ChildOf, %after_grow_new_arch
-  %has_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_set = load i64, ptr %mask_w_Frozen_set, align 8
+  %has_Frozen = and i64 %cur_mask_Frozen_set, 2
   %is_has_Frozen = icmp ne i64 %has_Frozen, 0
   br i1 %is_has_Frozen, label %copy_Frozen, label %skip_Frozen
 
@@ -6134,7 +6529,9 @@ copy_Frozen:                                      ; preds = %skip_ChildOf
   br label %skip_Frozen
 
 skip_Frozen:                                      ; preds = %copy_Frozen, %skip_ChildOf
-  %has_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_set = load i64, ptr %mask_w_PlayerTag_set, align 8
+  %has_PlayerTag = and i64 %cur_mask_PlayerTag_set, 4
   %is_has_PlayerTag = icmp ne i64 %has_PlayerTag, 0
   br i1 %is_has_PlayerTag, label %copy_PlayerTag, label %skip_PlayerTag
 
@@ -6149,7 +6546,9 @@ copy_PlayerTag:                                   ; preds = %skip_Frozen
   br label %skip_PlayerTag
 
 skip_PlayerTag:                                   ; preds = %copy_PlayerTag, %skip_Frozen
-  %has_Position = and i64 %cur_mask, 8
+  %mask_w_Position_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_set = load i64, ptr %mask_w_Position_set, align 8
+  %has_Position = and i64 %cur_mask_Position_set, 8
   %is_has_Position = icmp ne i64 %has_Position, 0
   br i1 %is_has_Position, label %copy_Position, label %skip_Position
 
@@ -6164,7 +6563,9 @@ copy_Position:                                    ; preds = %skip_PlayerTag
   br label %skip_Position
 
 skip_Position:                                    ; preds = %copy_Position, %skip_PlayerTag
-  %has_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_set = load i64, ptr %mask_w_StunnedTag_set, align 8
+  %has_StunnedTag = and i64 %cur_mask_StunnedTag_set, 16
   %is_has_StunnedTag = icmp ne i64 %has_StunnedTag, 0
   br i1 %is_has_StunnedTag, label %copy_StunnedTag, label %skip_StunnedTag
 
@@ -6179,7 +6580,9 @@ copy_StunnedTag:                                  ; preds = %skip_Position
   br label %skip_StunnedTag
 
 skip_StunnedTag:                                  ; preds = %copy_StunnedTag, %skip_Position
-  %has_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_set = load i64, ptr %mask_w_Velocity_set, align 8
+  %has_Velocity = and i64 %cur_mask_Velocity_set, 32
   %is_has_Velocity = icmp ne i64 %has_Velocity, 0
   br i1 %is_has_Velocity, label %copy_Velocity, label %skip_Velocity
 
@@ -6208,7 +6611,9 @@ do_swap_remove:                                   ; preds = %skip_Velocity
   %moved_e = load i32, ptr %last_ent_elem, align 4
   %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
   store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  %has_sw_ChildOf = and i64 %cur_mask, 1
+  %mask_w_ChildOf_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_set = load i64, ptr %mask_w_ChildOf_sw_set, align 8
+  %has_sw_ChildOf = and i64 %cur_mask_ChildOf_sw_set, 1
   %is_has_sw_ChildOf = icmp ne i64 %has_sw_ChildOf, 0
   br i1 %is_has_sw_ChildOf, label %swap_ChildOf, label %skip_sw_ChildOf
 
@@ -6232,7 +6637,9 @@ swap_ChildOf:                                     ; preds = %do_swap_remove
   br label %skip_sw_ChildOf
 
 skip_sw_ChildOf:                                  ; preds = %swap_ChildOf, %do_swap_remove
-  %has_sw_Frozen = and i64 %cur_mask, 2
+  %mask_w_Frozen_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Frozen_sw_set = load i64, ptr %mask_w_Frozen_sw_set, align 8
+  %has_sw_Frozen = and i64 %cur_mask_Frozen_sw_set, 2
   %is_has_sw_Frozen = icmp ne i64 %has_sw_Frozen, 0
   br i1 %is_has_sw_Frozen, label %swap_Frozen, label %skip_sw_Frozen
 
@@ -6245,7 +6652,9 @@ swap_Frozen:                                      ; preds = %skip_sw_ChildOf
   br label %skip_sw_Frozen
 
 skip_sw_Frozen:                                   ; preds = %swap_Frozen, %skip_sw_ChildOf
-  %has_sw_PlayerTag = and i64 %cur_mask, 4
+  %mask_w_PlayerTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_set = load i64, ptr %mask_w_PlayerTag_sw_set, align 8
+  %has_sw_PlayerTag = and i64 %cur_mask_PlayerTag_sw_set, 4
   %is_has_sw_PlayerTag = icmp ne i64 %has_sw_PlayerTag, 0
   br i1 %is_has_sw_PlayerTag, label %swap_PlayerTag, label %skip_sw_PlayerTag
 
@@ -6258,7 +6667,9 @@ swap_PlayerTag:                                   ; preds = %skip_sw_Frozen
   br label %skip_sw_PlayerTag
 
 skip_sw_PlayerTag:                                ; preds = %swap_PlayerTag, %skip_sw_Frozen
-  %has_sw_Position = and i64 %cur_mask, 8
+  %mask_w_Position_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Position_sw_set = load i64, ptr %mask_w_Position_sw_set, align 8
+  %has_sw_Position = and i64 %cur_mask_Position_sw_set, 8
   %is_has_sw_Position = icmp ne i64 %has_sw_Position, 0
   br i1 %is_has_sw_Position, label %swap_Position, label %skip_sw_Position
 
@@ -6271,7 +6682,9 @@ swap_Position:                                    ; preds = %skip_sw_PlayerTag
   br label %skip_sw_Position
 
 skip_sw_Position:                                 ; preds = %swap_Position, %skip_sw_PlayerTag
-  %has_sw_StunnedTag = and i64 %cur_mask, 16
+  %mask_w_StunnedTag_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_set = load i64, ptr %mask_w_StunnedTag_sw_set, align 8
+  %has_sw_StunnedTag = and i64 %cur_mask_StunnedTag_sw_set, 16
   %is_has_sw_StunnedTag = icmp ne i64 %has_sw_StunnedTag, 0
   br i1 %is_has_sw_StunnedTag, label %swap_StunnedTag, label %skip_sw_StunnedTag
 
@@ -6284,7 +6697,9 @@ swap_StunnedTag:                                  ; preds = %skip_sw_Position
   br label %skip_sw_StunnedTag
 
 skip_sw_StunnedTag:                               ; preds = %swap_StunnedTag, %skip_sw_Position
-  %has_sw_Velocity = and i64 %cur_mask, 32
+  %mask_w_Velocity_sw_set = getelementptr inbounds [1 x i64], ptr %cur_mask_slot2, i32 0, i32 0
+  %cur_mask_Velocity_sw_set = load i64, ptr %mask_w_Velocity_sw_set, align 8
+  %has_sw_Velocity = and i64 %cur_mask_Velocity_sw_set, 32
   %is_has_sw_Velocity = icmp ne i64 %has_sw_Velocity, 0
   br i1 %is_has_sw_Velocity, label %swap_Velocity, label %skip_sw_Velocity
 
@@ -6389,7 +6804,10 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
   %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
-  %rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
+  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
+  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
   %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
   br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
 
@@ -6404,7 +6822,9 @@ copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
   br label %skip_rem_ChildOf
 
 skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %rem_has_Frozen = and i64 %cur_mask_val_rem, 2
+  %mask_w_Frozen_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Frozen_rem = load i64, ptr %mask_w_Frozen_rem, align 8
+  %rem_has_Frozen = and i64 %cur_mask_Frozen_rem, 2
   %is_has_rem_Frozen = icmp ne i64 %rem_has_Frozen, 0
   br i1 %is_has_rem_Frozen, label %copy_rem_Frozen, label %skip_rem_Frozen
 
@@ -6419,7 +6839,9 @@ copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
   br label %skip_rem_Frozen
 
 skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
-  %rem_has_PlayerTag = and i64 %cur_mask_val_rem, 4
+  %mask_w_PlayerTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_PlayerTag_rem = load i64, ptr %mask_w_PlayerTag_rem, align 8
+  %rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_rem, 4
   %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
   br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
 
@@ -6434,7 +6856,9 @@ copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
   br label %skip_rem_PlayerTag
 
 skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
-  %rem_has_Position = and i64 %cur_mask_val_rem, 8
+  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
+  %rem_has_Position = and i64 %cur_mask_Position_rem, 8
   %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
   br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
 
@@ -6449,7 +6873,9 @@ copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
   br label %skip_rem_Position
 
 skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
-  %rem_has_StunnedTag = and i64 %cur_mask_val_rem, 16
+  %mask_w_StunnedTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_StunnedTag_rem = load i64, ptr %mask_w_StunnedTag_rem, align 8
+  %rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_rem, 16
   %is_has_rem_StunnedTag = icmp ne i64 %rem_has_StunnedTag, 0
   br i1 %is_has_rem_StunnedTag, label %copy_rem_StunnedTag, label %skip_rem_StunnedTag
 
@@ -6478,7 +6904,9 @@ do_swap_rem:                                      ; preds = %skip_rem_StunnedTag
   %moved_e_rem = load i32, ptr %last_ent_rem, align 4
   %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
   store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
-  %sw_rem_has_ChildOf = and i64 %cur_mask_val_rem, 1
+  %mask_w_ChildOf_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_ChildOf_sw_rem = load i64, ptr %mask_w_ChildOf_sw_rem, align 8
+  %sw_rem_has_ChildOf = and i64 %cur_mask_ChildOf_sw_rem, 1
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
@@ -6500,7 +6928,9 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
-  %sw_rem_has_Frozen = and i64 %cur_mask_val_rem, 2
+  %mask_w_Frozen_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Frozen_sw_rem = load i64, ptr %mask_w_Frozen_sw_rem, align 8
+  %sw_rem_has_Frozen = and i64 %cur_mask_Frozen_sw_rem, 2
   %is_sw_rem_Frozen = icmp ne i64 %sw_rem_has_Frozen, 0
   br i1 %is_sw_rem_Frozen, label %swap_rem_Frozen, label %skip_sw_rem_Frozen
 
@@ -6513,7 +6943,9 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
-  %sw_rem_has_PlayerTag = and i64 %cur_mask_val_rem, 4
+  %mask_w_PlayerTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_PlayerTag_sw_rem = load i64, ptr %mask_w_PlayerTag_sw_rem, align 8
+  %sw_rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_sw_rem, 4
   %is_sw_rem_PlayerTag = icmp ne i64 %sw_rem_has_PlayerTag, 0
   br i1 %is_sw_rem_PlayerTag, label %swap_rem_PlayerTag, label %skip_sw_rem_PlayerTag
 
@@ -6526,7 +6958,9 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
-  %sw_rem_has_Position = and i64 %cur_mask_val_rem, 8
+  %mask_w_Position_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Position_sw_rem = load i64, ptr %mask_w_Position_sw_rem, align 8
+  %sw_rem_has_Position = and i64 %cur_mask_Position_sw_rem, 8
   %is_sw_rem_Position = icmp ne i64 %sw_rem_has_Position, 0
   br i1 %is_sw_rem_Position, label %swap_rem_Position, label %skip_sw_rem_Position
 
@@ -6539,7 +6973,9 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
-  %sw_rem_has_StunnedTag = and i64 %cur_mask_val_rem, 16
+  %mask_w_StunnedTag_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_StunnedTag_sw_rem = load i64, ptr %mask_w_StunnedTag_sw_rem, align 8
+  %sw_rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_sw_rem, 16
   %is_sw_rem_StunnedTag = icmp ne i64 %sw_rem_has_StunnedTag, 0
   br i1 %is_sw_rem_StunnedTag, label %swap_rem_StunnedTag, label %skip_sw_rem_StunnedTag
 
@@ -6552,7 +6988,9 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
-  %sw_rem_has_Velocity = and i64 %cur_mask_val_rem, 32
+  %mask_w_Velocity_sw_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
+  %cur_mask_Velocity_sw_rem = load i64, ptr %mask_w_Velocity_sw_rem, align 8
+  %sw_rem_has_Velocity = and i64 %cur_mask_Velocity_sw_rem, 32
   %is_sw_rem_Velocity = icmp ne i64 %sw_rem_has_Velocity, 0
   br i1 %is_sw_rem_Velocity, label %swap_rem_Velocity, label %skip_sw_rem_Velocity
 

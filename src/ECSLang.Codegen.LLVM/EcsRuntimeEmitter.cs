@@ -151,11 +151,11 @@ public sealed partial class EcsRuntimeEmitter
                 continue;
             }
 
-            if (compIndex >= 64)
+            if (compIndex >= 128)
             {
                 int totalCount = _typeChecker.Components.Values.Distinct().Count();
                 _diagnostics.ReportError(
-                    $"Maximum component limit of 64 exceeded (project has {totalCount} components, limit is 64). 64-bit archetype bitmask overflow.",
+                    $"Maximum component limit of 128 exceeded (project has {totalCount} components, limit is 128). Archetype bitmask overflow.",
                     compSym.Span);
                 return;
             }
@@ -230,16 +230,13 @@ public sealed partial class EcsRuntimeEmitter
             _colArrayType       // 4: columns ([N x ptr])
         }, false);
 
-        // Parameterized self-check: for WORDS = 1, ABI size of %struct.Archetype matches scalar i64 mask layout
+        // Parameterized self-check: ABI size of %struct.Archetype matches mask array layout
         ulong actualArchSize = LlvmApi.ABISizeOfType(dataLayout, _archStructType);
-        if (_maskWords == 1)
+        ulong expectedArchSize = (ulong)(_maskWords * 8 + 16) + (ulong)compCount * 8;
+        if (actualArchSize != expectedArchSize)
         {
-            ulong expectedArchSize = 24 + (ulong)compCount * 8;
-            if (actualArchSize != expectedArchSize)
-            {
-                throw new InvalidOperationException(
-                    $"ABI mismatch for %struct.Archetype with WORDS=1: expected {expectedArchSize} bytes, got {actualArchSize} bytes.");
-            }
+            throw new InvalidOperationException(
+                $"ABI mismatch for %struct.Archetype with WORDS={_maskWords}: expected {expectedArchSize} bytes, got {actualArchSize} bytes.");
         }
 
         // 4. Define %struct.EcsWorld

@@ -1,0 +1,257 @@
+// ========================================================================
+// Canary Test: Validation of Multi-Word Archetype Bitmasks (WORDS = 2)
+// Total 72 components: ChildOf (id 0) + C01..C71 (id 1..71).
+// Validates:
+// 1. WORDS = 2 layout in %struct.Archetype
+// 2. Component transitions across word boundaries (id < 64 <-> id >= 64)
+// 3. spawn_with (BulkSpawn) across words
+// 4. world_despawn swap-copy with WORDS = 2
+// 5. Query filtering with 'query' and 'without'
+// 6. ChildOf + sort_hierarchy on entities with components id >= 64 (verifying inventory line #20-21 fix)
+// ========================================================================
+
+component C01 { v: i32 }
+component C02 { v: i32 }
+component C03 { v: i32 }
+component C04 { v: i32 }
+component C05 { v: i32 }
+component C06 { v: i32 }
+component C07 { v: i32 }
+component C08 { v: i32 }
+component C09 { v: i32 }
+component C10 { v: i32 }
+component C11 { v: i32 }
+component C12 { v: i32 }
+component C13 { v: i32 }
+component C14 { v: i32 }
+component C15 { v: i32 }
+component C16 { v: i32 }
+component C17 { v: i32 }
+component C18 { v: i32 }
+component C19 { v: i32 }
+component C20 { v: i32 }
+component C21 { v: i32 }
+component C22 { v: i32 }
+component C23 { v: i32 }
+component C24 { v: i32 }
+component C25 { v: i32 }
+component C26 { v: i32 }
+component C27 { v: i32 }
+component C28 { v: i32 }
+component C29 { v: i32 }
+component C30 { v: i32 }
+component C31 { v: i32 }
+component C32 { v: i32 }
+component C33 { v: i32 }
+component C34 { v: i32 }
+component C35 { v: i32 }
+component C36 { v: i32 }
+component C37 { v: i32 }
+component C38 { v: i32 }
+component C39 { v: i32 }
+component C40 { v: i32 }
+component C41 { v: i32 }
+component C42 { v: i32 }
+component C43 { v: i32 }
+component C44 { v: i32 }
+component C45 { v: i32 }
+component C46 { v: i32 }
+component C47 { v: i32 }
+component C48 { v: i32 }
+component C49 { v: i32 }
+component C50 { v: i32 }
+component C51 { v: i32 }
+component C52 { v: i32 }
+component C53 { v: i32 }
+component C54 { v: i32 }
+component C55 { v: i32 }
+component C56 { v: i32 }
+component C57 { v: i32 }
+component C58 { v: i32 }
+component C59 { v: i32 }
+component C60 { v: i32 }
+component C61 { v: i32 }
+component C62 { v: i32 }
+component C63 { v: i32 }
+// Boundaries: C64 is component 64 (word 1, bit 0)
+component C64 { v: i32 }
+component C65 { v: i32 }
+component C66 { v: i32 }
+component C67 { v: i32 }
+component C68 { v: i32 }
+component C69 { v: i32 }
+component C70 { v: i32 }
+component C71 { v: i32 }
+
+resource CanaryStats {
+    query_matches: i32,
+    query_sum: i32,
+    hierarchy_parent_seen: i32,
+    hierarchy_child_seen: i32,
+    hierarchy_order_correct: i32,
+}
+
+system CanaryFilterSystem {
+    query(e: Entity, mut c1: C01, mut c70: C70, mut res: CanaryStats, without: C69) {
+        res.query_matches += 1;
+        res.query_sum += c70.v;
+        c70.v += 5;
+    }
+}
+
+system VerifyHierarchySystem {
+    query(e: Entity, co: ChildOf, c70: C70, mut res: CanaryStats) {
+        if c70.v == 1000 {
+            // Parent has c70.v == 1000
+            if res.hierarchy_child_seen == 0 {
+                res.hierarchy_order_correct = 1;
+            }
+            res.hierarchy_parent_seen += 1;
+        }
+        if c70.v == 2000 {
+            // Child has c70.v == 2000
+            res.hierarchy_child_seen += 1;
+        }
+    }
+}
+
+pipeline CanaryPipeline {
+    stage FilterStage {
+        CanaryFilterSystem;
+    }
+    stage HierarchySortStage {
+        sort_hierarchy;
+        VerifyHierarchySystem;
+    }
+}
+
+fn main(): i32 {
+    println("=== START CANARY 70+ COMPONENTS TEST (WORDS = 2) ===");
+    let mut world = ecs::create_world();
+    world.set_CanaryStats(0, 0, 0, 0, 0);
+
+    // ---------------------------------------------------------
+    // Part A: Archetype transitions across word boundary (id 1 <-> id 70)
+    // ---------------------------------------------------------
+    let e1 = world.spawn();
+    world.set_C01(e1, 10);
+    if !world.has_C01(e1) {
+        println("FAIL: e1 has_C01 expected true");
+        return 101;
+    }
+    if world.has_C70(e1) {
+        println("FAIL: e1 has_C70 expected false");
+        return 102;
+    }
+
+    // Add C70 (word 1) -> transitions archetype to [C01, C70]
+    world.set_C70(e1, 700);
+    if !world.has_C01(e1) {
+        println("FAIL: e1 has_C01 after add C70 expected true");
+        return 103;
+    }
+    if !world.has_C70(e1) {
+        println("FAIL: e1 has_C70 expected true");
+        return 104;
+    }
+    if world.has_C71(e1) {
+        println("FAIL: e1 has_C71 expected false");
+        return 105;
+    }
+
+    // Remove C01 (word 0) -> transitions archetype to [C70]
+    world.remove_C01(e1);
+    if world.has_C01(e1) {
+        println("FAIL: e1 has_C01 after remove expected false");
+        return 106;
+    }
+    if !world.has_C70(e1) {
+        println("FAIL: e1 has_C70 after remove C01 expected true");
+        return 107;
+    }
+
+    // Re-add C01 -> transitions back to [C01, C70]
+    world.set_C01(e1, 15);
+    if !world.has_C01(e1) || !world.has_C70(e1) {
+        println("FAIL: e1 [C01, C70] re-add failed");
+        return 108;
+    }
+
+    // ---------------------------------------------------------
+    // Part B: Bulk spawn (spawn_with) across word boundary
+    // ---------------------------------------------------------
+    let e2 = world.spawn_with(C01(20), C70(720));
+    if !world.has_C01(e2) || !world.has_C70(e2) {
+        println("FAIL: e2 bulk spawn has_* failed");
+        return 109;
+    }
+
+    // Entity with C69 (filter should exclude this one)
+    let e_excluded = world.spawn_with(C01(99), C70(999), C69(1));
+    if !world.has_C69(e_excluded) {
+        println("FAIL: e_excluded has_C69 expected true");
+        return 110;
+    }
+
+    // ---------------------------------------------------------
+    // Part C: Despawn with WORDS = 2 (swap-copy test)
+    // ---------------------------------------------------------
+    let e_temp = world.spawn_with(C01(55), C70(555));
+    world.despawn(e_temp);
+    if world.has_C01(e_temp) || world.has_C70(e_temp) {
+        println("FAIL: e_temp still has components after despawn");
+        return 111;
+    }
+
+    // ---------------------------------------------------------
+    // Part D: Hierarchy with ChildOf + C70 (id >= 64, word 1)
+    // ---------------------------------------------------------
+    // Root entity (depth 0, no ChildOf)
+    let root = world.spawn();
+
+    // Spawn child FIRST into archetype [ChildOf, C70] (initial index 0 in archetype)
+    let child = world.spawn_with(ChildOf(-1), C70(2000));
+
+    // Spawn parent SECOND into archetype [ChildOf, C70] (depth 0 root)
+    let parent = world.spawn_with(ChildOf(-1), C70(1000));
+
+    // Set child's parent to parent (child depth = 1, parent depth = 0)
+    world.set_ChildOf(child, parent);
+
+    // ---------------------------------------------------------
+    // Part E: Execute pipeline
+    // ---------------------------------------------------------
+    CanaryPipeline(world);
+
+    // Verify stats
+    let stats = world.get_CanaryStats();
+    println($"Canary query_matches: {stats.query_matches}");
+    println($"Canary query_sum: {stats.query_sum}");
+    println($"Canary hierarchy_parent_seen: {stats.hierarchy_parent_seen}");
+    println($"Canary hierarchy_child_seen: {stats.hierarchy_child_seen}");
+    println($"Canary hierarchy_order_correct: {stats.hierarchy_order_correct}");
+
+    if stats.query_matches != 2 {
+        println($"FAIL: expected query_matches == 2, got {stats.query_matches}");
+        return 1;
+    }
+    if stats.query_sum != 1420 { // 700 + 720 = 1420
+        println($"FAIL: expected query_sum == 1420, got {stats.query_sum}");
+        return 2;
+    }
+    if stats.hierarchy_parent_seen != 1 {
+        println($"FAIL: expected hierarchy_parent_seen == 1, got {stats.hierarchy_parent_seen}");
+        return 3;
+    }
+    if stats.hierarchy_child_seen != 1 {
+        println($"FAIL: expected hierarchy_child_seen == 1, got {stats.hierarchy_child_seen}");
+        return 4;
+    }
+    if stats.hierarchy_order_correct != 1 {
+        println($"FAIL: expected hierarchy_order_correct == 1, got {stats.hierarchy_order_correct}");
+        return 5;
+    }
+
+    println("=== CANARY TEST PASSED SUCCESSFULLY (ALL INVARIANTS SATISFIED) ===");
+    return 0;
+}
