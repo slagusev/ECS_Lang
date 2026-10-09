@@ -3,3 +3,6 @@ Commit,Date,Runs,BuildMs,SpawnMinMs,SpawnMedianMs,TickMinMs,TickMedianMs,Notes
 17bfcce,2026-10-09 08:46:51,5,6,36,6,81,24,59,29,61,"Baseline after Step A7.4"
 53733ba,2026-10-09 09:29:34,5,7,76,10,50,34,30,62,65,""
 41d3ca4,2026-10-09 11:36:22,5,2990,73,10,57,16,51,49,86,58,15,"Baseline with Codegen phase measurement"
+549f377,2026-10-09 12:17:38,5,18368,32,38,15,64,06,218,34,231,95,"Final A7.Ф Current (Post-A7 series)"
+ddc29ab,2026-10-09 12:18:26,5,9270,27,17,50,20,92,70,69,79,30,"Pre-A7 baseline from worktree"
+549f377,2026-10-09 12:19:53,5,6345,10,18,40,21,53,69,49,82,24,"Final A7.Ф (Post-A7 series, Release CLI)"

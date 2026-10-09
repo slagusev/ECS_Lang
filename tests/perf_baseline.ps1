@@ -13,13 +13,13 @@ param (
 )
 
 $ErrorActionPreference = "Stop"
-$CliPath = "src/ECSLang.CLI/bin/Debug/net9.0/ECSLang.CLI.exe"
+$CliPath = "src/ECSLang.CLI/bin/Release/net9.0/ECSLang.CLI.exe"
 $SourcePath = "tests/particles_100k.ecs"
 $CsvPath = "tests/perf_baseline.csv"
 
 if (-not (Test-Path $CliPath)) {
-    Write-Host "ECSLang CLI binary not found. Running dotnet build..." -ForegroundColor Yellow
-    dotnet build -c Debug 2>&1 | Out-Null
+    Write-Host "ECSLang CLI Release binary not found. Running dotnet build -c Release..." -ForegroundColor Yellow
+    dotnet build src/ECSLang.CLI -c Release 2>&1 | Out-Null
 }
 
 Write-Host "=== ECSLang Perf Baseline ($Iterations runs, Release -O3) ===" -ForegroundColor Cyan

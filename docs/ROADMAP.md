@@ -125,9 +125,10 @@
 - **Шаблон коммита**: `feat(profiler): render multi-word archetype masks in F1 telemetry HUD (Step 6)`
 
 #### Шаг A7.Ф — Финализация серии A7 и итоговый perf-отчёт
-- **Объём**: Итоговый замер производительности `particles_100k` до/после всей A7-серии (checkout родительского коммита тега `a7-step1-green`, прогон `tests/perf_baseline.ps1`). Итоговый аудит соответствия `ARCHITECTURE.md`.
-- **Файлы**: `ARCHITECTURE.md`, `tests/perf_baseline.ps1`.
-- **Критерий приёмки**: Уровень 4 (perf-сравнение зафиксировано, регрессий spawn/tick нет).
+- **Объём**: Итоговый замер производительности `particles_100k` до/после всей A7-серии (сравнение с коммитом-предком `ddc29ab` через worktree, прогон `tests/perf_baseline.ps1` под Release CLI). Итоговый аудит соответствия `ARCHITECTURE.md` (удаление временного инварианта word-0 переходного периода, фиксация постоянного контракта и капа профайлера). Замер масштабирования фазы кодегена для B7.
+- **Файлы**: `ARCHITECTURE.md`, `docs/ROADMAP.md`, `tests/perf_baseline.ps1`, `tests/perf_baseline.csv`.
+- **Критерий приёмки**: Уровень 4 (perf-паритет до/после доказан в пределах аппаратного шума; 7/7 golden strict; 29/23 examples; кривая масштабирования для B7 зафиксирована).
+- **Статус**: **ВЫПОЛНЕНО**
 - **Шаблон коммита**: `test(perf): finalize A7 series performance comparison against pre-A7 baseline`
 
 ---
