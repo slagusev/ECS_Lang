@@ -136,7 +136,7 @@
 ### Блок B: Оптимизации ядра и платформенная переносимость
 
 #### Шаг B7 — Линеаризация кодегена инициализации компонентов
-- **Объём**: Устранение квадратичного взрыва времени компиляции и расхода оперативной памяти при большом числе компонентов ($N > 1024$). Фактическая OOM-граница текущей архитектуры: 540 856 строк IR на 72 компонента; квадратичная экстраполяция $(1025/72)^2 \times 540\text{K} \approx 110\text{M}$ строк LLVM IR $\to$ неминуемый Out-Of-Memory (> 16 GB RAM). Замена индивидуальной кодогенерации $O(N^2)$ функций манипуляции компонентами (`set_`, `add_`, `remove_`, `has_`) на компактные табличные дескрипторы компонентов и единый цикл/табличный диспетчер рантайма. Попутно: проверка и выставление `LLVMSetAlignment(8)` для SoA-загрузок, если выявлен дефолт `align 4`. Обновление текста предупреждения в TypeChecker после успешного снятия стены.
+- **Объём**: Устранение квадратичного взрыва времени компиляции и расхода оперативной памяти при большом числе компонентов ($N > 1024$). Фактическая OOM-граница текущей архитектуры: 540 856 строк IR на 72 компонента; квадратичная экстраполяция $(1025/72)^2 \times 540\text{K} \approx 110\text{M}$ строк LLVM IR $\to$ неминуемый Out-Of-Memory (> 16 GB RAM). Замена индивидуальной кодогенерации $O(N^2)$ функций манипуляции компонентами (`set_`, `add_`, `remove_`, `has_`) на компактные табличные дескрипторы компонентов и единый цикл/табличный диспетчер рантайма. Попутно: проверка и выставление `LLVMSetAlignment(8)` для SoA-загрузок, если выявлен дефолт `align 4`. Обновление текста предупреждения в TypeChecker после успешного снятия стены. Тяжёлые компиляции (тест 1025 компонентов, цель < 60 с) гонять на CI — RAM раннера больше локальной машины.
 - **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.cs`, `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`, `src/ECSLang.Semantics/TypeChecker.cs`.
 - **Критерий приёмки**: Уровень 3 (ребейзлайн всех 7 эталонов Golden IR по двухфазному протоколу с предварительной инвентаризацией) + цели по времени: кодеген `canary_70_components` < 15 сек, кодеген 1025 компонентов < 60 сек без OOM.
 - **Шаблон коммита**: `perf(codegen): linearize component registration codegen via descriptor tables (B7)`
@@ -165,11 +165,31 @@
 - **Критерий приёмки**: Уровень 2 (инвариантный тест переиспользования id с валидацией поколений).
 - **Шаблон коммита**: `feat(runtime): introduce dense free-list with generational entity id recycling`
 
-#### Шаг B5 — Полноценный POSIX-пул потоков для `parallel`
-- **Объём**: Реализация нативного пула воркеров на `pthread_create` / `pthread_cond` для таргетов Linux и macOS (либо явная диагностическая ошибка компиляции `parallel stages not supported on non-Windows targets yet` до реализации).
-- **Файлы**: `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Pipelines.cs`.
-- **Критерий приёмки**: Уровень 1 (сборка и запуск `13_multithreading_benchmark.ecs` под Linux x86_64).
-- **Шаблон коммита**: `feat(runtime): cross-platform POSIX thread pool for parallel pipeline stages`
+#### Шаг B5 — POSIX-параллелизм и Linux-контур верификации
+Разделён на фазы; каждая — отдельный коммит и приёмка. Первичный контур — GitHub Actions (WSL исключён из-за лимитов RAM локальной машины).
+
+##### Фаза B5.0 — POSIX-target golden IR (без Linux-железа)
+- **Объём**: 3 программы (`08_ecs_basics`, `09_ecs_command_buffer`, `13_multithreading_benchmark`) компилируются с `--target x86_64-unknown-linux-gnu --emit-llvm` $\to$ эталоны `tests/golden_ir_posix/`. Верификация: strict/refactor-режимы аналогично Windows-сету. Систематизирует ad-hoc проверку `verify_b1_pause`: регрессии POSIX-пути (`pause`, `getchar`, будущий пул) ловятся на Ур. 3.
+- **Шаблон коммита**: `test(posix): establish POSIX-target golden IR baselines`
+
+##### Фаза B5.1 — Рантайм параллелизма (эмиссия как IR)
+- **Объём**:
+  - `B5.1a` (MVP): parallel-батч = `pthread_create` $N$ + `pthread_join` — просто, корректно; временно допустимая цена $\sim 20$ мкс/поток.
+  - `B5.1b`: постоянный пул, эмитится в модуль: `pthread_mutex` + `pthread_cond` + очередь job-функций + счётчик pending; инициализация по guard-флагу перед первым parallel-блоком; барьер = cond-broadcast + ожидание `pending == 0`.
+  - Сигнатура `job_{System}` адаптируется под POSIX; batch-of-one $\to$ прямой вызов (переносится бесплатно). Внешние объявления `pthread_*` — как CRT; `ClangGccLinker` уже передаёт `-lpthread -lm -ldl -lrt` — линк-флаги готовы.
+- **Критерий приёмки**: Ур. 2 — инвариант «результат parallel == результат последовательного выполнения» (тест-программа со сверкой значений) + Ур. 4 — стресс по образцу P0.3S.
+- **Шаблон коммита**: `feat(runtime): pthread-based parallel execution (MVP)` / `feat(runtime): persistent pthread worker pool`
+
+##### Фаза B5.2 — Linux-контур «линк + запуск» (GitHub Actions)
+- **Объём**: Workflow `.github/workflows/ecs-linux.yml` (`ubuntu-latest`, push + ночной):
+  - `dotnet build` решения; NuGet `libLLVM.runtime.linux-x64` в `ECSLang.Codegen.LLVM` (рядом с `win-x64`);
+  - Golden с Linux-хоста: Windows-таргет strict 7/7 — это доказательство **КРОСС-ХОСТОВОГО ДЕТЕРМИНИЗМА** (байт-идентичный IR с разных ОС) + posix-эталоны B5.0;
+  - Нативная линковка и запуск консольных examples на раннере (системный clang, `ClangGccLinker`) — Ур. 1; GUI/Network — задокументированные пропуски;
+  - Инвариантные тесты `verify_*` через pwsh.
+  - **Технические требования**: pwsh-совместимость `.ps1` (пути, командлеты); golden на CI **БЕЗ** `-g` (иначе DIFile-пути ломают идентичность); EOL эталонов зафиксировать как LF; perf-замеры на CI **НЕ** проводить (shared-раннеры шумные); бейдж в README — только после КПП-3, вместе с C1.
+- **Критерий приёмки**: зелёный workflow (пункты 2–4) + запуск `13_multithreading_benchmark` с нативной линковкой на раннере.
+- **Шаблон коммита**: `ci(linux): establish ubuntu verification workflow`
+- **Скоуп-ограничения**: Raylib-примеры вне B5 (консольных достаточно); кросс-линк lld + musl из Windows — отдельный будущий пункт, не B5; ручная глубокая проверка перед релизами — Live USB.
 
 #### Шаг D2 — Сквозной ASan-прогон всех тестов и примеров
 - **Объём**: Сборка с флагом `-fsanitize=address` под Clang/MSVC, полный прогон сьюта Уровня 1.
