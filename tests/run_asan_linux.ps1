@@ -1,14 +1,31 @@
-# Run ASan Verification for Linux-target IR on Ubuntu Runner
 param (
     [string]$CliDll = "src/ECSLang.CLI/bin/Release/net9.0/ECSLang.CLI.dll",
-    [string]$ClangCmd = "clang"
+    [string]$ClangCmd = ""
 )
 
 $ErrorActionPreference = "Stop"
 
+if (-not $ClangCmd) {
+    if (Get-Command "clang-20" -ErrorAction SilentlyContinue) {
+        $ClangCmd = "clang-20"
+    } elseif (Get-Command "clang" -ErrorAction SilentlyContinue) {
+        $ClangCmd = "clang"
+    } else {
+        throw "Neither clang-20 nor clang found on PATH"
+    }
+}
+
+$clangVerStr = (& $ClangCmd --version | Select-Object -First 1)
+$isLegacyClang = $false
+if ($clangVerStr -match 'clang version (\d+)') {
+    if ([int]$Matches[1] -lt 19) {
+        $isLegacyClang = $true
+    }
+}
+
 Write-Host "=== Starting ECSLang AddressSanitizer (ASan) Verification Suite ===" -ForegroundColor Cyan
 Write-Host "Compiler DLL: $CliDll"
-Write-Host "Clang: $(& $ClangCmd --version | Select-Object -First 1)"
+Write-Host "Clang: $clangVerStr"
 
 $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ecslang_asan_" + [System.Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
@@ -70,6 +87,13 @@ foreach ($t in $testList) {
     }
 
     # Step B: Compile with Clang AddressSanitizer
+    if ($isLegacyClang) {
+        # Strip LLVM 19/20 GEP flags (' nuw ') for backward compatibility with Clang <= 18
+        $rawContent = [System.IO.File]::ReadAllText($llPath)
+        $cleanContent = $rawContent.Replace(" nuw ", " ")
+        [System.IO.File]::WriteAllText($llPath, $cleanContent)
+    }
+
     $clangOut = & $ClangCmd -fsanitize=address $llPath -o $binPath -lm -lpthread -ldl -lrt 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host " [ASAN COMPILE FAIL]" -ForegroundColor Red
