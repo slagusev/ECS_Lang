@@ -48,14 +48,16 @@ foreach ($t in $testList) {
     $tName = $t.Name
     $tSrc = $t.Path
     $expected = $t.ExpectedExit
-
     Write-Host "[TEST] $tName ($tSrc)..." -NoNewline
+
+    $tempSrc = Join-Path $tempDir "$tName.ecs"
+    Copy-Item -Path $tSrc -Destination $tempSrc -Force
 
     $llPath = Join-Path $tempDir "$tName.ll"
     $binPath = Join-Path $tempDir "$tName.asan"
 
-    # Step A: Compile with ECSLang to Linux-target LLVM IR
-    $buildOut = & dotnet $CliDll build $tSrc --target x86_64-unknown-linux-gnu --emit-ir -o $binPath 2>&1
+    # Step A: Compile with ECSLang to Linux-target LLVM IR (skip linking via --emit-obj)
+    $buildOut = & dotnet $CliDll build $tempSrc --target x86_64-unknown-linux-gnu --emit-ir --emit-obj --no-wait 2>&1
     if ($LASTEXITCODE -ne 0 -or (-not (Test-Path $llPath))) {
         Write-Host " [BUILD FAIL]" -ForegroundColor Red
         Write-Host $buildOut
@@ -74,8 +76,14 @@ foreach ($t in $testList) {
 
     # Step C: Execute under AddressSanitizer
     $env:ASAN_OPTIONS = "detect_leaks=1:abort_on_error=1"
-    $runOut = & $binPath 2>&1
-    $exitCode = $LASTEXITCODE
+    Push-Location $tempDir
+    try {
+        $runOut = & $binPath 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        Pop-Location
+    }
 
     if ($exitCode -eq $expected) {
         Write-Host " [PASSED]" -ForegroundColor Green

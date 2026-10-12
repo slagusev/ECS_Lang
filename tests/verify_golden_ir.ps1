@@ -7,6 +7,7 @@
 param (
     [string]$Mode = "strict",
     [string]$CliPath = "src/ECSLang.CLI/bin/Release/net9.0/ECSLang.CLI.exe",
+    [string]$Target = "x86_64-pc-windows-msvc",
     [switch]$UpdateBaselines
 )
 
@@ -89,7 +90,11 @@ try {
 
         # 2. Invoke compiler freshly on isolated temp source
         Write-Host "  -> Compiling fresh $name to $tempDir..." -ForegroundColor DarkGray
-        Invoke-EcsCompiler @("build", $tempSrc, "--emit-ir", "--emit-obj") 2>&1 | Out-Null
+        $compileArgs = @("build", $tempSrc, "--emit-ir", "--emit-obj")
+        if ($Target) {
+            $compileArgs += @("--target", $Target)
+        }
+        Invoke-EcsCompiler $compileArgs 2>&1 | Out-Null
         $genIr = Join-Path $tempDir "$name.ll"
 
         if (-not (Test-Path $genIr)) {
