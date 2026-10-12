@@ -145,8 +145,8 @@ try {
                     }
                     if ($matchedLegacy) { continue }
 
-                    # Control flow and SSA lines tied to deleted unrolled migration blocks in world_set_*
-                    if ($line -match "(is_has_|br i1 %is_has_|br label %skip_|call ptr @memcpy\(ptr %dst_elem_|do_swap_remove:\s+;\s+preds|after_swap_remove:\s+;\s+preds)") { continue }
+                    # Control flow and SSA lines tied to deleted unrolled migration blocks in world_set_* and world_remove_*
+                    if ($line -match "(is_has_|br i1 %is_has_|br label %skip_|call ptr @memcpy\(ptr %dst_elem_|do_swap_remove:\s+;\s+preds|after_swap_remove:\s+;\s+preds|do_swap_rem:\s+;\s+preds|after_swap_rem:\s+;\s+preds)") { continue }
                     
                     # Shifted swap-remove memcpy in old baseline
                     if ($line -match "call ptr @memcpy\(ptr %sw_dst_.*%sw_src_") { continue }
@@ -157,7 +157,7 @@ try {
                     # Legal Category 7: Component descriptor table and struct (Step B7.1)
                     if ($line -match "%struct\.ComponentDesc = type \{ i64, i64, i32, i32 \}" -or $line -match "@_ecs_component_descriptors = internal constant \[\d+ x %struct\.ComponentDesc\]") { continue }
 
-                    # Legal Category 8: Generic component migration core, cttz intrinsic, Function Attrs (Step B7.2)
+                    # Legal Category 8: Generic component migration core, cttz intrinsic, Function Attrs (Step B7.2/B7.3)
                     if ($line -match "(world_migrate_entity|llvm\.cttz\.i64|Function Attrs: nocallback|attributes #\d+ = \{ nocallback|m_tables|m_old|m_new|m_common|m_word|m_has_bits|desc_slot|desc_elem|size_slot|comp_size|old_col|new_col|cur_mask|ctz|tz32|comp_id|src_off|dst_off|src_elem|dst_elem|more_bits|next_mask|mask_sub1|m_w\d+_bit_loop)" -or
                         ($line -match "call.*@memcpy\(ptr %dst_elem, ptr %src_elem") -or
                         ($line -match "^define void @world_migrate_entity") -or
@@ -165,9 +165,11 @@ try {
                         ($line -match "call void @world_migrate_entity") -or
                         ($line -eq "entry:") -or ($line -eq "ret void") -or ($line -eq "}")) { continue }
 
-                    # Shifted labels and SSA lines in world_set_* resulting from migration loop removal
+                    # Shifted labels and SSA lines in world_set_* / world_remove_* resulting from migration loop removal
                     if ($line -match "do_swap_remove:\s+;\s+preds = %after_grow_new_arch" -or
                         $line -match "after_swap_remove:\s+;\s+preds = %skip_sw_.*%after_grow_new_arch" -or
+                        $line -match "do_swap_rem:\s+;\s+preds = %after_grow_rem_arch" -or
+                        $line -match "after_swap_rem:\s+;\s+preds = %skip_sw_.*%after_grow_rem_arch" -or
                         $line -match "call ptr @memcpy\(ptr %sw_dst_.*%sw_src_") { continue }
                 }
 

@@ -1242,60 +1242,10 @@ public sealed partial class EcsRuntimeEmitter
             _builder.BuildStore(remE, newEntElemRem2);
 
             var curColsArrRem = _builder.BuildStructGEP2(_archStructType, curArchPtrRem2, 4, "cur_cols_rem");
-            var newColsArrRem = _builder.BuildStructGEP2(_archStructType, newArchPtrRem2, 4, "new_cols_rem");
             var curMaskSlotRem2 = _builder.BuildStructGEP2(_archStructType, curArchPtrRem2, 0, "cur_mask_slot_rem2");
 
-            for (int c = 0; c < totalComps; c++)
-            {
-                if (c == k) continue; // skip removed component
-
-                var cName = compNames[c];
-                int cWord = c >> 6;
-                int cBitIdx = c & 63;
-                ulong cBit = 1UL << cBitIdx;
-                ulong cSize = _compSizes[cName];
-                var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
-
-                var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlotRem2, new[]
-                {
-                    LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                    LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)cWord)
-                }, $"mask_w_{cName}_rem");
-                var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"cur_mask_{cName}_rem");
-
-                var cAnd = _builder.BuildAnd(maskWVal, cBitVal, $"rem_has_{cName}");
-                var hasC = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, cAnd, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_has_rem_{cName}");
-
-                var copyRemCBB = remFunc.AppendBasicBlock($"copy_rem_{cName}");
-                var skipRemCBB = remFunc.AppendBasicBlock($"skip_rem_{cName}");
-                _builder.BuildCondBr(hasC, copyRemCBB, skipRemCBB);
-
-                _builder.PositionAtEnd(copyRemCBB);
-                var srcColSlot = _builder.BuildInBoundsGEP2(_colArrayType, curColsArrRem, new[]
-                {
-                    LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                    LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)c)
-                }, $"rem_src_col_{cName}");
-                var srcColRaw = _builder.BuildLoad2(i8PtrType, srcColSlot, $"rem_src_raw_{cName}");
-                var srcCompTyped = _builder.BuildBitCast(srcColRaw, LLVMTypeRef.CreatePointer(_compStructTypes[cName], 0), $"rem_src_typed_{cName}");
-                var srcElem = _builder.BuildInBoundsGEP2(_compStructTypes[cName], srcCompTyped, new[] { curRowRem }, $"rem_src_elem_{cName}");
-                var srcElemI8 = _builder.BuildBitCast(srcElem, i8PtrType, "rem_src_i8");
-
-                var dstColSlot = _builder.BuildInBoundsGEP2(_colArrayType, newColsArrRem, new[]
-                {
-                    LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                    LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)c)
-                }, $"rem_dst_col_{cName}");
-                var dstColRaw = _builder.BuildLoad2(i8PtrType, dstColSlot, $"rem_dst_raw_{cName}");
-                var dstCompTyped = _builder.BuildBitCast(dstColRaw, LLVMTypeRef.CreatePointer(_compStructTypes[cName], 0), $"rem_dst_typed_{cName}");
-                var dstElem = _builder.BuildInBoundsGEP2(_compStructTypes[cName], dstCompTyped, new[] { newRowRem }, $"rem_dst_elem_{cName}");
-                var dstElemI8 = _builder.BuildBitCast(dstElem, i8PtrType, "rem_dst_i8");
-
-                _builder.BuildCall2(memcpyType, memcpyFunc, new[] { dstElemI8, srcElemI8, LLVMValueRef.CreateConstInt(_context.Int64Type, cSize) }, "");
-                _builder.BuildBr(skipRemCBB);
-
-                _builder.PositionAtEnd(skipRemCBB);
-            }
+            // Migrate active components remaining in newArch via generic descriptor core
+            _builder.BuildCall2(migrateFuncType, migrateFunc, new[] { worldParamRem, curArchIdxRem, newArchIdxRem, curRowRem, newRowRem }, "");
 
             // Swap-remove from curArch
             var curCntSlotRem = _builder.BuildStructGEP2(_archStructType, curArchPtrRem2, 1, "cnt_slot_rem");

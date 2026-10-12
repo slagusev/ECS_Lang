@@ -1366,93 +1366,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
-  %mask_w_Frozen_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Frozen_rem = load i64, ptr %mask_w_Frozen_rem, align 8
-  %rem_has_Frozen = and i64 %cur_mask_Frozen_rem, 2
-  %is_has_rem_Frozen = icmp ne i64 %rem_has_Frozen, 0
-  br i1 %is_has_rem_Frozen, label %copy_rem_Frozen, label %skip_rem_Frozen
-
-copy_rem_Frozen:                                  ; preds = %after_grow_rem_arch
-  %rem_src_col_Frozen = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 1
-  %rem_src_raw_Frozen = load ptr, ptr %rem_src_col_Frozen, align 8
-  %rem_src_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_src_raw_Frozen, i32 %cur_row_rem
-  %rem_dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 1
-  %rem_dst_raw_Frozen = load ptr, ptr %rem_dst_col_Frozen, align 8
-  %rem_dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_dst_raw_Frozen, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
-  br label %skip_rem_Frozen
-
-skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %after_grow_rem_arch
-  %mask_w_PlayerTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_PlayerTag_rem = load i64, ptr %mask_w_PlayerTag_rem, align 8
-  %rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_rem, 4
-  %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
-  br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
-
-copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
-  %rem_src_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 2
-  %rem_src_raw_PlayerTag = load ptr, ptr %rem_src_col_PlayerTag, align 8
-  %rem_src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_src_raw_PlayerTag, i32 %cur_row_rem
-  %rem_dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 2
-  %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
-  %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
-  br label %skip_rem_PlayerTag
-
-skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
-  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
-  %rem_has_Position = and i64 %cur_mask_Position_rem, 8
-  %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
-  br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
-
-copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
-  %rem_src_col_Position = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
-  %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
-  %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
-  br label %skip_rem_Position
-
-skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
-  %mask_w_StunnedTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_StunnedTag_rem = load i64, ptr %mask_w_StunnedTag_rem, align 8
-  %rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_rem, 16
-  %is_has_rem_StunnedTag = icmp ne i64 %rem_has_StunnedTag, 0
-  br i1 %is_has_rem_StunnedTag, label %copy_rem_StunnedTag, label %skip_rem_StunnedTag
-
-copy_rem_StunnedTag:                              ; preds = %skip_rem_Position
-  %rem_src_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_StunnedTag = load ptr, ptr %rem_src_col_StunnedTag, align 8
-  %rem_src_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_src_raw_StunnedTag, i32 %cur_row_rem
-  %rem_dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_StunnedTag = load ptr, ptr %rem_dst_col_StunnedTag, align 8
-  %rem_dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_dst_raw_StunnedTag, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
-  br label %skip_rem_StunnedTag
-
-skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_Position
-  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
-  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 32
-  %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
-  br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
-
-copy_rem_Velocity:                                ; preds = %skip_rem_StunnedTag
-  %rem_src_col_Velocity = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 5
-  %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
-  %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 5
-  %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
-  %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
-  br label %skip_rem_Velocity
-
-skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_StunnedTag
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -1460,7 +1375,7 @@ skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Velocity
+do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -1473,7 +1388,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Velocity
+after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -1487,7 +1402,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -1502,7 +1417,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %3 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -1517,7 +1432,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -1532,7 +1447,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -1547,7 +1462,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -1562,7 +1477,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag
@@ -2220,93 +2135,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
-  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
-  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
-  %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
-  br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
-
-copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 0
-  %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
-  %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 0
-  %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
-  %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
-  br label %skip_rem_ChildOf
-
-skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %mask_w_PlayerTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_PlayerTag_rem = load i64, ptr %mask_w_PlayerTag_rem, align 8
-  %rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_rem, 4
-  %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
-  br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
-
-copy_rem_PlayerTag:                               ; preds = %skip_rem_ChildOf
-  %rem_src_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 2
-  %rem_src_raw_PlayerTag = load ptr, ptr %rem_src_col_PlayerTag, align 8
-  %rem_src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_src_raw_PlayerTag, i32 %cur_row_rem
-  %rem_dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 2
-  %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
-  %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
-  br label %skip_rem_PlayerTag
-
-skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_ChildOf
-  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
-  %rem_has_Position = and i64 %cur_mask_Position_rem, 8
-  %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
-  br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
-
-copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
-  %rem_src_col_Position = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
-  %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
-  %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
-  br label %skip_rem_Position
-
-skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
-  %mask_w_StunnedTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_StunnedTag_rem = load i64, ptr %mask_w_StunnedTag_rem, align 8
-  %rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_rem, 16
-  %is_has_rem_StunnedTag = icmp ne i64 %rem_has_StunnedTag, 0
-  br i1 %is_has_rem_StunnedTag, label %copy_rem_StunnedTag, label %skip_rem_StunnedTag
-
-copy_rem_StunnedTag:                              ; preds = %skip_rem_Position
-  %rem_src_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_StunnedTag = load ptr, ptr %rem_src_col_StunnedTag, align 8
-  %rem_src_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_src_raw_StunnedTag, i32 %cur_row_rem
-  %rem_dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_StunnedTag = load ptr, ptr %rem_dst_col_StunnedTag, align 8
-  %rem_dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_dst_raw_StunnedTag, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
-  br label %skip_rem_StunnedTag
-
-skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_Position
-  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
-  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 32
-  %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
-  br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
-
-copy_rem_Velocity:                                ; preds = %skip_rem_StunnedTag
-  %rem_src_col_Velocity = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 5
-  %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
-  %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 5
-  %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
-  %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
-  br label %skip_rem_Velocity
-
-skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_StunnedTag
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -2314,7 +2144,7 @@ skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Velocity
+do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -2327,7 +2157,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Velocity
+after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -2341,7 +2171,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -2356,7 +2186,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %3 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -2371,7 +2201,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -2386,7 +2216,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -2401,7 +2231,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -2416,7 +2246,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag
@@ -3074,93 +2904,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
-  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
-  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
-  %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
-  br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
-
-copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 0
-  %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
-  %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 0
-  %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
-  %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
-  br label %skip_rem_ChildOf
-
-skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %mask_w_Frozen_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Frozen_rem = load i64, ptr %mask_w_Frozen_rem, align 8
-  %rem_has_Frozen = and i64 %cur_mask_Frozen_rem, 2
-  %is_has_rem_Frozen = icmp ne i64 %rem_has_Frozen, 0
-  br i1 %is_has_rem_Frozen, label %copy_rem_Frozen, label %skip_rem_Frozen
-
-copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
-  %rem_src_col_Frozen = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 1
-  %rem_src_raw_Frozen = load ptr, ptr %rem_src_col_Frozen, align 8
-  %rem_src_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_src_raw_Frozen, i32 %cur_row_rem
-  %rem_dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 1
-  %rem_dst_raw_Frozen = load ptr, ptr %rem_dst_col_Frozen, align 8
-  %rem_dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_dst_raw_Frozen, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
-  br label %skip_rem_Frozen
-
-skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
-  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
-  %rem_has_Position = and i64 %cur_mask_Position_rem, 8
-  %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
-  br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
-
-copy_rem_Position:                                ; preds = %skip_rem_Frozen
-  %rem_src_col_Position = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
-  %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
-  %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
-  br label %skip_rem_Position
-
-skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_Frozen
-  %mask_w_StunnedTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_StunnedTag_rem = load i64, ptr %mask_w_StunnedTag_rem, align 8
-  %rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_rem, 16
-  %is_has_rem_StunnedTag = icmp ne i64 %rem_has_StunnedTag, 0
-  br i1 %is_has_rem_StunnedTag, label %copy_rem_StunnedTag, label %skip_rem_StunnedTag
-
-copy_rem_StunnedTag:                              ; preds = %skip_rem_Position
-  %rem_src_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_StunnedTag = load ptr, ptr %rem_src_col_StunnedTag, align 8
-  %rem_src_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_src_raw_StunnedTag, i32 %cur_row_rem
-  %rem_dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_StunnedTag = load ptr, ptr %rem_dst_col_StunnedTag, align 8
-  %rem_dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_dst_raw_StunnedTag, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
-  br label %skip_rem_StunnedTag
-
-skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_Position
-  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
-  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 32
-  %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
-  br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
-
-copy_rem_Velocity:                                ; preds = %skip_rem_StunnedTag
-  %rem_src_col_Velocity = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 5
-  %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
-  %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 5
-  %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
-  %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
-  br label %skip_rem_Velocity
-
-skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_StunnedTag
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -3168,7 +2913,7 @@ skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Velocity
+do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -3181,7 +2926,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Velocity
+after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -3195,7 +2940,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -3210,7 +2955,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %3 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -3225,7 +2970,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -3240,7 +2985,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -3255,7 +3000,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -3270,7 +3015,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag
@@ -3932,93 +3677,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
-  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
-  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
-  %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
-  br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
-
-copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 0
-  %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
-  %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 0
-  %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
-  %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
-  br label %skip_rem_ChildOf
-
-skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %mask_w_Frozen_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Frozen_rem = load i64, ptr %mask_w_Frozen_rem, align 8
-  %rem_has_Frozen = and i64 %cur_mask_Frozen_rem, 2
-  %is_has_rem_Frozen = icmp ne i64 %rem_has_Frozen, 0
-  br i1 %is_has_rem_Frozen, label %copy_rem_Frozen, label %skip_rem_Frozen
-
-copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
-  %rem_src_col_Frozen = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 1
-  %rem_src_raw_Frozen = load ptr, ptr %rem_src_col_Frozen, align 8
-  %rem_src_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_src_raw_Frozen, i32 %cur_row_rem
-  %rem_dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 1
-  %rem_dst_raw_Frozen = load ptr, ptr %rem_dst_col_Frozen, align 8
-  %rem_dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_dst_raw_Frozen, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
-  br label %skip_rem_Frozen
-
-skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
-  %mask_w_PlayerTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_PlayerTag_rem = load i64, ptr %mask_w_PlayerTag_rem, align 8
-  %rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_rem, 4
-  %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
-  br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
-
-copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
-  %rem_src_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 2
-  %rem_src_raw_PlayerTag = load ptr, ptr %rem_src_col_PlayerTag, align 8
-  %rem_src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_src_raw_PlayerTag, i32 %cur_row_rem
-  %rem_dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 2
-  %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
-  %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
-  br label %skip_rem_PlayerTag
-
-skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
-  %mask_w_StunnedTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_StunnedTag_rem = load i64, ptr %mask_w_StunnedTag_rem, align 8
-  %rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_rem, 16
-  %is_has_rem_StunnedTag = icmp ne i64 %rem_has_StunnedTag, 0
-  br i1 %is_has_rem_StunnedTag, label %copy_rem_StunnedTag, label %skip_rem_StunnedTag
-
-copy_rem_StunnedTag:                              ; preds = %skip_rem_PlayerTag
-  %rem_src_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_StunnedTag = load ptr, ptr %rem_src_col_StunnedTag, align 8
-  %rem_src_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_src_raw_StunnedTag, i32 %cur_row_rem
-  %rem_dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_StunnedTag = load ptr, ptr %rem_dst_col_StunnedTag, align 8
-  %rem_dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_dst_raw_StunnedTag, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
-  br label %skip_rem_StunnedTag
-
-skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_PlayerTag
-  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
-  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 32
-  %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
-  br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
-
-copy_rem_Velocity:                                ; preds = %skip_rem_StunnedTag
-  %rem_src_col_Velocity = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 5
-  %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
-  %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 5
-  %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
-  %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
-  br label %skip_rem_Velocity
-
-skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_StunnedTag
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -4026,7 +3686,7 @@ skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Velocity
+do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -4039,7 +3699,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Velocity
+after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -4053,7 +3713,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -4068,7 +3728,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %3 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -4083,7 +3743,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -4098,7 +3758,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -4113,7 +3773,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -4128,7 +3788,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag
@@ -4790,93 +4450,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
-  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
-  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
-  %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
-  br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
-
-copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 0
-  %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
-  %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 0
-  %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
-  %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
-  br label %skip_rem_ChildOf
-
-skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %mask_w_Frozen_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Frozen_rem = load i64, ptr %mask_w_Frozen_rem, align 8
-  %rem_has_Frozen = and i64 %cur_mask_Frozen_rem, 2
-  %is_has_rem_Frozen = icmp ne i64 %rem_has_Frozen, 0
-  br i1 %is_has_rem_Frozen, label %copy_rem_Frozen, label %skip_rem_Frozen
-
-copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
-  %rem_src_col_Frozen = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 1
-  %rem_src_raw_Frozen = load ptr, ptr %rem_src_col_Frozen, align 8
-  %rem_src_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_src_raw_Frozen, i32 %cur_row_rem
-  %rem_dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 1
-  %rem_dst_raw_Frozen = load ptr, ptr %rem_dst_col_Frozen, align 8
-  %rem_dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_dst_raw_Frozen, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
-  br label %skip_rem_Frozen
-
-skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
-  %mask_w_PlayerTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_PlayerTag_rem = load i64, ptr %mask_w_PlayerTag_rem, align 8
-  %rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_rem, 4
-  %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
-  br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
-
-copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
-  %rem_src_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 2
-  %rem_src_raw_PlayerTag = load ptr, ptr %rem_src_col_PlayerTag, align 8
-  %rem_src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_src_raw_PlayerTag, i32 %cur_row_rem
-  %rem_dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 2
-  %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
-  %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
-  br label %skip_rem_PlayerTag
-
-skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
-  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
-  %rem_has_Position = and i64 %cur_mask_Position_rem, 8
-  %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
-  br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
-
-copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
-  %rem_src_col_Position = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
-  %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
-  %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
-  br label %skip_rem_Position
-
-skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
-  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
-  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 32
-  %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
-  br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
-
-copy_rem_Velocity:                                ; preds = %skip_rem_Position
-  %rem_src_col_Velocity = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 5
-  %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
-  %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 5
-  %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
-  %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
-  br label %skip_rem_Velocity
-
-skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_Position
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -4884,7 +4459,7 @@ skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Velocity
+do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -4897,7 +4472,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Velocity
+after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -4911,7 +4486,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -4926,7 +4501,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %3 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -4941,7 +4516,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -4956,7 +4531,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -4971,7 +4546,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -4986,7 +4561,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag
@@ -5648,93 +5223,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
-  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
-  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
-  %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
-  br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
-
-copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 0
-  %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
-  %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 0
-  %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
-  %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
-  br label %skip_rem_ChildOf
-
-skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %mask_w_Frozen_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Frozen_rem = load i64, ptr %mask_w_Frozen_rem, align 8
-  %rem_has_Frozen = and i64 %cur_mask_Frozen_rem, 2
-  %is_has_rem_Frozen = icmp ne i64 %rem_has_Frozen, 0
-  br i1 %is_has_rem_Frozen, label %copy_rem_Frozen, label %skip_rem_Frozen
-
-copy_rem_Frozen:                                  ; preds = %skip_rem_ChildOf
-  %rem_src_col_Frozen = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 1
-  %rem_src_raw_Frozen = load ptr, ptr %rem_src_col_Frozen, align 8
-  %rem_src_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_src_raw_Frozen, i32 %cur_row_rem
-  %rem_dst_col_Frozen = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 1
-  %rem_dst_raw_Frozen = load ptr, ptr %rem_dst_col_Frozen, align 8
-  %rem_dst_elem_Frozen = getelementptr inbounds %struct.Frozen, ptr %rem_dst_raw_Frozen, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_Frozen, ptr %rem_src_elem_Frozen, i64 4)
-  br label %skip_rem_Frozen
-
-skip_rem_Frozen:                                  ; preds = %copy_rem_Frozen, %skip_rem_ChildOf
-  %mask_w_PlayerTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_PlayerTag_rem = load i64, ptr %mask_w_PlayerTag_rem, align 8
-  %rem_has_PlayerTag = and i64 %cur_mask_PlayerTag_rem, 4
-  %is_has_rem_PlayerTag = icmp ne i64 %rem_has_PlayerTag, 0
-  br i1 %is_has_rem_PlayerTag, label %copy_rem_PlayerTag, label %skip_rem_PlayerTag
-
-copy_rem_PlayerTag:                               ; preds = %skip_rem_Frozen
-  %rem_src_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 2
-  %rem_src_raw_PlayerTag = load ptr, ptr %rem_src_col_PlayerTag, align 8
-  %rem_src_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_src_raw_PlayerTag, i32 %cur_row_rem
-  %rem_dst_col_PlayerTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 2
-  %rem_dst_raw_PlayerTag = load ptr, ptr %rem_dst_col_PlayerTag, align 8
-  %rem_dst_elem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %rem_dst_raw_PlayerTag, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_PlayerTag, ptr %rem_src_elem_PlayerTag, i64 4)
-  br label %skip_rem_PlayerTag
-
-skip_rem_PlayerTag:                               ; preds = %copy_rem_PlayerTag, %skip_rem_Frozen
-  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
-  %rem_has_Position = and i64 %cur_mask_Position_rem, 8
-  %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
-  br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
-
-copy_rem_Position:                                ; preds = %skip_rem_PlayerTag
-  %rem_src_col_Position = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
-  %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
-  %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
-  br label %skip_rem_Position
-
-skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_PlayerTag
-  %mask_w_StunnedTag_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_StunnedTag_rem = load i64, ptr %mask_w_StunnedTag_rem, align 8
-  %rem_has_StunnedTag = and i64 %cur_mask_StunnedTag_rem, 16
-  %is_has_rem_StunnedTag = icmp ne i64 %rem_has_StunnedTag, 0
-  br i1 %is_has_rem_StunnedTag, label %copy_rem_StunnedTag, label %skip_rem_StunnedTag
-
-copy_rem_StunnedTag:                              ; preds = %skip_rem_Position
-  %rem_src_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_StunnedTag = load ptr, ptr %rem_src_col_StunnedTag, align 8
-  %rem_src_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_src_raw_StunnedTag, i32 %cur_row_rem
-  %rem_dst_col_StunnedTag = getelementptr inbounds [6 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_StunnedTag = load ptr, ptr %rem_dst_col_StunnedTag, align 8
-  %rem_dst_elem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %rem_dst_raw_StunnedTag, i32 %new_row_rem
-  %6 = call ptr @memcpy(ptr %rem_dst_elem_StunnedTag, ptr %rem_src_elem_StunnedTag, i64 4)
-  br label %skip_rem_StunnedTag
-
-skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag, %skip_rem_Position
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -5742,7 +5232,7 @@ skip_rem_StunnedTag:                              ; preds = %copy_rem_StunnedTag
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_StunnedTag
+do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -5755,7 +5245,7 @@ do_swap_rem:                                      ; preds = %skip_rem_StunnedTag
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_StunnedTag
+after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -5769,7 +5259,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -5784,7 +5274,7 @@ swap_rem_Frozen:                                  ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Frozen = load ptr, ptr %sw_col_rem_Frozen, align 8
   %sw_src_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %last_row_rem
   %sw_dst_rem_Frozen = getelementptr inbounds %struct.Frozen, ptr %sw_raw_rem_Frozen, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
+  %3 = call ptr @memcpy(ptr %sw_dst_rem_Frozen, ptr %sw_src_rem_Frozen, i64 4)
   br label %skip_sw_rem_Frozen
 
 skip_sw_rem_Frozen:                               ; preds = %swap_rem_Frozen, %skip_sw_rem_ChildOf
@@ -5799,7 +5289,7 @@ swap_rem_PlayerTag:                               ; preds = %skip_sw_rem_Frozen
   %sw_raw_rem_PlayerTag = load ptr, ptr %sw_col_rem_PlayerTag, align 8
   %sw_src_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %last_row_rem
   %sw_dst_rem_PlayerTag = getelementptr inbounds %struct.PlayerTag, ptr %sw_raw_rem_PlayerTag, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_PlayerTag, ptr %sw_src_rem_PlayerTag, i64 4)
   br label %skip_sw_rem_PlayerTag
 
 skip_sw_rem_PlayerTag:                            ; preds = %swap_rem_PlayerTag, %skip_sw_rem_Frozen
@@ -5814,7 +5304,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_PlayerT
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_PlayerTag
@@ -5829,7 +5319,7 @@ swap_rem_StunnedTag:                              ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_StunnedTag = load ptr, ptr %sw_col_rem_StunnedTag, align 8
   %sw_src_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %last_row_rem
   %sw_dst_rem_StunnedTag = getelementptr inbounds %struct.StunnedTag, ptr %sw_raw_rem_StunnedTag, i32 %cur_row_rem
-  %11 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_StunnedTag, ptr %sw_src_rem_StunnedTag, i64 4)
   br label %skip_sw_rem_StunnedTag
 
 skip_sw_rem_StunnedTag:                           ; preds = %swap_rem_StunnedTag, %skip_sw_rem_Position
@@ -5844,7 +5334,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Stunned
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %12 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %7 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_StunnedTag

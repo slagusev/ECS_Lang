@@ -25,11 +25,20 @@ $LegacyPatterns = [ordered]@{
         "dst_col_\w+_add"
     )
     "B7.3_RemoveMigrationCopy" = @(
-        "mask_w_\w+_rem"
-        "cur_mask_\w+_rem"
         "copy_rem_\w+:"
-        "src_col_\w+_rem"
-        "dst_col_\w+_rem"
+        "skip_rem_\w+:"
+        "is_has_rem_\w+"
+        "rem_src_col_\w+"
+        "rem_dst_col_\w+"
+        "rem_src_raw_\w+"
+        "rem_dst_raw_\w+"
+        "rem_src_typed_\w+"
+        "rem_dst_typed_\w+"
+        "rem_src_elem_\w+"
+        "rem_dst_elem_\w+"
+        "rem_src_i8"
+        "rem_dst_i8"
+        "new_cols_rem"
     )
     "B7.4_SwapRemoveCopy" = @(
         "mask_w_\w+_sw_"

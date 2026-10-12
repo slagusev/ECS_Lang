@@ -1282,76 +1282,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
-  %mask_w_Particle_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Particle_rem = load i64, ptr %mask_w_Particle_rem, align 8
-  %rem_has_Particle = and i64 %cur_mask_Particle_rem, 2
-  %is_has_rem_Particle = icmp ne i64 %rem_has_Particle, 0
-  br i1 %is_has_rem_Particle, label %copy_rem_Particle, label %skip_rem_Particle
-
-copy_rem_Particle:                                ; preds = %after_grow_rem_arch
-  %rem_src_col_Particle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
-  %rem_src_raw_Particle = load ptr, ptr %rem_src_col_Particle, align 8
-  %rem_src_elem_Particle = getelementptr inbounds %struct.Particle, ptr %rem_src_raw_Particle, i32 %cur_row_rem
-  %rem_dst_col_Particle = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 1
-  %rem_dst_raw_Particle = load ptr, ptr %rem_dst_col_Particle, align 8
-  %rem_dst_elem_Particle = getelementptr inbounds %struct.Particle, ptr %rem_dst_raw_Particle, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_Particle, ptr %rem_src_elem_Particle, i64 4)
-  br label %skip_rem_Particle
-
-skip_rem_Particle:                                ; preds = %copy_rem_Particle, %after_grow_rem_arch
-  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
-  %rem_has_Position = and i64 %cur_mask_Position_rem, 4
-  %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
-  br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
-
-copy_rem_Position:                                ; preds = %skip_rem_Particle
-  %rem_src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
-  %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
-  %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 2
-  %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
-  %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
-  br label %skip_rem_Position
-
-skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_Particle
-  %mask_w_Spawner_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Spawner_rem = load i64, ptr %mask_w_Spawner_rem, align 8
-  %rem_has_Spawner = and i64 %cur_mask_Spawner_rem, 8
-  %is_has_rem_Spawner = icmp ne i64 %rem_has_Spawner, 0
-  br i1 %is_has_rem_Spawner, label %copy_rem_Spawner, label %skip_rem_Spawner
-
-copy_rem_Spawner:                                 ; preds = %skip_rem_Position
-  %rem_src_col_Spawner = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_Spawner = load ptr, ptr %rem_src_col_Spawner, align 8
-  %rem_src_elem_Spawner = getelementptr inbounds %struct.Spawner, ptr %rem_src_raw_Spawner, i32 %cur_row_rem
-  %rem_dst_col_Spawner = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_Spawner = load ptr, ptr %rem_dst_col_Spawner, align 8
-  %rem_dst_elem_Spawner = getelementptr inbounds %struct.Spawner, ptr %rem_dst_raw_Spawner, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Spawner, ptr %rem_src_elem_Spawner, i64 8)
-  br label %skip_rem_Spawner
-
-skip_rem_Spawner:                                 ; preds = %copy_rem_Spawner, %skip_rem_Position
-  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
-  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 16
-  %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
-  br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
-
-copy_rem_Velocity:                                ; preds = %skip_rem_Spawner
-  %rem_src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
-  %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
-  %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
-  br label %skip_rem_Velocity
-
-skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_Spawner
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -1359,7 +1291,7 @@ skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Velocity
+do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -1372,7 +1304,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Velocity
+after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -1386,7 +1318,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %6 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -1401,7 +1333,7 @@ swap_rem_Particle:                                ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Particle = load ptr, ptr %sw_col_rem_Particle, align 8
   %sw_src_rem_Particle = getelementptr inbounds %struct.Particle, ptr %sw_raw_rem_Particle, i32 %last_row_rem
   %sw_dst_rem_Particle = getelementptr inbounds %struct.Particle, ptr %sw_raw_rem_Particle, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_Particle, ptr %sw_src_rem_Particle, i64 4)
+  %3 = call ptr @memcpy(ptr %sw_dst_rem_Particle, ptr %sw_src_rem_Particle, i64 4)
   br label %skip_sw_rem_Particle
 
 skip_sw_rem_Particle:                             ; preds = %swap_rem_Particle, %skip_sw_rem_ChildOf
@@ -1416,7 +1348,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_Particl
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_Particle
@@ -1431,7 +1363,7 @@ swap_rem_Spawner:                                 ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_Spawner = load ptr, ptr %sw_col_rem_Spawner, align 8
   %sw_src_rem_Spawner = getelementptr inbounds %struct.Spawner, ptr %sw_raw_rem_Spawner, i32 %last_row_rem
   %sw_dst_rem_Spawner = getelementptr inbounds %struct.Spawner, ptr %sw_raw_rem_Spawner, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_Spawner, ptr %sw_src_rem_Spawner, i64 8)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Spawner, ptr %sw_src_rem_Spawner, i64 8)
   br label %skip_sw_rem_Spawner
 
 skip_sw_rem_Spawner:                              ; preds = %swap_rem_Spawner, %skip_sw_rem_Position
@@ -1446,7 +1378,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Spawner
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Spawner
@@ -2074,76 +2006,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
-  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
-  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
-  %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
-  br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
-
-copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
-  %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
-  %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 0
-  %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
-  %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
-  br label %skip_rem_ChildOf
-
-skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
-  %rem_has_Position = and i64 %cur_mask_Position_rem, 4
-  %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
-  br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
-
-copy_rem_Position:                                ; preds = %skip_rem_ChildOf
-  %rem_src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
-  %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
-  %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 2
-  %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
-  %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
-  br label %skip_rem_Position
-
-skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_ChildOf
-  %mask_w_Spawner_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Spawner_rem = load i64, ptr %mask_w_Spawner_rem, align 8
-  %rem_has_Spawner = and i64 %cur_mask_Spawner_rem, 8
-  %is_has_rem_Spawner = icmp ne i64 %rem_has_Spawner, 0
-  br i1 %is_has_rem_Spawner, label %copy_rem_Spawner, label %skip_rem_Spawner
-
-copy_rem_Spawner:                                 ; preds = %skip_rem_Position
-  %rem_src_col_Spawner = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_Spawner = load ptr, ptr %rem_src_col_Spawner, align 8
-  %rem_src_elem_Spawner = getelementptr inbounds %struct.Spawner, ptr %rem_src_raw_Spawner, i32 %cur_row_rem
-  %rem_dst_col_Spawner = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_Spawner = load ptr, ptr %rem_dst_col_Spawner, align 8
-  %rem_dst_elem_Spawner = getelementptr inbounds %struct.Spawner, ptr %rem_dst_raw_Spawner, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Spawner, ptr %rem_src_elem_Spawner, i64 8)
-  br label %skip_rem_Spawner
-
-skip_rem_Spawner:                                 ; preds = %copy_rem_Spawner, %skip_rem_Position
-  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
-  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 16
-  %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
-  br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
-
-copy_rem_Velocity:                                ; preds = %skip_rem_Spawner
-  %rem_src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
-  %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
-  %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
-  br label %skip_rem_Velocity
-
-skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_Spawner
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -2151,7 +2015,7 @@ skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Velocity
+do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -2164,7 +2028,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Velocity
+after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -2178,7 +2042,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %6 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -2193,7 +2057,7 @@ swap_rem_Particle:                                ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Particle = load ptr, ptr %sw_col_rem_Particle, align 8
   %sw_src_rem_Particle = getelementptr inbounds %struct.Particle, ptr %sw_raw_rem_Particle, i32 %last_row_rem
   %sw_dst_rem_Particle = getelementptr inbounds %struct.Particle, ptr %sw_raw_rem_Particle, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_Particle, ptr %sw_src_rem_Particle, i64 4)
+  %3 = call ptr @memcpy(ptr %sw_dst_rem_Particle, ptr %sw_src_rem_Particle, i64 4)
   br label %skip_sw_rem_Particle
 
 skip_sw_rem_Particle:                             ; preds = %swap_rem_Particle, %skip_sw_rem_ChildOf
@@ -2208,7 +2072,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_Particl
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_Particle
@@ -2223,7 +2087,7 @@ swap_rem_Spawner:                                 ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_Spawner = load ptr, ptr %sw_col_rem_Spawner, align 8
   %sw_src_rem_Spawner = getelementptr inbounds %struct.Spawner, ptr %sw_raw_rem_Spawner, i32 %last_row_rem
   %sw_dst_rem_Spawner = getelementptr inbounds %struct.Spawner, ptr %sw_raw_rem_Spawner, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_Spawner, ptr %sw_src_rem_Spawner, i64 8)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Spawner, ptr %sw_src_rem_Spawner, i64 8)
   br label %skip_sw_rem_Spawner
 
 skip_sw_rem_Spawner:                              ; preds = %swap_rem_Spawner, %skip_sw_rem_Position
@@ -2238,7 +2102,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Spawner
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Spawner
@@ -2870,76 +2734,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
-  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
-  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
-  %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
-  br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
-
-copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
-  %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
-  %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 0
-  %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
-  %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
-  br label %skip_rem_ChildOf
-
-skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %mask_w_Particle_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Particle_rem = load i64, ptr %mask_w_Particle_rem, align 8
-  %rem_has_Particle = and i64 %cur_mask_Particle_rem, 2
-  %is_has_rem_Particle = icmp ne i64 %rem_has_Particle, 0
-  br i1 %is_has_rem_Particle, label %copy_rem_Particle, label %skip_rem_Particle
-
-copy_rem_Particle:                                ; preds = %skip_rem_ChildOf
-  %rem_src_col_Particle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
-  %rem_src_raw_Particle = load ptr, ptr %rem_src_col_Particle, align 8
-  %rem_src_elem_Particle = getelementptr inbounds %struct.Particle, ptr %rem_src_raw_Particle, i32 %cur_row_rem
-  %rem_dst_col_Particle = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 1
-  %rem_dst_raw_Particle = load ptr, ptr %rem_dst_col_Particle, align 8
-  %rem_dst_elem_Particle = getelementptr inbounds %struct.Particle, ptr %rem_dst_raw_Particle, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_Particle, ptr %rem_src_elem_Particle, i64 4)
-  br label %skip_rem_Particle
-
-skip_rem_Particle:                                ; preds = %copy_rem_Particle, %skip_rem_ChildOf
-  %mask_w_Spawner_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Spawner_rem = load i64, ptr %mask_w_Spawner_rem, align 8
-  %rem_has_Spawner = and i64 %cur_mask_Spawner_rem, 8
-  %is_has_rem_Spawner = icmp ne i64 %rem_has_Spawner, 0
-  br i1 %is_has_rem_Spawner, label %copy_rem_Spawner, label %skip_rem_Spawner
-
-copy_rem_Spawner:                                 ; preds = %skip_rem_Particle
-  %rem_src_col_Spawner = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_Spawner = load ptr, ptr %rem_src_col_Spawner, align 8
-  %rem_src_elem_Spawner = getelementptr inbounds %struct.Spawner, ptr %rem_src_raw_Spawner, i32 %cur_row_rem
-  %rem_dst_col_Spawner = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_Spawner = load ptr, ptr %rem_dst_col_Spawner, align 8
-  %rem_dst_elem_Spawner = getelementptr inbounds %struct.Spawner, ptr %rem_dst_raw_Spawner, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Spawner, ptr %rem_src_elem_Spawner, i64 8)
-  br label %skip_rem_Spawner
-
-skip_rem_Spawner:                                 ; preds = %copy_rem_Spawner, %skip_rem_Particle
-  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
-  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 16
-  %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
-  br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
-
-copy_rem_Velocity:                                ; preds = %skip_rem_Spawner
-  %rem_src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
-  %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
-  %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
-  br label %skip_rem_Velocity
-
-skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_Spawner
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -2947,7 +2743,7 @@ skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Velocity
+do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -2960,7 +2756,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Velocity
+after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -2974,7 +2770,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %6 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -2989,7 +2785,7 @@ swap_rem_Particle:                                ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Particle = load ptr, ptr %sw_col_rem_Particle, align 8
   %sw_src_rem_Particle = getelementptr inbounds %struct.Particle, ptr %sw_raw_rem_Particle, i32 %last_row_rem
   %sw_dst_rem_Particle = getelementptr inbounds %struct.Particle, ptr %sw_raw_rem_Particle, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_Particle, ptr %sw_src_rem_Particle, i64 4)
+  %3 = call ptr @memcpy(ptr %sw_dst_rem_Particle, ptr %sw_src_rem_Particle, i64 4)
   br label %skip_sw_rem_Particle
 
 skip_sw_rem_Particle:                             ; preds = %swap_rem_Particle, %skip_sw_rem_ChildOf
@@ -3004,7 +2800,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_Particl
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_Particle
@@ -3019,7 +2815,7 @@ swap_rem_Spawner:                                 ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_Spawner = load ptr, ptr %sw_col_rem_Spawner, align 8
   %sw_src_rem_Spawner = getelementptr inbounds %struct.Spawner, ptr %sw_raw_rem_Spawner, i32 %last_row_rem
   %sw_dst_rem_Spawner = getelementptr inbounds %struct.Spawner, ptr %sw_raw_rem_Spawner, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_Spawner, ptr %sw_src_rem_Spawner, i64 8)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Spawner, ptr %sw_src_rem_Spawner, i64 8)
   br label %skip_sw_rem_Spawner
 
 skip_sw_rem_Spawner:                              ; preds = %swap_rem_Spawner, %skip_sw_rem_Position
@@ -3034,7 +2830,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Spawner
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Spawner
@@ -3670,76 +3466,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
-  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
-  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
-  %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
-  br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
-
-copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
-  %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
-  %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 0
-  %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
-  %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
-  br label %skip_rem_ChildOf
-
-skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %mask_w_Particle_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Particle_rem = load i64, ptr %mask_w_Particle_rem, align 8
-  %rem_has_Particle = and i64 %cur_mask_Particle_rem, 2
-  %is_has_rem_Particle = icmp ne i64 %rem_has_Particle, 0
-  br i1 %is_has_rem_Particle, label %copy_rem_Particle, label %skip_rem_Particle
-
-copy_rem_Particle:                                ; preds = %skip_rem_ChildOf
-  %rem_src_col_Particle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
-  %rem_src_raw_Particle = load ptr, ptr %rem_src_col_Particle, align 8
-  %rem_src_elem_Particle = getelementptr inbounds %struct.Particle, ptr %rem_src_raw_Particle, i32 %cur_row_rem
-  %rem_dst_col_Particle = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 1
-  %rem_dst_raw_Particle = load ptr, ptr %rem_dst_col_Particle, align 8
-  %rem_dst_elem_Particle = getelementptr inbounds %struct.Particle, ptr %rem_dst_raw_Particle, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_Particle, ptr %rem_src_elem_Particle, i64 4)
-  br label %skip_rem_Particle
-
-skip_rem_Particle:                                ; preds = %copy_rem_Particle, %skip_rem_ChildOf
-  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
-  %rem_has_Position = and i64 %cur_mask_Position_rem, 4
-  %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
-  br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
-
-copy_rem_Position:                                ; preds = %skip_rem_Particle
-  %rem_src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
-  %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
-  %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 2
-  %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
-  %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
-  br label %skip_rem_Position
-
-skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_Particle
-  %mask_w_Velocity_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Velocity_rem = load i64, ptr %mask_w_Velocity_rem, align 8
-  %rem_has_Velocity = and i64 %cur_mask_Velocity_rem, 16
-  %is_has_rem_Velocity = icmp ne i64 %rem_has_Velocity, 0
-  br i1 %is_has_rem_Velocity, label %copy_rem_Velocity, label %skip_rem_Velocity
-
-copy_rem_Velocity:                                ; preds = %skip_rem_Position
-  %rem_src_col_Velocity = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 4
-  %rem_src_raw_Velocity = load ptr, ptr %rem_src_col_Velocity, align 8
-  %rem_src_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_src_raw_Velocity, i32 %cur_row_rem
-  %rem_dst_col_Velocity = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 4
-  %rem_dst_raw_Velocity = load ptr, ptr %rem_dst_col_Velocity, align 8
-  %rem_dst_elem_Velocity = getelementptr inbounds %struct.Velocity, ptr %rem_dst_raw_Velocity, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Velocity, ptr %rem_src_elem_Velocity, i64 8)
-  br label %skip_rem_Velocity
-
-skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, %skip_rem_Position
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -3747,7 +3475,7 @@ skip_rem_Velocity:                                ; preds = %copy_rem_Velocity, 
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Velocity
+do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -3760,7 +3488,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Velocity
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Velocity
+after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -3774,7 +3502,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %6 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -3789,7 +3517,7 @@ swap_rem_Particle:                                ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Particle = load ptr, ptr %sw_col_rem_Particle, align 8
   %sw_src_rem_Particle = getelementptr inbounds %struct.Particle, ptr %sw_raw_rem_Particle, i32 %last_row_rem
   %sw_dst_rem_Particle = getelementptr inbounds %struct.Particle, ptr %sw_raw_rem_Particle, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_Particle, ptr %sw_src_rem_Particle, i64 4)
+  %3 = call ptr @memcpy(ptr %sw_dst_rem_Particle, ptr %sw_src_rem_Particle, i64 4)
   br label %skip_sw_rem_Particle
 
 skip_sw_rem_Particle:                             ; preds = %swap_rem_Particle, %skip_sw_rem_ChildOf
@@ -3804,7 +3532,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_Particl
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_Particle
@@ -3819,7 +3547,7 @@ swap_rem_Spawner:                                 ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_Spawner = load ptr, ptr %sw_col_rem_Spawner, align 8
   %sw_src_rem_Spawner = getelementptr inbounds %struct.Spawner, ptr %sw_raw_rem_Spawner, i32 %last_row_rem
   %sw_dst_rem_Spawner = getelementptr inbounds %struct.Spawner, ptr %sw_raw_rem_Spawner, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_Spawner, ptr %sw_src_rem_Spawner, i64 8)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Spawner, ptr %sw_src_rem_Spawner, i64 8)
   br label %skip_sw_rem_Spawner
 
 skip_sw_rem_Spawner:                              ; preds = %swap_rem_Spawner, %skip_sw_rem_Position
@@ -3834,7 +3562,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Spawner
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Spawner
@@ -4470,76 +4198,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
   store i32 %1, ptr %new_ent_elem_rem, align 4
   %cur_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 4
-  %new_cols_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 4
   %cur_mask_slot_rem2 = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 0
-  %mask_w_ChildOf_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_ChildOf_rem = load i64, ptr %mask_w_ChildOf_rem, align 8
-  %rem_has_ChildOf = and i64 %cur_mask_ChildOf_rem, 1
-  %is_has_rem_ChildOf = icmp ne i64 %rem_has_ChildOf, 0
-  br i1 %is_has_rem_ChildOf, label %copy_rem_ChildOf, label %skip_rem_ChildOf
-
-copy_rem_ChildOf:                                 ; preds = %after_grow_rem_arch
-  %rem_src_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 0
-  %rem_src_raw_ChildOf = load ptr, ptr %rem_src_col_ChildOf, align 8
-  %rem_src_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_src_raw_ChildOf, i32 %cur_row_rem
-  %rem_dst_col_ChildOf = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 0
-  %rem_dst_raw_ChildOf = load ptr, ptr %rem_dst_col_ChildOf, align 8
-  %rem_dst_elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %rem_dst_raw_ChildOf, i32 %new_row_rem
-  %2 = call ptr @memcpy(ptr %rem_dst_elem_ChildOf, ptr %rem_src_elem_ChildOf, i64 4)
-  br label %skip_rem_ChildOf
-
-skip_rem_ChildOf:                                 ; preds = %copy_rem_ChildOf, %after_grow_rem_arch
-  %mask_w_Particle_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Particle_rem = load i64, ptr %mask_w_Particle_rem, align 8
-  %rem_has_Particle = and i64 %cur_mask_Particle_rem, 2
-  %is_has_rem_Particle = icmp ne i64 %rem_has_Particle, 0
-  br i1 %is_has_rem_Particle, label %copy_rem_Particle, label %skip_rem_Particle
-
-copy_rem_Particle:                                ; preds = %skip_rem_ChildOf
-  %rem_src_col_Particle = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 1
-  %rem_src_raw_Particle = load ptr, ptr %rem_src_col_Particle, align 8
-  %rem_src_elem_Particle = getelementptr inbounds %struct.Particle, ptr %rem_src_raw_Particle, i32 %cur_row_rem
-  %rem_dst_col_Particle = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 1
-  %rem_dst_raw_Particle = load ptr, ptr %rem_dst_col_Particle, align 8
-  %rem_dst_elem_Particle = getelementptr inbounds %struct.Particle, ptr %rem_dst_raw_Particle, i32 %new_row_rem
-  %3 = call ptr @memcpy(ptr %rem_dst_elem_Particle, ptr %rem_src_elem_Particle, i64 4)
-  br label %skip_rem_Particle
-
-skip_rem_Particle:                                ; preds = %copy_rem_Particle, %skip_rem_ChildOf
-  %mask_w_Position_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Position_rem = load i64, ptr %mask_w_Position_rem, align 8
-  %rem_has_Position = and i64 %cur_mask_Position_rem, 4
-  %is_has_rem_Position = icmp ne i64 %rem_has_Position, 0
-  br i1 %is_has_rem_Position, label %copy_rem_Position, label %skip_rem_Position
-
-copy_rem_Position:                                ; preds = %skip_rem_Particle
-  %rem_src_col_Position = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 2
-  %rem_src_raw_Position = load ptr, ptr %rem_src_col_Position, align 8
-  %rem_src_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_src_raw_Position, i32 %cur_row_rem
-  %rem_dst_col_Position = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 2
-  %rem_dst_raw_Position = load ptr, ptr %rem_dst_col_Position, align 8
-  %rem_dst_elem_Position = getelementptr inbounds %struct.Position, ptr %rem_dst_raw_Position, i32 %new_row_rem
-  %4 = call ptr @memcpy(ptr %rem_dst_elem_Position, ptr %rem_src_elem_Position, i64 8)
-  br label %skip_rem_Position
-
-skip_rem_Position:                                ; preds = %copy_rem_Position, %skip_rem_Particle
-  %mask_w_Spawner_rem = getelementptr inbounds [1 x i64], ptr %cur_mask_slot_rem2, i32 0, i32 0
-  %cur_mask_Spawner_rem = load i64, ptr %mask_w_Spawner_rem, align 8
-  %rem_has_Spawner = and i64 %cur_mask_Spawner_rem, 8
-  %is_has_rem_Spawner = icmp ne i64 %rem_has_Spawner, 0
-  br i1 %is_has_rem_Spawner, label %copy_rem_Spawner, label %skip_rem_Spawner
-
-copy_rem_Spawner:                                 ; preds = %skip_rem_Position
-  %rem_src_col_Spawner = getelementptr inbounds [5 x ptr], ptr %cur_cols_rem, i32 0, i32 3
-  %rem_src_raw_Spawner = load ptr, ptr %rem_src_col_Spawner, align 8
-  %rem_src_elem_Spawner = getelementptr inbounds %struct.Spawner, ptr %rem_src_raw_Spawner, i32 %cur_row_rem
-  %rem_dst_col_Spawner = getelementptr inbounds [5 x ptr], ptr %new_cols_rem, i32 0, i32 3
-  %rem_dst_raw_Spawner = load ptr, ptr %rem_dst_col_Spawner, align 8
-  %rem_dst_elem_Spawner = getelementptr inbounds %struct.Spawner, ptr %rem_dst_raw_Spawner, i32 %new_row_rem
-  %5 = call ptr @memcpy(ptr %rem_dst_elem_Spawner, ptr %rem_src_elem_Spawner, i64 8)
-  br label %skip_rem_Spawner
-
-skip_rem_Spawner:                                 ; preds = %copy_rem_Spawner, %skip_rem_Position
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
   %last_row_rem = sub i32 %cnt_rem, 1
@@ -4547,7 +4207,7 @@ skip_rem_Spawner:                                 ; preds = %copy_rem_Spawner, %
   %is_last_rem = icmp eq i32 %cur_row_rem, %last_row_rem
   br i1 %is_last_rem, label %after_swap_rem, label %do_swap_rem
 
-do_swap_rem:                                      ; preds = %skip_rem_Spawner
+do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
   %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
@@ -4560,7 +4220,7 @@ do_swap_rem:                                      ; preds = %skip_rem_Spawner
   %is_sw_rem_ChildOf = icmp ne i64 %sw_rem_has_ChildOf, 0
   br i1 %is_sw_rem_ChildOf, label %swap_rem_ChildOf, label %skip_sw_rem_ChildOf
 
-after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %skip_rem_Spawner
+after_swap_rem:                                   ; preds = %skip_sw_rem_Velocity, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
   %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
@@ -4574,7 +4234,7 @@ swap_rem_ChildOf:                                 ; preds = %do_swap_rem
   %sw_raw_rem_ChildOf = load ptr, ptr %sw_col_rem_ChildOf, align 8
   %sw_src_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %last_row_rem
   %sw_dst_rem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_raw_rem_ChildOf, i32 %cur_row_rem
-  %6 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
+  %2 = call ptr @memcpy(ptr %sw_dst_rem_ChildOf, ptr %sw_src_rem_ChildOf, i64 4)
   br label %skip_sw_rem_ChildOf
 
 skip_sw_rem_ChildOf:                              ; preds = %swap_rem_ChildOf, %do_swap_rem
@@ -4589,7 +4249,7 @@ swap_rem_Particle:                                ; preds = %skip_sw_rem_ChildOf
   %sw_raw_rem_Particle = load ptr, ptr %sw_col_rem_Particle, align 8
   %sw_src_rem_Particle = getelementptr inbounds %struct.Particle, ptr %sw_raw_rem_Particle, i32 %last_row_rem
   %sw_dst_rem_Particle = getelementptr inbounds %struct.Particle, ptr %sw_raw_rem_Particle, i32 %cur_row_rem
-  %7 = call ptr @memcpy(ptr %sw_dst_rem_Particle, ptr %sw_src_rem_Particle, i64 4)
+  %3 = call ptr @memcpy(ptr %sw_dst_rem_Particle, ptr %sw_src_rem_Particle, i64 4)
   br label %skip_sw_rem_Particle
 
 skip_sw_rem_Particle:                             ; preds = %swap_rem_Particle, %skip_sw_rem_ChildOf
@@ -4604,7 +4264,7 @@ swap_rem_Position:                                ; preds = %skip_sw_rem_Particl
   %sw_raw_rem_Position = load ptr, ptr %sw_col_rem_Position, align 8
   %sw_src_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %last_row_rem
   %sw_dst_rem_Position = getelementptr inbounds %struct.Position, ptr %sw_raw_rem_Position, i32 %cur_row_rem
-  %8 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
+  %4 = call ptr @memcpy(ptr %sw_dst_rem_Position, ptr %sw_src_rem_Position, i64 8)
   br label %skip_sw_rem_Position
 
 skip_sw_rem_Position:                             ; preds = %swap_rem_Position, %skip_sw_rem_Particle
@@ -4619,7 +4279,7 @@ swap_rem_Spawner:                                 ; preds = %skip_sw_rem_Positio
   %sw_raw_rem_Spawner = load ptr, ptr %sw_col_rem_Spawner, align 8
   %sw_src_rem_Spawner = getelementptr inbounds %struct.Spawner, ptr %sw_raw_rem_Spawner, i32 %last_row_rem
   %sw_dst_rem_Spawner = getelementptr inbounds %struct.Spawner, ptr %sw_raw_rem_Spawner, i32 %cur_row_rem
-  %9 = call ptr @memcpy(ptr %sw_dst_rem_Spawner, ptr %sw_src_rem_Spawner, i64 8)
+  %5 = call ptr @memcpy(ptr %sw_dst_rem_Spawner, ptr %sw_src_rem_Spawner, i64 8)
   br label %skip_sw_rem_Spawner
 
 skip_sw_rem_Spawner:                              ; preds = %swap_rem_Spawner, %skip_sw_rem_Position
@@ -4634,7 +4294,7 @@ swap_rem_Velocity:                                ; preds = %skip_sw_rem_Spawner
   %sw_raw_rem_Velocity = load ptr, ptr %sw_col_rem_Velocity, align 8
   %sw_src_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %last_row_rem
   %sw_dst_rem_Velocity = getelementptr inbounds %struct.Velocity, ptr %sw_raw_rem_Velocity, i32 %cur_row_rem
-  %10 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
+  %6 = call ptr @memcpy(ptr %sw_dst_rem_Velocity, ptr %sw_src_rem_Velocity, i64 8)
   br label %skip_sw_rem_Velocity
 
 skip_sw_rem_Velocity:                             ; preds = %swap_rem_Velocity, %skip_sw_rem_Spawner
