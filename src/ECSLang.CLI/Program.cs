@@ -99,10 +99,12 @@ public static class Program
             }
             else if (arg is "--no-wait")
             {
+                // Kept for backward compatibility (no-op since pause-on-exit is off by default)
                 options.NoWaitOnExit = true;
             }
-            else if (arg is "--wait-key" or "--pause")
+            else if (arg is "--pause-on-exit" or "--wait-key" or "--pause")
             {
+                options.PauseOnExit = true;
                 options.NoWaitOnExit = false;
                 explicitWait = true;
             }
@@ -272,8 +274,8 @@ public static class Program
         Console.WriteLine("  -O0 .. -O3      LLVM optimization level (default: -O0)");
         Console.WriteLine("  -Os, -Oz        Optimize for code size");
         Console.WriteLine("  -g, --debug     Generate debug information (CodeView PDB / DWARF)");
-        Console.WriteLine("  --no-wait       Do not wait for Enter key on exit");
-        Console.WriteLine("  --wait-key      Wait for Enter key before exiting console");
+        Console.WriteLine("  --pause-on-exit Pause before console exit (useful for Windows Explorer double-click; aliases: --wait-key, --pause)");
+        Console.WriteLine("  --no-wait       Ignored (pause is off by default, kept for compatibility)");
         Console.WriteLine("  --check         Validate syntax and semantics without LLVM codegen");
         Console.WriteLine("  -c, --emit-obj  Emit object file (.obj / .o) without linking");
         Console.WriteLine("  --emit-ir       Emit LLVM IR (.ll) file");

@@ -54,7 +54,6 @@ target triple = "x86_64-pc-windows-msvc"
 @net_udp_empty = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 @net_extract_empty = private unnamed_addr constant [1 x i8] zeroinitializer, align 1
 @str_lit = private unnamed_addr constant [41 x i8] c"Hierarchy sorting executed successfully.\00", align 1
-@prompt_exit = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -2974,10 +2973,6 @@ entry:
   %world24 = load ptr, ptr %world, align 8
   call void @pipeline_HierarchyPipeline(ptr %world24)
   %puts_call = call i32 @puts(ptr @str_lit)
-  %puts_exit = call i32 @puts(ptr @prompt_exit)
-  %h_stdin = call ptr @GetStdHandle(i32 -10)
-  %2 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin)
-  %auto_wait_key = call i32 @_getch()
   ret i32 0
 }
 
@@ -2992,9 +2987,5 @@ entry:
 declare i32 @SetConsoleOutputCP(i32)
 
 declare i32 @SetConsoleCP(i32)
-
-declare ptr @GetStdHandle(i32)
-
-declare i32 @FlushConsoleInputBuffer(ptr)
 
 attributes #0 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }

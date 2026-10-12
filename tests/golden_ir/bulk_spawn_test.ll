@@ -63,7 +63,6 @@ target triple = "x86_64-pc-windows-msvc"
 @str_lit.3 = private unnamed_addr constant [3 x i8] c", \00", align 1
 @str_lit.4 = private unnamed_addr constant [2 x i8] c")\00", align 1
 @str_lit.5 = private unnamed_addr constant [34 x i8] c"Bulk spawn executed successfully.\00", align 1
-@prompt_exit = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -3067,10 +3066,6 @@ bspawn_cont16:                                    ; preds = %bspawn_grow15, %bsp
   %world42 = load ptr, ptr %world, align 8
   call void @pipeline_MainPipeline(ptr %world42)
   %puts_call = call i32 @puts(ptr @str_lit.5)
-  %puts_exit = call i32 @puts(ptr @prompt_exit)
-  %h_stdin = call ptr @GetStdHandle(i32 -10)
-  %2 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin)
-  %auto_wait_key = call i32 @_getch()
   ret i32 0
 }
 
@@ -3262,9 +3257,5 @@ entry:
 declare i32 @SetConsoleOutputCP(i32)
 
 declare i32 @SetConsoleCP(i32)
-
-declare ptr @GetStdHandle(i32)
-
-declare i32 @FlushConsoleInputBuffer(ptr)
 
 attributes #0 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }

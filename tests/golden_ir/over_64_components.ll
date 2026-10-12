@@ -820,45 +820,28 @@ target triple = "x86_64-pc-windows-msvc"
 @_ecs_query_without_system_VerifyHierarchySystem = internal constant [2 x i64] zeroinitializer
 @str_lit = private unnamed_addr constant [53 x i8] c"=== START CANARY 70+ COMPONENTS TEST (WORDS = 2) ===\00", align 1
 @str_lit.1 = private unnamed_addr constant [31 x i8] c"FAIL: e1 has_C01 expected true\00", align 1
-@prompt_exit = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
 @str_lit.2 = private unnamed_addr constant [32 x i8] c"FAIL: e1 has_C70 expected false\00", align 1
-@prompt_exit.3 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.4 = private unnamed_addr constant [45 x i8] c"FAIL: e1 has_C01 after add C70 expected true\00", align 1
-@prompt_exit.5 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.6 = private unnamed_addr constant [31 x i8] c"FAIL: e1 has_C70 expected true\00", align 1
-@prompt_exit.7 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.8 = private unnamed_addr constant [32 x i8] c"FAIL: e1 has_C71 expected false\00", align 1
-@prompt_exit.9 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.10 = private unnamed_addr constant [45 x i8] c"FAIL: e1 has_C01 after remove expected false\00", align 1
-@prompt_exit.11 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.12 = private unnamed_addr constant [48 x i8] c"FAIL: e1 has_C70 after remove C01 expected true\00", align 1
-@prompt_exit.13 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.14 = private unnamed_addr constant [34 x i8] c"FAIL: e1 [C01, C70] re-add failed\00", align 1
-@prompt_exit.15 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.16 = private unnamed_addr constant [33 x i8] c"FAIL: e2 bulk spawn has_* failed\00", align 1
-@prompt_exit.17 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.18 = private unnamed_addr constant [39 x i8] c"FAIL: e_excluded has_C69 expected true\00", align 1
-@prompt_exit.19 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.20 = private unnamed_addr constant [48 x i8] c"FAIL: e_temp still has components after despawn\00", align 1
-@prompt_exit.21 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.22 = private unnamed_addr constant [23 x i8] c"Canary query_matches: \00", align 1
+@str_lit.3 = private unnamed_addr constant [45 x i8] c"FAIL: e1 has_C01 after add C70 expected true\00", align 1
+@str_lit.4 = private unnamed_addr constant [31 x i8] c"FAIL: e1 has_C70 expected true\00", align 1
+@str_lit.5 = private unnamed_addr constant [32 x i8] c"FAIL: e1 has_C71 expected false\00", align 1
+@str_lit.6 = private unnamed_addr constant [45 x i8] c"FAIL: e1 has_C01 after remove expected false\00", align 1
+@str_lit.7 = private unnamed_addr constant [48 x i8] c"FAIL: e1 has_C70 after remove C01 expected true\00", align 1
+@str_lit.8 = private unnamed_addr constant [34 x i8] c"FAIL: e1 [C01, C70] re-add failed\00", align 1
+@str_lit.9 = private unnamed_addr constant [33 x i8] c"FAIL: e2 bulk spawn has_* failed\00", align 1
+@str_lit.10 = private unnamed_addr constant [39 x i8] c"FAIL: e_excluded has_C69 expected true\00", align 1
+@str_lit.11 = private unnamed_addr constant [48 x i8] c"FAIL: e_temp still has components after despawn\00", align 1
+@str_lit.12 = private unnamed_addr constant [23 x i8] c"Canary query_matches: \00", align 1
 @fmt_d = private unnamed_addr constant [3 x i8] c"%d\00", align 1
-@str_lit.23 = private unnamed_addr constant [19 x i8] c"Canary query_sum: \00", align 1
-@str_lit.24 = private unnamed_addr constant [31 x i8] c"Canary hierarchy_parent_seen: \00", align 1
-@str_lit.25 = private unnamed_addr constant [30 x i8] c"Canary hierarchy_child_seen: \00", align 1
-@str_lit.26 = private unnamed_addr constant [33 x i8] c"Canary hierarchy_order_correct: \00", align 1
-@str_lit.27 = private unnamed_addr constant [40 x i8] c"FAIL: expected query_matches == 2, got \00", align 1
-@prompt_exit.28 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.29 = private unnamed_addr constant [39 x i8] c"FAIL: expected query_sum == 1420, got \00", align 1
-@prompt_exit.30 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.31 = private unnamed_addr constant [48 x i8] c"FAIL: expected hierarchy_parent_seen == 1, got \00", align 1
-@prompt_exit.32 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.33 = private unnamed_addr constant [47 x i8] c"FAIL: expected hierarchy_child_seen == 1, got \00", align 1
-@prompt_exit.34 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.35 = private unnamed_addr constant [50 x i8] c"FAIL: expected hierarchy_order_correct == 1, got \00", align 1
-@prompt_exit.36 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
-@str_lit.37 = private unnamed_addr constant [67 x i8] c"=== CANARY TEST PASSED SUCCESSFULLY (ALL INVARIANTS SATISFIED) ===\00", align 1
-@prompt_exit.38 = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
+@str_lit.13 = private unnamed_addr constant [19 x i8] c"Canary query_sum: \00", align 1
+@str_lit.14 = private unnamed_addr constant [31 x i8] c"Canary hierarchy_parent_seen: \00", align 1
+@str_lit.15 = private unnamed_addr constant [30 x i8] c"Canary hierarchy_child_seen: \00", align 1
+@str_lit.16 = private unnamed_addr constant [33 x i8] c"Canary hierarchy_order_correct: \00", align 1
+@str_lit.17 = private unnamed_addr constant [40 x i8] c"FAIL: expected query_matches == 2, got \00", align 1
+@str_lit.18 = private unnamed_addr constant [39 x i8] c"FAIL: expected query_sum == 1420, got \00", align 1
+@str_lit.19 = private unnamed_addr constant [48 x i8] c"FAIL: expected hierarchy_parent_seen == 1, got \00", align 1
+@str_lit.20 = private unnamed_addr constant [47 x i8] c"FAIL: expected hierarchy_child_seen == 1, got \00", align 1
+@str_lit.21 = private unnamed_addr constant [50 x i8] c"FAIL: expected hierarchy_order_correct == 1, got \00", align 1
+@str_lit.22 = private unnamed_addr constant [67 x i8] c"=== CANARY TEST PASSED SUCCESSFULLY (ALL INVARIANTS SATISFIED) ===\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -41281,10 +41264,6 @@ entry:
 
 then:                                             ; preds = %entry
   %puts_call7 = call i32 @puts(ptr @str_lit.1)
-  %puts_exit = call i32 @puts(ptr @prompt_exit)
-  %h_stdin = call ptr @GetStdHandle(i32 -10)
-  %2 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin)
-  %auto_wait_key = call i32 @_getch()
   ret i32 101
 
 if_merge:                                         ; preds = %entry
@@ -41295,124 +41274,96 @@ if_merge:                                         ; preds = %entry
 
 then10:                                           ; preds = %if_merge
   %puts_call12 = call i32 @puts(ptr @str_lit.2)
-  %puts_exit13 = call i32 @puts(ptr @prompt_exit.3)
-  %h_stdin14 = call ptr @GetStdHandle(i32 -10)
-  %3 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin14)
-  %auto_wait_key15 = call i32 @_getch()
   ret i32 102
 
 if_merge11:                                       ; preds = %if_merge
-  %world16 = load ptr, ptr %world, align 8
-  %e117 = load i32, ptr %e1, align 4
-  call void @world_set_C70(ptr %world16, i32 %e117, i32 700)
-  %world18 = load ptr, ptr %world, align 8
-  %e119 = load i32, ptr %e1, align 4
-  %has_C01_call20 = call i1 @world_has_C01(ptr %world18, i32 %e119)
-  %not_tmp21 = xor i1 %has_C01_call20, true
-  br i1 %not_tmp21, label %then22, label %if_merge23
+  %world13 = load ptr, ptr %world, align 8
+  %e114 = load i32, ptr %e1, align 4
+  call void @world_set_C70(ptr %world13, i32 %e114, i32 700)
+  %world15 = load ptr, ptr %world, align 8
+  %e116 = load i32, ptr %e1, align 4
+  %has_C01_call17 = call i1 @world_has_C01(ptr %world15, i32 %e116)
+  %not_tmp18 = xor i1 %has_C01_call17, true
+  br i1 %not_tmp18, label %then19, label %if_merge20
 
-then22:                                           ; preds = %if_merge11
-  %puts_call24 = call i32 @puts(ptr @str_lit.4)
-  %puts_exit25 = call i32 @puts(ptr @prompt_exit.5)
-  %h_stdin26 = call ptr @GetStdHandle(i32 -10)
-  %4 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin26)
-  %auto_wait_key27 = call i32 @_getch()
+then19:                                           ; preds = %if_merge11
+  %puts_call21 = call i32 @puts(ptr @str_lit.3)
   ret i32 103
 
-if_merge23:                                       ; preds = %if_merge11
-  %world28 = load ptr, ptr %world, align 8
-  %e129 = load i32, ptr %e1, align 4
-  %has_C70_call30 = call i1 @world_has_C70(ptr %world28, i32 %e129)
-  %not_tmp31 = xor i1 %has_C70_call30, true
-  br i1 %not_tmp31, label %then32, label %if_merge33
+if_merge20:                                       ; preds = %if_merge11
+  %world22 = load ptr, ptr %world, align 8
+  %e123 = load i32, ptr %e1, align 4
+  %has_C70_call24 = call i1 @world_has_C70(ptr %world22, i32 %e123)
+  %not_tmp25 = xor i1 %has_C70_call24, true
+  br i1 %not_tmp25, label %then26, label %if_merge27
 
-then32:                                           ; preds = %if_merge23
-  %puts_call34 = call i32 @puts(ptr @str_lit.6)
-  %puts_exit35 = call i32 @puts(ptr @prompt_exit.7)
-  %h_stdin36 = call ptr @GetStdHandle(i32 -10)
-  %5 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin36)
-  %auto_wait_key37 = call i32 @_getch()
+then26:                                           ; preds = %if_merge20
+  %puts_call28 = call i32 @puts(ptr @str_lit.4)
   ret i32 104
 
-if_merge33:                                       ; preds = %if_merge23
-  %world38 = load ptr, ptr %world, align 8
-  %e139 = load i32, ptr %e1, align 4
-  %has_C71_call = call i1 @world_has_C71(ptr %world38, i32 %e139)
-  br i1 %has_C71_call, label %then40, label %if_merge41
+if_merge27:                                       ; preds = %if_merge20
+  %world29 = load ptr, ptr %world, align 8
+  %e130 = load i32, ptr %e1, align 4
+  %has_C71_call = call i1 @world_has_C71(ptr %world29, i32 %e130)
+  br i1 %has_C71_call, label %then31, label %if_merge32
 
-then40:                                           ; preds = %if_merge33
-  %puts_call42 = call i32 @puts(ptr @str_lit.8)
-  %puts_exit43 = call i32 @puts(ptr @prompt_exit.9)
-  %h_stdin44 = call ptr @GetStdHandle(i32 -10)
-  %6 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin44)
-  %auto_wait_key45 = call i32 @_getch()
+then31:                                           ; preds = %if_merge27
+  %puts_call33 = call i32 @puts(ptr @str_lit.5)
   ret i32 105
 
-if_merge41:                                       ; preds = %if_merge33
-  %world46 = load ptr, ptr %world, align 8
-  %e147 = load i32, ptr %e1, align 4
-  call void @world_remove_C01(ptr %world46, i32 %e147)
-  %world48 = load ptr, ptr %world, align 8
-  %e149 = load i32, ptr %e1, align 4
-  %has_C01_call50 = call i1 @world_has_C01(ptr %world48, i32 %e149)
-  br i1 %has_C01_call50, label %then51, label %if_merge52
+if_merge32:                                       ; preds = %if_merge27
+  %world34 = load ptr, ptr %world, align 8
+  %e135 = load i32, ptr %e1, align 4
+  call void @world_remove_C01(ptr %world34, i32 %e135)
+  %world36 = load ptr, ptr %world, align 8
+  %e137 = load i32, ptr %e1, align 4
+  %has_C01_call38 = call i1 @world_has_C01(ptr %world36, i32 %e137)
+  br i1 %has_C01_call38, label %then39, label %if_merge40
 
-then51:                                           ; preds = %if_merge41
-  %puts_call53 = call i32 @puts(ptr @str_lit.10)
-  %puts_exit54 = call i32 @puts(ptr @prompt_exit.11)
-  %h_stdin55 = call ptr @GetStdHandle(i32 -10)
-  %7 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin55)
-  %auto_wait_key56 = call i32 @_getch()
+then39:                                           ; preds = %if_merge32
+  %puts_call41 = call i32 @puts(ptr @str_lit.6)
   ret i32 106
 
-if_merge52:                                       ; preds = %if_merge41
-  %world57 = load ptr, ptr %world, align 8
-  %e158 = load i32, ptr %e1, align 4
-  %has_C70_call59 = call i1 @world_has_C70(ptr %world57, i32 %e158)
-  %not_tmp60 = xor i1 %has_C70_call59, true
-  br i1 %not_tmp60, label %then61, label %if_merge62
+if_merge40:                                       ; preds = %if_merge32
+  %world42 = load ptr, ptr %world, align 8
+  %e143 = load i32, ptr %e1, align 4
+  %has_C70_call44 = call i1 @world_has_C70(ptr %world42, i32 %e143)
+  %not_tmp45 = xor i1 %has_C70_call44, true
+  br i1 %not_tmp45, label %then46, label %if_merge47
 
-then61:                                           ; preds = %if_merge52
-  %puts_call63 = call i32 @puts(ptr @str_lit.12)
-  %puts_exit64 = call i32 @puts(ptr @prompt_exit.13)
-  %h_stdin65 = call ptr @GetStdHandle(i32 -10)
-  %8 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin65)
-  %auto_wait_key66 = call i32 @_getch()
+then46:                                           ; preds = %if_merge40
+  %puts_call48 = call i32 @puts(ptr @str_lit.7)
   ret i32 107
 
-if_merge62:                                       ; preds = %if_merge52
-  %world67 = load ptr, ptr %world, align 8
-  %e168 = load i32, ptr %e1, align 4
-  call void @world_set_C01(ptr %world67, i32 %e168, i32 15)
-  %world69 = load ptr, ptr %world, align 8
-  %e170 = load i32, ptr %e1, align 4
-  %has_C01_call71 = call i1 @world_has_C01(ptr %world69, i32 %e170)
-  %not_tmp72 = xor i1 %has_C01_call71, true
-  %world73 = load ptr, ptr %world, align 8
-  %e174 = load i32, ptr %e1, align 4
-  %has_C70_call75 = call i1 @world_has_C70(ptr %world73, i32 %e174)
-  %not_tmp76 = xor i1 %has_C70_call75, true
-  %lor = or i1 %not_tmp72, %not_tmp76
-  br i1 %lor, label %then77, label %if_merge78
+if_merge47:                                       ; preds = %if_merge40
+  %world49 = load ptr, ptr %world, align 8
+  %e150 = load i32, ptr %e1, align 4
+  call void @world_set_C01(ptr %world49, i32 %e150, i32 15)
+  %world51 = load ptr, ptr %world, align 8
+  %e152 = load i32, ptr %e1, align 4
+  %has_C01_call53 = call i1 @world_has_C01(ptr %world51, i32 %e152)
+  %not_tmp54 = xor i1 %has_C01_call53, true
+  %world55 = load ptr, ptr %world, align 8
+  %e156 = load i32, ptr %e1, align 4
+  %has_C70_call57 = call i1 @world_has_C70(ptr %world55, i32 %e156)
+  %not_tmp58 = xor i1 %has_C70_call57, true
+  %lor = or i1 %not_tmp54, %not_tmp58
+  br i1 %lor, label %then59, label %if_merge60
 
-then77:                                           ; preds = %if_merge62
-  %puts_call79 = call i32 @puts(ptr @str_lit.14)
-  %puts_exit80 = call i32 @puts(ptr @prompt_exit.15)
-  %h_stdin81 = call ptr @GetStdHandle(i32 -10)
-  %9 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin81)
-  %auto_wait_key82 = call i32 @_getch()
+then59:                                           ; preds = %if_merge47
+  %puts_call61 = call i32 @puts(ptr @str_lit.8)
   ret i32 108
 
-if_merge78:                                       ; preds = %if_merge62
-  %world83 = load ptr, ptr %world, align 8
-  %e_alloc = call i32 @world_alloc_entity(ptr %world83)
+if_merge60:                                       ; preds = %if_merge47
+  %world62 = load ptr, ptr %world, align 8
+  %e_alloc = call i32 @world_alloc_entity(ptr %world62)
   %spawn_mask_buf = alloca [2 x i64], align 8
   %dst_spawn_w0 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf, i32 0, i32 0
   store i64 2, ptr %dst_spawn_w0, align 8
   %dst_spawn_w1 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf, i32 0, i32 1
   store i64 64, ptr %dst_spawn_w1, align 8
-  %arch_idx = call i32 @world_get_or_create_archetype(ptr %world83, ptr %spawn_mask_buf)
-  %tables_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world83, i32 0, i32 2
+  %arch_idx = call i32 @world_get_or_create_archetype(ptr %world62, ptr %spawn_mask_buf)
+  %tables_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world62, i32 0, i32 2
   %tables_base = load ptr, ptr %tables_slot, align 8
   %arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_base, i32 %arch_idx
   %cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr, i32 0, i32 1
@@ -41422,11 +41373,11 @@ if_merge78:                                       ; preds = %if_merge62
   %need_grow = icmp sge i32 %cur_cnt, %cur_cap
   br i1 %need_grow, label %bspawn_grow, label %bspawn_cont
 
-bspawn_grow:                                      ; preds = %if_merge78
-  call void @world_grow_archetype(ptr %world83, i32 %arch_idx)
+bspawn_grow:                                      ; preds = %if_merge60
+  call void @world_grow_archetype(ptr %world62, i32 %arch_idx)
   br label %bspawn_cont
 
-bspawn_cont:                                      ; preds = %bspawn_grow, %if_merge78
+bspawn_cont:                                      ; preds = %bspawn_grow, %if_merge60
   %tables_base_cont = load ptr, ptr %tables_slot, align 8
   %arch_ptr_cont = getelementptr inbounds %struct.Archetype, ptr %tables_base_cont, i32 %arch_idx
   %cnt_slot_cont = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont, i32 0, i32 1
@@ -41437,11 +41388,11 @@ bspawn_cont:                                      ; preds = %bspawn_grow, %if_me
   %ent_raw = load ptr, ptr %ent_slot, align 8
   %ent_elem = getelementptr inbounds i32, ptr %ent_raw, i32 %row
   store i32 %e_alloc, ptr %ent_elem, align 4
-  %ent_arch_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world83, i32 0, i32 5
+  %ent_arch_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world62, i32 0, i32 5
   %ent_arch_arr = load ptr, ptr %ent_arch_slot, align 8
   %e_arch_elem = getelementptr inbounds i32, ptr %ent_arch_arr, i32 %e_alloc
   store i32 %arch_idx, ptr %e_arch_elem, align 4
-  %ent_row_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world83, i32 0, i32 6
+  %ent_row_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world62, i32 0, i32 6
   %ent_row_arr = load ptr, ptr %ent_row_slot, align 8
   %e_row_elem = getelementptr inbounds i32, ptr %ent_row_arr, i32 %e_alloc
   store i32 %row, ptr %e_row_elem, align 4
@@ -41457,432 +41408,396 @@ bspawn_cont:                                      ; preds = %bspawn_grow, %if_me
   %C70_f0_gep = getelementptr inbounds nuw %struct.C70, ptr %elem_C70, i32 0, i32 0
   store i32 720, ptr %C70_f0_gep, align 4
   store i32 %e_alloc, ptr %e2, align 4
-  %world84 = load ptr, ptr %world, align 8
-  %e285 = load i32, ptr %e2, align 4
-  %has_C01_call86 = call i1 @world_has_C01(ptr %world84, i32 %e285)
-  %not_tmp87 = xor i1 %has_C01_call86, true
-  %world88 = load ptr, ptr %world, align 8
-  %e289 = load i32, ptr %e2, align 4
-  %has_C70_call90 = call i1 @world_has_C70(ptr %world88, i32 %e289)
-  %not_tmp91 = xor i1 %has_C70_call90, true
-  %lor92 = or i1 %not_tmp87, %not_tmp91
-  br i1 %lor92, label %then93, label %if_merge94
+  %world63 = load ptr, ptr %world, align 8
+  %e264 = load i32, ptr %e2, align 4
+  %has_C01_call65 = call i1 @world_has_C01(ptr %world63, i32 %e264)
+  %not_tmp66 = xor i1 %has_C01_call65, true
+  %world67 = load ptr, ptr %world, align 8
+  %e268 = load i32, ptr %e2, align 4
+  %has_C70_call69 = call i1 @world_has_C70(ptr %world67, i32 %e268)
+  %not_tmp70 = xor i1 %has_C70_call69, true
+  %lor71 = or i1 %not_tmp66, %not_tmp70
+  br i1 %lor71, label %then72, label %if_merge73
 
-then93:                                           ; preds = %bspawn_cont
-  %puts_call95 = call i32 @puts(ptr @str_lit.16)
-  %puts_exit96 = call i32 @puts(ptr @prompt_exit.17)
-  %h_stdin97 = call ptr @GetStdHandle(i32 -10)
-  %10 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin97)
-  %auto_wait_key98 = call i32 @_getch()
+then72:                                           ; preds = %bspawn_cont
+  %puts_call74 = call i32 @puts(ptr @str_lit.9)
   ret i32 109
 
-if_merge94:                                       ; preds = %bspawn_cont
-  %world99 = load ptr, ptr %world, align 8
-  %e_alloc100 = call i32 @world_alloc_entity(ptr %world99)
-  %spawn_mask_buf101 = alloca [2 x i64], align 8
-  %dst_spawn_w0102 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf101, i32 0, i32 0
-  store i64 2, ptr %dst_spawn_w0102, align 8
-  %dst_spawn_w1103 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf101, i32 0, i32 1
-  store i64 96, ptr %dst_spawn_w1103, align 8
-  %arch_idx104 = call i32 @world_get_or_create_archetype(ptr %world99, ptr %spawn_mask_buf101)
-  %tables_slot105 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world99, i32 0, i32 2
-  %tables_base106 = load ptr, ptr %tables_slot105, align 8
-  %arch_ptr107 = getelementptr inbounds %struct.Archetype, ptr %tables_base106, i32 %arch_idx104
-  %cnt_slot108 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr107, i32 0, i32 1
-  %cur_cnt109 = load i32, ptr %cnt_slot108, align 4
-  %cap_slot110 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr107, i32 0, i32 2
-  %cur_cap111 = load i32, ptr %cap_slot110, align 4
-  %need_grow112 = icmp sge i32 %cur_cnt109, %cur_cap111
-  br i1 %need_grow112, label %bspawn_grow113, label %bspawn_cont114
+if_merge73:                                       ; preds = %bspawn_cont
+  %world75 = load ptr, ptr %world, align 8
+  %e_alloc76 = call i32 @world_alloc_entity(ptr %world75)
+  %spawn_mask_buf77 = alloca [2 x i64], align 8
+  %dst_spawn_w078 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf77, i32 0, i32 0
+  store i64 2, ptr %dst_spawn_w078, align 8
+  %dst_spawn_w179 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf77, i32 0, i32 1
+  store i64 96, ptr %dst_spawn_w179, align 8
+  %arch_idx80 = call i32 @world_get_or_create_archetype(ptr %world75, ptr %spawn_mask_buf77)
+  %tables_slot81 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world75, i32 0, i32 2
+  %tables_base82 = load ptr, ptr %tables_slot81, align 8
+  %arch_ptr83 = getelementptr inbounds %struct.Archetype, ptr %tables_base82, i32 %arch_idx80
+  %cnt_slot84 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr83, i32 0, i32 1
+  %cur_cnt85 = load i32, ptr %cnt_slot84, align 4
+  %cap_slot86 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr83, i32 0, i32 2
+  %cur_cap87 = load i32, ptr %cap_slot86, align 4
+  %need_grow88 = icmp sge i32 %cur_cnt85, %cur_cap87
+  br i1 %need_grow88, label %bspawn_grow89, label %bspawn_cont90
 
-bspawn_grow113:                                   ; preds = %if_merge94
-  call void @world_grow_archetype(ptr %world99, i32 %arch_idx104)
-  br label %bspawn_cont114
+bspawn_grow89:                                    ; preds = %if_merge73
+  call void @world_grow_archetype(ptr %world75, i32 %arch_idx80)
+  br label %bspawn_cont90
 
-bspawn_cont114:                                   ; preds = %bspawn_grow113, %if_merge94
-  %tables_base_cont115 = load ptr, ptr %tables_slot105, align 8
-  %arch_ptr_cont116 = getelementptr inbounds %struct.Archetype, ptr %tables_base_cont115, i32 %arch_idx104
-  %cnt_slot_cont117 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont116, i32 0, i32 1
-  %row118 = load i32, ptr %cnt_slot_cont117, align 4
-  %next_cnt119 = add i32 %row118, 1
-  store i32 %next_cnt119, ptr %cnt_slot_cont117, align 4
-  %ent_slot120 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont116, i32 0, i32 3
-  %ent_raw121 = load ptr, ptr %ent_slot120, align 8
-  %ent_elem122 = getelementptr inbounds i32, ptr %ent_raw121, i32 %row118
-  store i32 %e_alloc100, ptr %ent_elem122, align 4
-  %ent_arch_slot123 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world99, i32 0, i32 5
-  %ent_arch_arr124 = load ptr, ptr %ent_arch_slot123, align 8
-  %e_arch_elem125 = getelementptr inbounds i32, ptr %ent_arch_arr124, i32 %e_alloc100
-  store i32 %arch_idx104, ptr %e_arch_elem125, align 4
-  %ent_row_slot126 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world99, i32 0, i32 6
-  %ent_row_arr127 = load ptr, ptr %ent_row_slot126, align 8
-  %e_row_elem128 = getelementptr inbounds i32, ptr %ent_row_arr127, i32 %e_alloc100
-  store i32 %row118, ptr %e_row_elem128, align 4
-  %cols_arr129 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont116, i32 0, i32 4
-  %col_slot_C01130 = getelementptr inbounds [72 x ptr], ptr %cols_arr129, i32 0, i32 1
-  %col_raw_C01131 = load ptr, ptr %col_slot_C01130, align 8
-  %elem_C01132 = getelementptr inbounds %struct.C01, ptr %col_raw_C01131, i32 %row118
-  %C01_f0_gep133 = getelementptr inbounds nuw %struct.C01, ptr %elem_C01132, i32 0, i32 0
-  store i32 99, ptr %C01_f0_gep133, align 4
-  %col_slot_C70134 = getelementptr inbounds [72 x ptr], ptr %cols_arr129, i32 0, i32 70
-  %col_raw_C70135 = load ptr, ptr %col_slot_C70134, align 8
-  %elem_C70136 = getelementptr inbounds %struct.C70, ptr %col_raw_C70135, i32 %row118
-  %C70_f0_gep137 = getelementptr inbounds nuw %struct.C70, ptr %elem_C70136, i32 0, i32 0
-  store i32 999, ptr %C70_f0_gep137, align 4
-  %col_slot_C69 = getelementptr inbounds [72 x ptr], ptr %cols_arr129, i32 0, i32 69
+bspawn_cont90:                                    ; preds = %bspawn_grow89, %if_merge73
+  %tables_base_cont91 = load ptr, ptr %tables_slot81, align 8
+  %arch_ptr_cont92 = getelementptr inbounds %struct.Archetype, ptr %tables_base_cont91, i32 %arch_idx80
+  %cnt_slot_cont93 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont92, i32 0, i32 1
+  %row94 = load i32, ptr %cnt_slot_cont93, align 4
+  %next_cnt95 = add i32 %row94, 1
+  store i32 %next_cnt95, ptr %cnt_slot_cont93, align 4
+  %ent_slot96 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont92, i32 0, i32 3
+  %ent_raw97 = load ptr, ptr %ent_slot96, align 8
+  %ent_elem98 = getelementptr inbounds i32, ptr %ent_raw97, i32 %row94
+  store i32 %e_alloc76, ptr %ent_elem98, align 4
+  %ent_arch_slot99 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world75, i32 0, i32 5
+  %ent_arch_arr100 = load ptr, ptr %ent_arch_slot99, align 8
+  %e_arch_elem101 = getelementptr inbounds i32, ptr %ent_arch_arr100, i32 %e_alloc76
+  store i32 %arch_idx80, ptr %e_arch_elem101, align 4
+  %ent_row_slot102 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world75, i32 0, i32 6
+  %ent_row_arr103 = load ptr, ptr %ent_row_slot102, align 8
+  %e_row_elem104 = getelementptr inbounds i32, ptr %ent_row_arr103, i32 %e_alloc76
+  store i32 %row94, ptr %e_row_elem104, align 4
+  %cols_arr105 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont92, i32 0, i32 4
+  %col_slot_C01106 = getelementptr inbounds [72 x ptr], ptr %cols_arr105, i32 0, i32 1
+  %col_raw_C01107 = load ptr, ptr %col_slot_C01106, align 8
+  %elem_C01108 = getelementptr inbounds %struct.C01, ptr %col_raw_C01107, i32 %row94
+  %C01_f0_gep109 = getelementptr inbounds nuw %struct.C01, ptr %elem_C01108, i32 0, i32 0
+  store i32 99, ptr %C01_f0_gep109, align 4
+  %col_slot_C70110 = getelementptr inbounds [72 x ptr], ptr %cols_arr105, i32 0, i32 70
+  %col_raw_C70111 = load ptr, ptr %col_slot_C70110, align 8
+  %elem_C70112 = getelementptr inbounds %struct.C70, ptr %col_raw_C70111, i32 %row94
+  %C70_f0_gep113 = getelementptr inbounds nuw %struct.C70, ptr %elem_C70112, i32 0, i32 0
+  store i32 999, ptr %C70_f0_gep113, align 4
+  %col_slot_C69 = getelementptr inbounds [72 x ptr], ptr %cols_arr105, i32 0, i32 69
   %col_raw_C69 = load ptr, ptr %col_slot_C69, align 8
-  %elem_C69 = getelementptr inbounds %struct.C69, ptr %col_raw_C69, i32 %row118
+  %elem_C69 = getelementptr inbounds %struct.C69, ptr %col_raw_C69, i32 %row94
   %C69_f0_gep = getelementptr inbounds nuw %struct.C69, ptr %elem_C69, i32 0, i32 0
   store i32 1, ptr %C69_f0_gep, align 4
-  store i32 %e_alloc100, ptr %e_excluded, align 4
-  %world138 = load ptr, ptr %world, align 8
-  %e_excluded139 = load i32, ptr %e_excluded, align 4
-  %has_C69_call = call i1 @world_has_C69(ptr %world138, i32 %e_excluded139)
-  %not_tmp140 = xor i1 %has_C69_call, true
-  br i1 %not_tmp140, label %then141, label %if_merge142
+  store i32 %e_alloc76, ptr %e_excluded, align 4
+  %world114 = load ptr, ptr %world, align 8
+  %e_excluded115 = load i32, ptr %e_excluded, align 4
+  %has_C69_call = call i1 @world_has_C69(ptr %world114, i32 %e_excluded115)
+  %not_tmp116 = xor i1 %has_C69_call, true
+  br i1 %not_tmp116, label %then117, label %if_merge118
 
-then141:                                          ; preds = %bspawn_cont114
-  %puts_call143 = call i32 @puts(ptr @str_lit.18)
-  %puts_exit144 = call i32 @puts(ptr @prompt_exit.19)
-  %h_stdin145 = call ptr @GetStdHandle(i32 -10)
-  %11 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin145)
-  %auto_wait_key146 = call i32 @_getch()
+then117:                                          ; preds = %bspawn_cont90
+  %puts_call119 = call i32 @puts(ptr @str_lit.10)
   ret i32 110
 
-if_merge142:                                      ; preds = %bspawn_cont114
-  %world147 = load ptr, ptr %world, align 8
-  %e_alloc148 = call i32 @world_alloc_entity(ptr %world147)
-  %spawn_mask_buf149 = alloca [2 x i64], align 8
-  %dst_spawn_w0150 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf149, i32 0, i32 0
-  store i64 2, ptr %dst_spawn_w0150, align 8
-  %dst_spawn_w1151 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf149, i32 0, i32 1
-  store i64 64, ptr %dst_spawn_w1151, align 8
-  %arch_idx152 = call i32 @world_get_or_create_archetype(ptr %world147, ptr %spawn_mask_buf149)
-  %tables_slot153 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world147, i32 0, i32 2
-  %tables_base154 = load ptr, ptr %tables_slot153, align 8
-  %arch_ptr155 = getelementptr inbounds %struct.Archetype, ptr %tables_base154, i32 %arch_idx152
-  %cnt_slot156 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr155, i32 0, i32 1
-  %cur_cnt157 = load i32, ptr %cnt_slot156, align 4
-  %cap_slot158 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr155, i32 0, i32 2
-  %cur_cap159 = load i32, ptr %cap_slot158, align 4
-  %need_grow160 = icmp sge i32 %cur_cnt157, %cur_cap159
-  br i1 %need_grow160, label %bspawn_grow161, label %bspawn_cont162
+if_merge118:                                      ; preds = %bspawn_cont90
+  %world120 = load ptr, ptr %world, align 8
+  %e_alloc121 = call i32 @world_alloc_entity(ptr %world120)
+  %spawn_mask_buf122 = alloca [2 x i64], align 8
+  %dst_spawn_w0123 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf122, i32 0, i32 0
+  store i64 2, ptr %dst_spawn_w0123, align 8
+  %dst_spawn_w1124 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf122, i32 0, i32 1
+  store i64 64, ptr %dst_spawn_w1124, align 8
+  %arch_idx125 = call i32 @world_get_or_create_archetype(ptr %world120, ptr %spawn_mask_buf122)
+  %tables_slot126 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world120, i32 0, i32 2
+  %tables_base127 = load ptr, ptr %tables_slot126, align 8
+  %arch_ptr128 = getelementptr inbounds %struct.Archetype, ptr %tables_base127, i32 %arch_idx125
+  %cnt_slot129 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr128, i32 0, i32 1
+  %cur_cnt130 = load i32, ptr %cnt_slot129, align 4
+  %cap_slot131 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr128, i32 0, i32 2
+  %cur_cap132 = load i32, ptr %cap_slot131, align 4
+  %need_grow133 = icmp sge i32 %cur_cnt130, %cur_cap132
+  br i1 %need_grow133, label %bspawn_grow134, label %bspawn_cont135
 
-bspawn_grow161:                                   ; preds = %if_merge142
-  call void @world_grow_archetype(ptr %world147, i32 %arch_idx152)
-  br label %bspawn_cont162
+bspawn_grow134:                                   ; preds = %if_merge118
+  call void @world_grow_archetype(ptr %world120, i32 %arch_idx125)
+  br label %bspawn_cont135
 
-bspawn_cont162:                                   ; preds = %bspawn_grow161, %if_merge142
-  %tables_base_cont163 = load ptr, ptr %tables_slot153, align 8
-  %arch_ptr_cont164 = getelementptr inbounds %struct.Archetype, ptr %tables_base_cont163, i32 %arch_idx152
-  %cnt_slot_cont165 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont164, i32 0, i32 1
-  %row166 = load i32, ptr %cnt_slot_cont165, align 4
-  %next_cnt167 = add i32 %row166, 1
-  store i32 %next_cnt167, ptr %cnt_slot_cont165, align 4
-  %ent_slot168 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont164, i32 0, i32 3
-  %ent_raw169 = load ptr, ptr %ent_slot168, align 8
-  %ent_elem170 = getelementptr inbounds i32, ptr %ent_raw169, i32 %row166
-  store i32 %e_alloc148, ptr %ent_elem170, align 4
-  %ent_arch_slot171 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world147, i32 0, i32 5
-  %ent_arch_arr172 = load ptr, ptr %ent_arch_slot171, align 8
-  %e_arch_elem173 = getelementptr inbounds i32, ptr %ent_arch_arr172, i32 %e_alloc148
-  store i32 %arch_idx152, ptr %e_arch_elem173, align 4
-  %ent_row_slot174 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world147, i32 0, i32 6
-  %ent_row_arr175 = load ptr, ptr %ent_row_slot174, align 8
-  %e_row_elem176 = getelementptr inbounds i32, ptr %ent_row_arr175, i32 %e_alloc148
-  store i32 %row166, ptr %e_row_elem176, align 4
-  %cols_arr177 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont164, i32 0, i32 4
-  %col_slot_C01178 = getelementptr inbounds [72 x ptr], ptr %cols_arr177, i32 0, i32 1
-  %col_raw_C01179 = load ptr, ptr %col_slot_C01178, align 8
-  %elem_C01180 = getelementptr inbounds %struct.C01, ptr %col_raw_C01179, i32 %row166
-  %C01_f0_gep181 = getelementptr inbounds nuw %struct.C01, ptr %elem_C01180, i32 0, i32 0
-  store i32 55, ptr %C01_f0_gep181, align 4
-  %col_slot_C70182 = getelementptr inbounds [72 x ptr], ptr %cols_arr177, i32 0, i32 70
-  %col_raw_C70183 = load ptr, ptr %col_slot_C70182, align 8
-  %elem_C70184 = getelementptr inbounds %struct.C70, ptr %col_raw_C70183, i32 %row166
-  %C70_f0_gep185 = getelementptr inbounds nuw %struct.C70, ptr %elem_C70184, i32 0, i32 0
-  store i32 555, ptr %C70_f0_gep185, align 4
-  store i32 %e_alloc148, ptr %e_temp, align 4
-  %world186 = load ptr, ptr %world, align 8
-  %e_temp187 = load i32, ptr %e_temp, align 4
-  call void @world_despawn(ptr %world186, i32 %e_temp187)
-  %world188 = load ptr, ptr %world, align 8
-  %e_temp189 = load i32, ptr %e_temp, align 4
-  %has_C01_call190 = call i1 @world_has_C01(ptr %world188, i32 %e_temp189)
-  %world191 = load ptr, ptr %world, align 8
-  %e_temp192 = load i32, ptr %e_temp, align 4
-  %has_C70_call193 = call i1 @world_has_C70(ptr %world191, i32 %e_temp192)
-  %lor194 = or i1 %has_C01_call190, %has_C70_call193
-  br i1 %lor194, label %then195, label %if_merge196
+bspawn_cont135:                                   ; preds = %bspawn_grow134, %if_merge118
+  %tables_base_cont136 = load ptr, ptr %tables_slot126, align 8
+  %arch_ptr_cont137 = getelementptr inbounds %struct.Archetype, ptr %tables_base_cont136, i32 %arch_idx125
+  %cnt_slot_cont138 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont137, i32 0, i32 1
+  %row139 = load i32, ptr %cnt_slot_cont138, align 4
+  %next_cnt140 = add i32 %row139, 1
+  store i32 %next_cnt140, ptr %cnt_slot_cont138, align 4
+  %ent_slot141 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont137, i32 0, i32 3
+  %ent_raw142 = load ptr, ptr %ent_slot141, align 8
+  %ent_elem143 = getelementptr inbounds i32, ptr %ent_raw142, i32 %row139
+  store i32 %e_alloc121, ptr %ent_elem143, align 4
+  %ent_arch_slot144 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world120, i32 0, i32 5
+  %ent_arch_arr145 = load ptr, ptr %ent_arch_slot144, align 8
+  %e_arch_elem146 = getelementptr inbounds i32, ptr %ent_arch_arr145, i32 %e_alloc121
+  store i32 %arch_idx125, ptr %e_arch_elem146, align 4
+  %ent_row_slot147 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world120, i32 0, i32 6
+  %ent_row_arr148 = load ptr, ptr %ent_row_slot147, align 8
+  %e_row_elem149 = getelementptr inbounds i32, ptr %ent_row_arr148, i32 %e_alloc121
+  store i32 %row139, ptr %e_row_elem149, align 4
+  %cols_arr150 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont137, i32 0, i32 4
+  %col_slot_C01151 = getelementptr inbounds [72 x ptr], ptr %cols_arr150, i32 0, i32 1
+  %col_raw_C01152 = load ptr, ptr %col_slot_C01151, align 8
+  %elem_C01153 = getelementptr inbounds %struct.C01, ptr %col_raw_C01152, i32 %row139
+  %C01_f0_gep154 = getelementptr inbounds nuw %struct.C01, ptr %elem_C01153, i32 0, i32 0
+  store i32 55, ptr %C01_f0_gep154, align 4
+  %col_slot_C70155 = getelementptr inbounds [72 x ptr], ptr %cols_arr150, i32 0, i32 70
+  %col_raw_C70156 = load ptr, ptr %col_slot_C70155, align 8
+  %elem_C70157 = getelementptr inbounds %struct.C70, ptr %col_raw_C70156, i32 %row139
+  %C70_f0_gep158 = getelementptr inbounds nuw %struct.C70, ptr %elem_C70157, i32 0, i32 0
+  store i32 555, ptr %C70_f0_gep158, align 4
+  store i32 %e_alloc121, ptr %e_temp, align 4
+  %world159 = load ptr, ptr %world, align 8
+  %e_temp160 = load i32, ptr %e_temp, align 4
+  call void @world_despawn(ptr %world159, i32 %e_temp160)
+  %world161 = load ptr, ptr %world, align 8
+  %e_temp162 = load i32, ptr %e_temp, align 4
+  %has_C01_call163 = call i1 @world_has_C01(ptr %world161, i32 %e_temp162)
+  %world164 = load ptr, ptr %world, align 8
+  %e_temp165 = load i32, ptr %e_temp, align 4
+  %has_C70_call166 = call i1 @world_has_C70(ptr %world164, i32 %e_temp165)
+  %lor167 = or i1 %has_C01_call163, %has_C70_call166
+  br i1 %lor167, label %then168, label %if_merge169
 
-then195:                                          ; preds = %bspawn_cont162
-  %puts_call197 = call i32 @puts(ptr @str_lit.20)
-  %puts_exit198 = call i32 @puts(ptr @prompt_exit.21)
-  %h_stdin199 = call ptr @GetStdHandle(i32 -10)
-  %12 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin199)
-  %auto_wait_key200 = call i32 @_getch()
+then168:                                          ; preds = %bspawn_cont135
+  %puts_call170 = call i32 @puts(ptr @str_lit.11)
   ret i32 111
 
-if_merge196:                                      ; preds = %bspawn_cont162
-  %world201 = load ptr, ptr %world, align 8
-  %spawn_call202 = call i32 @world_spawn(ptr %world201)
-  store i32 %spawn_call202, ptr %root, align 4
-  %world203 = load ptr, ptr %world, align 8
-  %e_alloc204 = call i32 @world_alloc_entity(ptr %world203)
-  %spawn_mask_buf205 = alloca [2 x i64], align 8
-  %dst_spawn_w0206 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf205, i32 0, i32 0
-  store i64 1, ptr %dst_spawn_w0206, align 8
-  %dst_spawn_w1207 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf205, i32 0, i32 1
-  store i64 64, ptr %dst_spawn_w1207, align 8
-  %arch_idx208 = call i32 @world_get_or_create_archetype(ptr %world203, ptr %spawn_mask_buf205)
-  %tables_slot209 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world203, i32 0, i32 2
-  %tables_base210 = load ptr, ptr %tables_slot209, align 8
-  %arch_ptr211 = getelementptr inbounds %struct.Archetype, ptr %tables_base210, i32 %arch_idx208
-  %cnt_slot212 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr211, i32 0, i32 1
-  %cur_cnt213 = load i32, ptr %cnt_slot212, align 4
-  %cap_slot214 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr211, i32 0, i32 2
-  %cur_cap215 = load i32, ptr %cap_slot214, align 4
-  %need_grow216 = icmp sge i32 %cur_cnt213, %cur_cap215
-  br i1 %need_grow216, label %bspawn_grow217, label %bspawn_cont218
+if_merge169:                                      ; preds = %bspawn_cont135
+  %world171 = load ptr, ptr %world, align 8
+  %spawn_call172 = call i32 @world_spawn(ptr %world171)
+  store i32 %spawn_call172, ptr %root, align 4
+  %world173 = load ptr, ptr %world, align 8
+  %e_alloc174 = call i32 @world_alloc_entity(ptr %world173)
+  %spawn_mask_buf175 = alloca [2 x i64], align 8
+  %dst_spawn_w0176 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf175, i32 0, i32 0
+  store i64 1, ptr %dst_spawn_w0176, align 8
+  %dst_spawn_w1177 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf175, i32 0, i32 1
+  store i64 64, ptr %dst_spawn_w1177, align 8
+  %arch_idx178 = call i32 @world_get_or_create_archetype(ptr %world173, ptr %spawn_mask_buf175)
+  %tables_slot179 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world173, i32 0, i32 2
+  %tables_base180 = load ptr, ptr %tables_slot179, align 8
+  %arch_ptr181 = getelementptr inbounds %struct.Archetype, ptr %tables_base180, i32 %arch_idx178
+  %cnt_slot182 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr181, i32 0, i32 1
+  %cur_cnt183 = load i32, ptr %cnt_slot182, align 4
+  %cap_slot184 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr181, i32 0, i32 2
+  %cur_cap185 = load i32, ptr %cap_slot184, align 4
+  %need_grow186 = icmp sge i32 %cur_cnt183, %cur_cap185
+  br i1 %need_grow186, label %bspawn_grow187, label %bspawn_cont188
 
-bspawn_grow217:                                   ; preds = %if_merge196
-  call void @world_grow_archetype(ptr %world203, i32 %arch_idx208)
-  br label %bspawn_cont218
+bspawn_grow187:                                   ; preds = %if_merge169
+  call void @world_grow_archetype(ptr %world173, i32 %arch_idx178)
+  br label %bspawn_cont188
 
-bspawn_cont218:                                   ; preds = %bspawn_grow217, %if_merge196
-  %tables_base_cont219 = load ptr, ptr %tables_slot209, align 8
-  %arch_ptr_cont220 = getelementptr inbounds %struct.Archetype, ptr %tables_base_cont219, i32 %arch_idx208
-  %cnt_slot_cont221 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont220, i32 0, i32 1
-  %row222 = load i32, ptr %cnt_slot_cont221, align 4
-  %next_cnt223 = add i32 %row222, 1
-  store i32 %next_cnt223, ptr %cnt_slot_cont221, align 4
-  %ent_slot224 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont220, i32 0, i32 3
-  %ent_raw225 = load ptr, ptr %ent_slot224, align 8
-  %ent_elem226 = getelementptr inbounds i32, ptr %ent_raw225, i32 %row222
-  store i32 %e_alloc204, ptr %ent_elem226, align 4
-  %ent_arch_slot227 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world203, i32 0, i32 5
-  %ent_arch_arr228 = load ptr, ptr %ent_arch_slot227, align 8
-  %e_arch_elem229 = getelementptr inbounds i32, ptr %ent_arch_arr228, i32 %e_alloc204
-  store i32 %arch_idx208, ptr %e_arch_elem229, align 4
-  %ent_row_slot230 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world203, i32 0, i32 6
-  %ent_row_arr231 = load ptr, ptr %ent_row_slot230, align 8
-  %e_row_elem232 = getelementptr inbounds i32, ptr %ent_row_arr231, i32 %e_alloc204
-  store i32 %row222, ptr %e_row_elem232, align 4
-  %cols_arr233 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont220, i32 0, i32 4
-  %col_slot_ChildOf = getelementptr inbounds [72 x ptr], ptr %cols_arr233, i32 0, i32 0
+bspawn_cont188:                                   ; preds = %bspawn_grow187, %if_merge169
+  %tables_base_cont189 = load ptr, ptr %tables_slot179, align 8
+  %arch_ptr_cont190 = getelementptr inbounds %struct.Archetype, ptr %tables_base_cont189, i32 %arch_idx178
+  %cnt_slot_cont191 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont190, i32 0, i32 1
+  %row192 = load i32, ptr %cnt_slot_cont191, align 4
+  %next_cnt193 = add i32 %row192, 1
+  store i32 %next_cnt193, ptr %cnt_slot_cont191, align 4
+  %ent_slot194 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont190, i32 0, i32 3
+  %ent_raw195 = load ptr, ptr %ent_slot194, align 8
+  %ent_elem196 = getelementptr inbounds i32, ptr %ent_raw195, i32 %row192
+  store i32 %e_alloc174, ptr %ent_elem196, align 4
+  %ent_arch_slot197 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world173, i32 0, i32 5
+  %ent_arch_arr198 = load ptr, ptr %ent_arch_slot197, align 8
+  %e_arch_elem199 = getelementptr inbounds i32, ptr %ent_arch_arr198, i32 %e_alloc174
+  store i32 %arch_idx178, ptr %e_arch_elem199, align 4
+  %ent_row_slot200 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world173, i32 0, i32 6
+  %ent_row_arr201 = load ptr, ptr %ent_row_slot200, align 8
+  %e_row_elem202 = getelementptr inbounds i32, ptr %ent_row_arr201, i32 %e_alloc174
+  store i32 %row192, ptr %e_row_elem202, align 4
+  %cols_arr203 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont190, i32 0, i32 4
+  %col_slot_ChildOf = getelementptr inbounds [72 x ptr], ptr %cols_arr203, i32 0, i32 0
   %col_raw_ChildOf = load ptr, ptr %col_slot_ChildOf, align 8
-  %elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %col_raw_ChildOf, i32 %row222
+  %elem_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %col_raw_ChildOf, i32 %row192
   %ChildOf_f0_gep = getelementptr inbounds nuw %struct.ChildOf, ptr %elem_ChildOf, i32 0, i32 0
   store i32 -1, ptr %ChildOf_f0_gep, align 4
-  %col_slot_C70234 = getelementptr inbounds [72 x ptr], ptr %cols_arr233, i32 0, i32 70
-  %col_raw_C70235 = load ptr, ptr %col_slot_C70234, align 8
-  %elem_C70236 = getelementptr inbounds %struct.C70, ptr %col_raw_C70235, i32 %row222
-  %C70_f0_gep237 = getelementptr inbounds nuw %struct.C70, ptr %elem_C70236, i32 0, i32 0
-  store i32 2000, ptr %C70_f0_gep237, align 4
-  store i32 %e_alloc204, ptr %child, align 4
-  %world238 = load ptr, ptr %world, align 8
-  %e_alloc239 = call i32 @world_alloc_entity(ptr %world238)
-  %spawn_mask_buf240 = alloca [2 x i64], align 8
-  %dst_spawn_w0241 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf240, i32 0, i32 0
-  store i64 1, ptr %dst_spawn_w0241, align 8
-  %dst_spawn_w1242 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf240, i32 0, i32 1
-  store i64 64, ptr %dst_spawn_w1242, align 8
-  %arch_idx243 = call i32 @world_get_or_create_archetype(ptr %world238, ptr %spawn_mask_buf240)
-  %tables_slot244 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world238, i32 0, i32 2
-  %tables_base245 = load ptr, ptr %tables_slot244, align 8
-  %arch_ptr246 = getelementptr inbounds %struct.Archetype, ptr %tables_base245, i32 %arch_idx243
-  %cnt_slot247 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr246, i32 0, i32 1
-  %cur_cnt248 = load i32, ptr %cnt_slot247, align 4
-  %cap_slot249 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr246, i32 0, i32 2
-  %cur_cap250 = load i32, ptr %cap_slot249, align 4
-  %need_grow251 = icmp sge i32 %cur_cnt248, %cur_cap250
-  br i1 %need_grow251, label %bspawn_grow252, label %bspawn_cont253
+  %col_slot_C70204 = getelementptr inbounds [72 x ptr], ptr %cols_arr203, i32 0, i32 70
+  %col_raw_C70205 = load ptr, ptr %col_slot_C70204, align 8
+  %elem_C70206 = getelementptr inbounds %struct.C70, ptr %col_raw_C70205, i32 %row192
+  %C70_f0_gep207 = getelementptr inbounds nuw %struct.C70, ptr %elem_C70206, i32 0, i32 0
+  store i32 2000, ptr %C70_f0_gep207, align 4
+  store i32 %e_alloc174, ptr %child, align 4
+  %world208 = load ptr, ptr %world, align 8
+  %e_alloc209 = call i32 @world_alloc_entity(ptr %world208)
+  %spawn_mask_buf210 = alloca [2 x i64], align 8
+  %dst_spawn_w0211 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf210, i32 0, i32 0
+  store i64 1, ptr %dst_spawn_w0211, align 8
+  %dst_spawn_w1212 = getelementptr inbounds [2 x i64], ptr %spawn_mask_buf210, i32 0, i32 1
+  store i64 64, ptr %dst_spawn_w1212, align 8
+  %arch_idx213 = call i32 @world_get_or_create_archetype(ptr %world208, ptr %spawn_mask_buf210)
+  %tables_slot214 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world208, i32 0, i32 2
+  %tables_base215 = load ptr, ptr %tables_slot214, align 8
+  %arch_ptr216 = getelementptr inbounds %struct.Archetype, ptr %tables_base215, i32 %arch_idx213
+  %cnt_slot217 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr216, i32 0, i32 1
+  %cur_cnt218 = load i32, ptr %cnt_slot217, align 4
+  %cap_slot219 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr216, i32 0, i32 2
+  %cur_cap220 = load i32, ptr %cap_slot219, align 4
+  %need_grow221 = icmp sge i32 %cur_cnt218, %cur_cap220
+  br i1 %need_grow221, label %bspawn_grow222, label %bspawn_cont223
 
-bspawn_grow252:                                   ; preds = %bspawn_cont218
-  call void @world_grow_archetype(ptr %world238, i32 %arch_idx243)
-  br label %bspawn_cont253
+bspawn_grow222:                                   ; preds = %bspawn_cont188
+  call void @world_grow_archetype(ptr %world208, i32 %arch_idx213)
+  br label %bspawn_cont223
 
-bspawn_cont253:                                   ; preds = %bspawn_grow252, %bspawn_cont218
-  %tables_base_cont254 = load ptr, ptr %tables_slot244, align 8
-  %arch_ptr_cont255 = getelementptr inbounds %struct.Archetype, ptr %tables_base_cont254, i32 %arch_idx243
-  %cnt_slot_cont256 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont255, i32 0, i32 1
-  %row257 = load i32, ptr %cnt_slot_cont256, align 4
-  %next_cnt258 = add i32 %row257, 1
-  store i32 %next_cnt258, ptr %cnt_slot_cont256, align 4
-  %ent_slot259 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont255, i32 0, i32 3
-  %ent_raw260 = load ptr, ptr %ent_slot259, align 8
-  %ent_elem261 = getelementptr inbounds i32, ptr %ent_raw260, i32 %row257
-  store i32 %e_alloc239, ptr %ent_elem261, align 4
-  %ent_arch_slot262 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world238, i32 0, i32 5
-  %ent_arch_arr263 = load ptr, ptr %ent_arch_slot262, align 8
-  %e_arch_elem264 = getelementptr inbounds i32, ptr %ent_arch_arr263, i32 %e_alloc239
-  store i32 %arch_idx243, ptr %e_arch_elem264, align 4
-  %ent_row_slot265 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world238, i32 0, i32 6
-  %ent_row_arr266 = load ptr, ptr %ent_row_slot265, align 8
-  %e_row_elem267 = getelementptr inbounds i32, ptr %ent_row_arr266, i32 %e_alloc239
-  store i32 %row257, ptr %e_row_elem267, align 4
-  %cols_arr268 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont255, i32 0, i32 4
-  %col_slot_ChildOf269 = getelementptr inbounds [72 x ptr], ptr %cols_arr268, i32 0, i32 0
-  %col_raw_ChildOf270 = load ptr, ptr %col_slot_ChildOf269, align 8
-  %elem_ChildOf271 = getelementptr inbounds %struct.ChildOf, ptr %col_raw_ChildOf270, i32 %row257
-  %ChildOf_f0_gep272 = getelementptr inbounds nuw %struct.ChildOf, ptr %elem_ChildOf271, i32 0, i32 0
-  store i32 -1, ptr %ChildOf_f0_gep272, align 4
-  %col_slot_C70273 = getelementptr inbounds [72 x ptr], ptr %cols_arr268, i32 0, i32 70
-  %col_raw_C70274 = load ptr, ptr %col_slot_C70273, align 8
-  %elem_C70275 = getelementptr inbounds %struct.C70, ptr %col_raw_C70274, i32 %row257
-  %C70_f0_gep276 = getelementptr inbounds nuw %struct.C70, ptr %elem_C70275, i32 0, i32 0
-  store i32 1000, ptr %C70_f0_gep276, align 4
-  store i32 %e_alloc239, ptr %parent, align 4
-  %world277 = load ptr, ptr %world, align 8
-  %child278 = load i32, ptr %child, align 4
-  %parent279 = load i32, ptr %parent, align 4
-  call void @world_set_ChildOf(ptr %world277, i32 %child278, i32 %parent279)
-  %world280 = load ptr, ptr %world, align 8
-  call void @pipeline_CanaryPipeline(ptr %world280)
-  %world281 = load ptr, ptr %world, align 8
-  %res_CanaryStats_ptr = getelementptr inbounds nuw %struct.EcsWorld, ptr %world281, i32 0, i32 12
+bspawn_cont223:                                   ; preds = %bspawn_grow222, %bspawn_cont188
+  %tables_base_cont224 = load ptr, ptr %tables_slot214, align 8
+  %arch_ptr_cont225 = getelementptr inbounds %struct.Archetype, ptr %tables_base_cont224, i32 %arch_idx213
+  %cnt_slot_cont226 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont225, i32 0, i32 1
+  %row227 = load i32, ptr %cnt_slot_cont226, align 4
+  %next_cnt228 = add i32 %row227, 1
+  store i32 %next_cnt228, ptr %cnt_slot_cont226, align 4
+  %ent_slot229 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont225, i32 0, i32 3
+  %ent_raw230 = load ptr, ptr %ent_slot229, align 8
+  %ent_elem231 = getelementptr inbounds i32, ptr %ent_raw230, i32 %row227
+  store i32 %e_alloc209, ptr %ent_elem231, align 4
+  %ent_arch_slot232 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world208, i32 0, i32 5
+  %ent_arch_arr233 = load ptr, ptr %ent_arch_slot232, align 8
+  %e_arch_elem234 = getelementptr inbounds i32, ptr %ent_arch_arr233, i32 %e_alloc209
+  store i32 %arch_idx213, ptr %e_arch_elem234, align 4
+  %ent_row_slot235 = getelementptr inbounds nuw %struct.EcsWorld, ptr %world208, i32 0, i32 6
+  %ent_row_arr236 = load ptr, ptr %ent_row_slot235, align 8
+  %e_row_elem237 = getelementptr inbounds i32, ptr %ent_row_arr236, i32 %e_alloc209
+  store i32 %row227, ptr %e_row_elem237, align 4
+  %cols_arr238 = getelementptr inbounds nuw %struct.Archetype, ptr %arch_ptr_cont225, i32 0, i32 4
+  %col_slot_ChildOf239 = getelementptr inbounds [72 x ptr], ptr %cols_arr238, i32 0, i32 0
+  %col_raw_ChildOf240 = load ptr, ptr %col_slot_ChildOf239, align 8
+  %elem_ChildOf241 = getelementptr inbounds %struct.ChildOf, ptr %col_raw_ChildOf240, i32 %row227
+  %ChildOf_f0_gep242 = getelementptr inbounds nuw %struct.ChildOf, ptr %elem_ChildOf241, i32 0, i32 0
+  store i32 -1, ptr %ChildOf_f0_gep242, align 4
+  %col_slot_C70243 = getelementptr inbounds [72 x ptr], ptr %cols_arr238, i32 0, i32 70
+  %col_raw_C70244 = load ptr, ptr %col_slot_C70243, align 8
+  %elem_C70245 = getelementptr inbounds %struct.C70, ptr %col_raw_C70244, i32 %row227
+  %C70_f0_gep246 = getelementptr inbounds nuw %struct.C70, ptr %elem_C70245, i32 0, i32 0
+  store i32 1000, ptr %C70_f0_gep246, align 4
+  store i32 %e_alloc209, ptr %parent, align 4
+  %world247 = load ptr, ptr %world, align 8
+  %child248 = load i32, ptr %child, align 4
+  %parent249 = load i32, ptr %parent, align 4
+  call void @world_set_ChildOf(ptr %world247, i32 %child248, i32 %parent249)
+  %world250 = load ptr, ptr %world, align 8
+  call void @pipeline_CanaryPipeline(ptr %world250)
+  %world251 = load ptr, ptr %world, align 8
+  %res_CanaryStats_ptr = getelementptr inbounds nuw %struct.EcsWorld, ptr %world251, i32 0, i32 12
   %res_CanaryStats_val = load %struct.res.CanaryStats, ptr %res_CanaryStats_ptr, align 4
   store %struct.res.CanaryStats %res_CanaryStats_val, ptr %stats, align 4
   %world_wptr = load ptr, ptr %world, align 8
   %stats_query_matches = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 0
   %query_matches_val = load i32, ptr %stats_query_matches, align 4
   %str_i32 = call ptr @rt_to_string_i32(ptr %world_wptr, i32 %query_matches_val)
-  %world_wptr282 = load ptr, ptr %world, align 8
-  %str_add = call ptr @rt_str_concat(ptr %world_wptr282, ptr @str_lit.22, ptr %str_i32)
-  %puts_call283 = call i32 @puts(ptr %str_add)
-  %world_wptr284 = load ptr, ptr %world, align 8
+  %world_wptr252 = load ptr, ptr %world, align 8
+  %str_add = call ptr @rt_str_concat(ptr %world_wptr252, ptr @str_lit.12, ptr %str_i32)
+  %puts_call253 = call i32 @puts(ptr %str_add)
+  %world_wptr254 = load ptr, ptr %world, align 8
   %stats_query_sum = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 1
   %query_sum_val = load i32, ptr %stats_query_sum, align 4
-  %str_i32285 = call ptr @rt_to_string_i32(ptr %world_wptr284, i32 %query_sum_val)
-  %world_wptr286 = load ptr, ptr %world, align 8
-  %str_add287 = call ptr @rt_str_concat(ptr %world_wptr286, ptr @str_lit.23, ptr %str_i32285)
-  %puts_call288 = call i32 @puts(ptr %str_add287)
-  %world_wptr289 = load ptr, ptr %world, align 8
+  %str_i32255 = call ptr @rt_to_string_i32(ptr %world_wptr254, i32 %query_sum_val)
+  %world_wptr256 = load ptr, ptr %world, align 8
+  %str_add257 = call ptr @rt_str_concat(ptr %world_wptr256, ptr @str_lit.13, ptr %str_i32255)
+  %puts_call258 = call i32 @puts(ptr %str_add257)
+  %world_wptr259 = load ptr, ptr %world, align 8
   %stats_hierarchy_parent_seen = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 2
   %hierarchy_parent_seen_val = load i32, ptr %stats_hierarchy_parent_seen, align 4
-  %str_i32290 = call ptr @rt_to_string_i32(ptr %world_wptr289, i32 %hierarchy_parent_seen_val)
-  %world_wptr291 = load ptr, ptr %world, align 8
-  %str_add292 = call ptr @rt_str_concat(ptr %world_wptr291, ptr @str_lit.24, ptr %str_i32290)
-  %puts_call293 = call i32 @puts(ptr %str_add292)
-  %world_wptr294 = load ptr, ptr %world, align 8
+  %str_i32260 = call ptr @rt_to_string_i32(ptr %world_wptr259, i32 %hierarchy_parent_seen_val)
+  %world_wptr261 = load ptr, ptr %world, align 8
+  %str_add262 = call ptr @rt_str_concat(ptr %world_wptr261, ptr @str_lit.14, ptr %str_i32260)
+  %puts_call263 = call i32 @puts(ptr %str_add262)
+  %world_wptr264 = load ptr, ptr %world, align 8
   %stats_hierarchy_child_seen = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 3
   %hierarchy_child_seen_val = load i32, ptr %stats_hierarchy_child_seen, align 4
-  %str_i32295 = call ptr @rt_to_string_i32(ptr %world_wptr294, i32 %hierarchy_child_seen_val)
-  %world_wptr296 = load ptr, ptr %world, align 8
-  %str_add297 = call ptr @rt_str_concat(ptr %world_wptr296, ptr @str_lit.25, ptr %str_i32295)
-  %puts_call298 = call i32 @puts(ptr %str_add297)
-  %world_wptr299 = load ptr, ptr %world, align 8
+  %str_i32265 = call ptr @rt_to_string_i32(ptr %world_wptr264, i32 %hierarchy_child_seen_val)
+  %world_wptr266 = load ptr, ptr %world, align 8
+  %str_add267 = call ptr @rt_str_concat(ptr %world_wptr266, ptr @str_lit.15, ptr %str_i32265)
+  %puts_call268 = call i32 @puts(ptr %str_add267)
+  %world_wptr269 = load ptr, ptr %world, align 8
   %stats_hierarchy_order_correct = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 4
   %hierarchy_order_correct_val = load i32, ptr %stats_hierarchy_order_correct, align 4
-  %str_i32300 = call ptr @rt_to_string_i32(ptr %world_wptr299, i32 %hierarchy_order_correct_val)
-  %world_wptr301 = load ptr, ptr %world, align 8
-  %str_add302 = call ptr @rt_str_concat(ptr %world_wptr301, ptr @str_lit.26, ptr %str_i32300)
-  %puts_call303 = call i32 @puts(ptr %str_add302)
-  %stats_query_matches304 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 0
-  %query_matches_val305 = load i32, ptr %stats_query_matches304, align 4
-  %ne = icmp ne i32 %query_matches_val305, 2
-  br i1 %ne, label %then306, label %if_merge307
+  %str_i32270 = call ptr @rt_to_string_i32(ptr %world_wptr269, i32 %hierarchy_order_correct_val)
+  %world_wptr271 = load ptr, ptr %world, align 8
+  %str_add272 = call ptr @rt_str_concat(ptr %world_wptr271, ptr @str_lit.16, ptr %str_i32270)
+  %puts_call273 = call i32 @puts(ptr %str_add272)
+  %stats_query_matches274 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 0
+  %query_matches_val275 = load i32, ptr %stats_query_matches274, align 4
+  %ne = icmp ne i32 %query_matches_val275, 2
+  br i1 %ne, label %then276, label %if_merge277
 
-then306:                                          ; preds = %bspawn_cont253
-  %world_wptr308 = load ptr, ptr %world, align 8
-  %stats_query_matches309 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 0
-  %query_matches_val310 = load i32, ptr %stats_query_matches309, align 4
-  %str_i32311 = call ptr @rt_to_string_i32(ptr %world_wptr308, i32 %query_matches_val310)
-  %world_wptr312 = load ptr, ptr %world, align 8
-  %str_add313 = call ptr @rt_str_concat(ptr %world_wptr312, ptr @str_lit.27, ptr %str_i32311)
-  %puts_call314 = call i32 @puts(ptr %str_add313)
-  %puts_exit315 = call i32 @puts(ptr @prompt_exit.28)
-  %h_stdin316 = call ptr @GetStdHandle(i32 -10)
-  %13 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin316)
-  %auto_wait_key317 = call i32 @_getch()
+then276:                                          ; preds = %bspawn_cont223
+  %world_wptr278 = load ptr, ptr %world, align 8
+  %stats_query_matches279 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 0
+  %query_matches_val280 = load i32, ptr %stats_query_matches279, align 4
+  %str_i32281 = call ptr @rt_to_string_i32(ptr %world_wptr278, i32 %query_matches_val280)
+  %world_wptr282 = load ptr, ptr %world, align 8
+  %str_add283 = call ptr @rt_str_concat(ptr %world_wptr282, ptr @str_lit.17, ptr %str_i32281)
+  %puts_call284 = call i32 @puts(ptr %str_add283)
   ret i32 1
 
-if_merge307:                                      ; preds = %bspawn_cont253
-  %stats_query_sum318 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 1
-  %query_sum_val319 = load i32, ptr %stats_query_sum318, align 4
-  %ne320 = icmp ne i32 %query_sum_val319, 1420
-  br i1 %ne320, label %then321, label %if_merge322
+if_merge277:                                      ; preds = %bspawn_cont223
+  %stats_query_sum285 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 1
+  %query_sum_val286 = load i32, ptr %stats_query_sum285, align 4
+  %ne287 = icmp ne i32 %query_sum_val286, 1420
+  br i1 %ne287, label %then288, label %if_merge289
 
-then321:                                          ; preds = %if_merge307
-  %world_wptr323 = load ptr, ptr %world, align 8
-  %stats_query_sum324 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 1
-  %query_sum_val325 = load i32, ptr %stats_query_sum324, align 4
-  %str_i32326 = call ptr @rt_to_string_i32(ptr %world_wptr323, i32 %query_sum_val325)
-  %world_wptr327 = load ptr, ptr %world, align 8
-  %str_add328 = call ptr @rt_str_concat(ptr %world_wptr327, ptr @str_lit.29, ptr %str_i32326)
-  %puts_call329 = call i32 @puts(ptr %str_add328)
-  %puts_exit330 = call i32 @puts(ptr @prompt_exit.30)
-  %h_stdin331 = call ptr @GetStdHandle(i32 -10)
-  %14 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin331)
-  %auto_wait_key332 = call i32 @_getch()
+then288:                                          ; preds = %if_merge277
+  %world_wptr290 = load ptr, ptr %world, align 8
+  %stats_query_sum291 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 1
+  %query_sum_val292 = load i32, ptr %stats_query_sum291, align 4
+  %str_i32293 = call ptr @rt_to_string_i32(ptr %world_wptr290, i32 %query_sum_val292)
+  %world_wptr294 = load ptr, ptr %world, align 8
+  %str_add295 = call ptr @rt_str_concat(ptr %world_wptr294, ptr @str_lit.18, ptr %str_i32293)
+  %puts_call296 = call i32 @puts(ptr %str_add295)
   ret i32 2
 
-if_merge322:                                      ; preds = %if_merge307
-  %stats_hierarchy_parent_seen333 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 2
-  %hierarchy_parent_seen_val334 = load i32, ptr %stats_hierarchy_parent_seen333, align 4
-  %ne335 = icmp ne i32 %hierarchy_parent_seen_val334, 1
-  br i1 %ne335, label %then336, label %if_merge337
+if_merge289:                                      ; preds = %if_merge277
+  %stats_hierarchy_parent_seen297 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 2
+  %hierarchy_parent_seen_val298 = load i32, ptr %stats_hierarchy_parent_seen297, align 4
+  %ne299 = icmp ne i32 %hierarchy_parent_seen_val298, 1
+  br i1 %ne299, label %then300, label %if_merge301
 
-then336:                                          ; preds = %if_merge322
-  %world_wptr338 = load ptr, ptr %world, align 8
-  %stats_hierarchy_parent_seen339 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 2
-  %hierarchy_parent_seen_val340 = load i32, ptr %stats_hierarchy_parent_seen339, align 4
-  %str_i32341 = call ptr @rt_to_string_i32(ptr %world_wptr338, i32 %hierarchy_parent_seen_val340)
-  %world_wptr342 = load ptr, ptr %world, align 8
-  %str_add343 = call ptr @rt_str_concat(ptr %world_wptr342, ptr @str_lit.31, ptr %str_i32341)
-  %puts_call344 = call i32 @puts(ptr %str_add343)
-  %puts_exit345 = call i32 @puts(ptr @prompt_exit.32)
-  %h_stdin346 = call ptr @GetStdHandle(i32 -10)
-  %15 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin346)
-  %auto_wait_key347 = call i32 @_getch()
+then300:                                          ; preds = %if_merge289
+  %world_wptr302 = load ptr, ptr %world, align 8
+  %stats_hierarchy_parent_seen303 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 2
+  %hierarchy_parent_seen_val304 = load i32, ptr %stats_hierarchy_parent_seen303, align 4
+  %str_i32305 = call ptr @rt_to_string_i32(ptr %world_wptr302, i32 %hierarchy_parent_seen_val304)
+  %world_wptr306 = load ptr, ptr %world, align 8
+  %str_add307 = call ptr @rt_str_concat(ptr %world_wptr306, ptr @str_lit.19, ptr %str_i32305)
+  %puts_call308 = call i32 @puts(ptr %str_add307)
   ret i32 3
 
-if_merge337:                                      ; preds = %if_merge322
-  %stats_hierarchy_child_seen348 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 3
-  %hierarchy_child_seen_val349 = load i32, ptr %stats_hierarchy_child_seen348, align 4
-  %ne350 = icmp ne i32 %hierarchy_child_seen_val349, 1
-  br i1 %ne350, label %then351, label %if_merge352
+if_merge301:                                      ; preds = %if_merge289
+  %stats_hierarchy_child_seen309 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 3
+  %hierarchy_child_seen_val310 = load i32, ptr %stats_hierarchy_child_seen309, align 4
+  %ne311 = icmp ne i32 %hierarchy_child_seen_val310, 1
+  br i1 %ne311, label %then312, label %if_merge313
 
-then351:                                          ; preds = %if_merge337
-  %world_wptr353 = load ptr, ptr %world, align 8
-  %stats_hierarchy_child_seen354 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 3
-  %hierarchy_child_seen_val355 = load i32, ptr %stats_hierarchy_child_seen354, align 4
-  %str_i32356 = call ptr @rt_to_string_i32(ptr %world_wptr353, i32 %hierarchy_child_seen_val355)
-  %world_wptr357 = load ptr, ptr %world, align 8
-  %str_add358 = call ptr @rt_str_concat(ptr %world_wptr357, ptr @str_lit.33, ptr %str_i32356)
-  %puts_call359 = call i32 @puts(ptr %str_add358)
-  %puts_exit360 = call i32 @puts(ptr @prompt_exit.34)
-  %h_stdin361 = call ptr @GetStdHandle(i32 -10)
-  %16 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin361)
-  %auto_wait_key362 = call i32 @_getch()
+then312:                                          ; preds = %if_merge301
+  %world_wptr314 = load ptr, ptr %world, align 8
+  %stats_hierarchy_child_seen315 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 3
+  %hierarchy_child_seen_val316 = load i32, ptr %stats_hierarchy_child_seen315, align 4
+  %str_i32317 = call ptr @rt_to_string_i32(ptr %world_wptr314, i32 %hierarchy_child_seen_val316)
+  %world_wptr318 = load ptr, ptr %world, align 8
+  %str_add319 = call ptr @rt_str_concat(ptr %world_wptr318, ptr @str_lit.20, ptr %str_i32317)
+  %puts_call320 = call i32 @puts(ptr %str_add319)
   ret i32 4
 
-if_merge352:                                      ; preds = %if_merge337
-  %stats_hierarchy_order_correct363 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 4
-  %hierarchy_order_correct_val364 = load i32, ptr %stats_hierarchy_order_correct363, align 4
-  %ne365 = icmp ne i32 %hierarchy_order_correct_val364, 1
-  br i1 %ne365, label %then366, label %if_merge367
+if_merge313:                                      ; preds = %if_merge301
+  %stats_hierarchy_order_correct321 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 4
+  %hierarchy_order_correct_val322 = load i32, ptr %stats_hierarchy_order_correct321, align 4
+  %ne323 = icmp ne i32 %hierarchy_order_correct_val322, 1
+  br i1 %ne323, label %then324, label %if_merge325
 
-then366:                                          ; preds = %if_merge352
-  %world_wptr368 = load ptr, ptr %world, align 8
-  %stats_hierarchy_order_correct369 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 4
-  %hierarchy_order_correct_val370 = load i32, ptr %stats_hierarchy_order_correct369, align 4
-  %str_i32371 = call ptr @rt_to_string_i32(ptr %world_wptr368, i32 %hierarchy_order_correct_val370)
-  %world_wptr372 = load ptr, ptr %world, align 8
-  %str_add373 = call ptr @rt_str_concat(ptr %world_wptr372, ptr @str_lit.35, ptr %str_i32371)
-  %puts_call374 = call i32 @puts(ptr %str_add373)
-  %puts_exit375 = call i32 @puts(ptr @prompt_exit.36)
-  %h_stdin376 = call ptr @GetStdHandle(i32 -10)
-  %17 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin376)
-  %auto_wait_key377 = call i32 @_getch()
+then324:                                          ; preds = %if_merge313
+  %world_wptr326 = load ptr, ptr %world, align 8
+  %stats_hierarchy_order_correct327 = getelementptr inbounds nuw %struct.res.CanaryStats, ptr %stats, i32 0, i32 4
+  %hierarchy_order_correct_val328 = load i32, ptr %stats_hierarchy_order_correct327, align 4
+  %str_i32329 = call ptr @rt_to_string_i32(ptr %world_wptr326, i32 %hierarchy_order_correct_val328)
+  %world_wptr330 = load ptr, ptr %world, align 8
+  %str_add331 = call ptr @rt_str_concat(ptr %world_wptr330, ptr @str_lit.21, ptr %str_i32329)
+  %puts_call332 = call i32 @puts(ptr %str_add331)
   ret i32 5
 
-if_merge367:                                      ; preds = %if_merge352
-  %puts_call378 = call i32 @puts(ptr @str_lit.37)
-  %puts_exit379 = call i32 @puts(ptr @prompt_exit.38)
-  %h_stdin380 = call ptr @GetStdHandle(i32 -10)
-  %18 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin380)
-  %auto_wait_key381 = call i32 @_getch()
+if_merge325:                                      ; preds = %if_merge313
+  %puts_call333 = call i32 @puts(ptr @str_lit.22)
   ret i32 0
 }
 
@@ -42116,10 +42031,6 @@ entry:
 declare i32 @SetConsoleOutputCP(i32)
 
 declare i32 @SetConsoleCP(i32)
-
-declare ptr @GetStdHandle(i32)
-
-declare i32 @FlushConsoleInputBuffer(ptr)
 
 define ptr @rt_to_string_i32(ptr %0, i32 %1) {
 entry:

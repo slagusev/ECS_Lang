@@ -283,7 +283,7 @@ public sealed partial class LlvmCodeGenerator
                     break;
 
                 case ReturnStatement retStmt:
-                    if (isMain && !hasWaitKey && !_options.NoWaitOnExit && !_options.IsRelease)
+                    if (isMain && !hasWaitKey && _options.PauseOnExit)
                     {
                         var msg = builder.BuildGlobalStringPtr("Press any key to exit...", "prompt_exit");
                         builder.BuildCall2(putsType, putsFunc, new[] { msg }, "puts_exit");

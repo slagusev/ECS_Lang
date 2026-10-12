@@ -78,7 +78,6 @@ target triple = "x86_64-pc-windows-msvc"
 @str_lit.14 = private unnamed_addr constant [12 x i8] c") as i32 = \00", align 1
 @str_lit.15 = private unnamed_addr constant [23 x i8] c"Chained cast result = \00", align 1
 @str_lit.16 = private unnamed_addr constant [37 x i8] c"--- Testing ECS World with Casts ---\00", align 1
-@prompt_exit = private unnamed_addr constant [25 x i8] c"Press any key to exit...\00", align 1
 
 declare i32 @puts(ptr)
 
@@ -3065,10 +3064,6 @@ entry:
   %1 = call i32 @SetConsoleCP(i32 65001)
   %test_primitive_casts_call = call i32 @test_primitive_casts()
   %test_ecs_world_casts_call = call i32 @test_ecs_world_casts()
-  %puts_exit = call i32 @puts(ptr @prompt_exit)
-  %h_stdin = call ptr @GetStdHandle(i32 -10)
-  %2 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin)
-  %auto_wait_key = call i32 @_getch()
   ret i32 0
 }
 
@@ -3357,9 +3352,5 @@ entry:
 declare i32 @SetConsoleOutputCP(i32)
 
 declare i32 @SetConsoleCP(i32)
-
-declare ptr @GetStdHandle(i32)
-
-declare i32 @FlushConsoleInputBuffer(ptr)
 
 attributes #0 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }
