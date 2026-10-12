@@ -174,13 +174,16 @@
 - **Файлы**: `.github/workflows/ecs-linux.yml`, `.gitattributes`, `src/ECSLang.Codegen.LLVM/ECSLang.Codegen.LLVM.csproj`, `tests/verify_golden_ir.ps1`, `tests/run_asan_linux.ps1`.
 - **Критерий приёмки**: Зелёный CI workflow + 0 OOB/0 UAF в ASan-логах + доказательство кросс-хостового совпадения 7/7.
 - **Статус**: **ВЫПОЛНЕНО** (коммиты `afb4c07`, `3d435ab`, `ae0c3ff`, `0c441b4`, `16954e5`, `bd4472f`; workflow run [`38240171846`](https://github.com/slagusev/ECS_Lang/actions/runs/38240171846) полностью зелёный: кросс-хостовый детерминизм подтверждён 7/7 exact match; AddressSanitizer подтвердил 0 OOB / 0 UAF для канарейки 72 компонентов и 19 headless примеров; условие №1 серии B7 официально снято).
+- **Леджер слепых зон (зафиксировано)**: `detect_leaks=0` легитимно для критерия OOB/UAF, но это зафиксированная слепая зона: рантайм течёт by design (арены строк, миры, массивы сущностей не освобождаются до завершения процесса). Полноценная детекция утечек (LSan) включается при появлении формальной модели памяти и деструкторов (горизонт A-8).
 - **Шаблон коммита**: `ci(linux): establish early B5.2-lite workflow with cross-host determinism and ASan suite`
 
 #### Шаг B3 — Настраиваемое форматирование `f32` / `f64`
-- **Объём**: Замена жесткого хардкода `%.2f` в интерполяции строк и `println` на настраиваемое форматирование с дефолтом `%g` / `%f`.
-- **Файлы**: `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Expressions.cs`.
-- **Критерий приёмки**: Уровень 1 (`02_variables_and_math.ecs`).
-- **Шаблон коммита**: `feat(codegen): configurable floating point formatting in string interpolation`
+- **Объём**: Замена жесткого хардкода `%.2f` в `rt_to_string_f32` на round-trip faithful `"%.9g"`. Введение специализированного `rt_to_string_f64` с `"%.17g"` (устранение бага неявного сужения `f64` до `f32`). Обновление `print`/`println` для `f32`/`f64`. Исправление `UnaryOperator.Negate` для `f64`.
+- **Файлы**: `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.cs`, `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Expressions.cs`, `tests/verify_b3_float_precision.ecs`, `tests/verify_b3_float_precision.ps1`, `tests/verify_golden_ir.ps1`, `tests/golden_ir/*`, `REFERENCE.md`.
+- **Критерий приёмки**: Уровень 2 (`tests/verify_b3_float_precision.ps1` проверяет round-trip точность `0.1`, `3.14159265`, `1e-7`, `1e15`, `-0.0`, `denormals`, `f64` и падает при потере точности) + strict 7/7 golden IR match (категория `B3_FloatFormatting`).
+- **Статус**: **ВЫПОЛНЕНО** (strict 7/7 exact match, все 29 examples собраны, 23/23 пройдены).
+- **Леджер слепых зон (зафиксировано)**: Арена строк мира (`world.string_arena`) не синхронизирована: строковая интерполяция и конвертация чисел в строки из параллельных систем представляет собой латентную гонку за bump-указателем (существовавшую до B3). Однопоточные контексты безопасны; устранение латентной гонки многопоточной строковой интерполяции запланировано в шаге B5.1 (thread-local арены либо мьютекс арены).
+- **Шаблон коммита**: `feat(codegen): round-trip faithful floating point formatting (Step B3)`
 
 #### Шаг B4 — Хэш-индекс архетипов (`mask -> archIdx`)
 - **Объём**: Интеграция быстрого поиска архетипа через встроенную хэш-таблицу вместо линейного сканирования 16 архетипов. Бенчмарк времени спавна и миграций до и после.

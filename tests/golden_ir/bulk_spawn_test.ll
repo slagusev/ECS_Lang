@@ -57,7 +57,7 @@ target triple = "x86_64-pc-windows-msvc"
 @_ecs_query_req_system_PrintEntities = internal constant [1 x i64] [i64 6]
 @_ecs_query_without_system_PrintEntities = internal constant [1 x i64] zeroinitializer
 @str_lit = private unnamed_addr constant [16 x i8] c"Entity at pos=(\00", align 1
-@fmt_f = private unnamed_addr constant [5 x i8] c"%.2f\00", align 1
+@fmt_f = private unnamed_addr constant [5 x i8] c"%.9g\00", align 1
 @str_lit.1 = private unnamed_addr constant [3 x i8] c", \00", align 1
 @str_lit.2 = private unnamed_addr constant [8 x i8] c") vel=(\00", align 1
 @str_lit.3 = private unnamed_addr constant [3 x i8] c", \00", align 1

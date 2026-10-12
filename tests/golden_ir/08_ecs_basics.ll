@@ -73,7 +73,7 @@ target triple = "x86_64-pc-windows-msvc"
 @str_lit = private unnamed_addr constant [12 x i8] c"   Entity #\00", align 1
 @fmt_d = private unnamed_addr constant [3 x i8] c"%d\00", align 1
 @str_lit.1 = private unnamed_addr constant [8 x i8] c": Pos=(\00", align 1
-@fmt_f = private unnamed_addr constant [5 x i8] c"%.2f\00", align 1
+@fmt_f = private unnamed_addr constant [5 x i8] c"%.9g\00", align 1
 @str_lit.2 = private unnamed_addr constant [3 x i8] c", \00", align 1
 @str_lit.3 = private unnamed_addr constant [9 x i8] c") | HP: \00", align 1
 @str_lit.4 = private unnamed_addr constant [2 x i8] c"/\00", align 1

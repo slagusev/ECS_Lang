@@ -968,8 +968,46 @@ public sealed partial class LlvmCodeGenerator
 
         var sprintfFunc = module.GetNamedFunction("sprintf");
         var sprintfType = LLVMTypeRef.CreateFunction(context.Int32Type, new[] { i8PtrType, i8PtrType }, true);
-        var fmt = b.BuildGlobalStringPtr("%.2f", "fmt_f");
+        var fmt = b.BuildGlobalStringPtr("%.9g", "fmt_f");
         b.BuildCall2(sprintfType, sprintfFunc, new[] { buf, fmt, valDbl }, "");
+
+        b.BuildRet(buf);
+        b.Dispose();
+        return fn;
+    }
+
+    private unsafe LLVMValueRef GetOrCreateToStringF64(LLVMContextRef context, LLVMModuleRef module, LLVMTypeRef i8PtrType, EcsRuntimeEmitter? ecs)
+    {
+        var fn = module.GetNamedFunction("rt_to_string_f64");
+        if (fn.Handle != IntPtr.Zero) return fn;
+
+        var fnType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType, context.DoubleType }, false);
+        fn = module.AddFunction("rt_to_string_f64", fnType);
+        var entry = fn.AppendBasicBlock("entry");
+        var b = context.CreateBuilder();
+        b.PositionAtEnd(entry);
+
+        var worldParam = fn.GetParam(0);
+        var val = fn.GetParam(1);
+
+        LLVMValueRef buf;
+        if (_arenaEmitter != null && ecs != null)
+        {
+            var arenaAlloc = _arenaEmitter.GetOrCreateArenaAlloc(ecs);
+            var allocType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(arenaAlloc);
+            buf = b.BuildCall2(allocType, arenaAlloc, new[] { worldParam, LLVMValueRef.CreateConstInt(context.Int64Type, 48) }, "arena_buf_f64");
+        }
+        else
+        {
+            var mallocFunc = module.GetNamedFunction("malloc");
+            var mallocType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { context.Int64Type }, false);
+            buf = b.BuildCall2(mallocType, mallocFunc, new[] { LLVMValueRef.CreateConstInt(context.Int64Type, 48) }, "buf_f64");
+        }
+
+        var sprintfFunc = module.GetNamedFunction("sprintf");
+        var sprintfType = LLVMTypeRef.CreateFunction(context.Int32Type, new[] { i8PtrType, i8PtrType }, true);
+        var fmt = b.BuildGlobalStringPtr("%.17g", "fmt_f64");
+        b.BuildCall2(sprintfType, sprintfFunc, new[] { buf, fmt, val }, "");
 
         b.BuildRet(buf);
         b.Dispose();
@@ -1050,11 +1088,18 @@ public sealed partial class LlvmCodeGenerator
             return builder.BuildCall2(fnType, fn, new[] { worldPtr, i32Val }, "str_i32");
         }
 
-        if (val.TypeOf == context.FloatType || val.TypeOf == context.DoubleType)
+        if (val.TypeOf == context.FloatType)
         {
             var fn = GetOrCreateToStringF32(context, module, i8PtrType, ecs);
             var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
             return builder.BuildCall2(fnType, fn, new[] { worldPtr, val }, "str_f32");
+        }
+
+        if (val.TypeOf == context.DoubleType)
+        {
+            var fn = GetOrCreateToStringF64(context, module, i8PtrType, ecs);
+            var fnType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(fn);
+            return builder.BuildCall2(fnType, fn, new[] { worldPtr, val }, "str_f64");
         }
 
         if (type == TypeSymbol.StrView || (val.TypeOf.Kind == LLVMTypeKind.LLVMStructTypeKind && val.TypeOf.StructElementTypesCount == 2))

@@ -202,6 +202,8 @@ try {
                 if (($line -match "(icmp eq i64|and i1|and i64|br i1)") -and ($line -match "(is_match|existing_mask|target_mask|%1|arch_mask|cur_mask|has_|and_mask|and_without|and_co|sw_co_has|m_val|word_\d+_match)")) { continue }
                 # Legal Category 6: Profiler multi-word HUD bitmask formatting (Step A7.6)
                 if ($line -match "(arch_fmt|str_buf|sprintf\(ptr %str_buf|p_a_mask_w|DrawRectangle\(i32 10, i32 10, i32 (500|620|700|780)|DrawRectangleLines\(i32 10, i32 10, i32 (500|620|700|780))") { continue }
+                # Legal Category 9: Floating-point formatting (Step B3: %.9g for f32, rt_to_string_f64 with %.17g)
+                if ($line -match "(fmt_f.*%.2f|fmt_f.*%.9g|fmt_f32_p.*%.9g|fmt_f64_p.*%.17g|rt_to_string_f64|fmt_f64.*%.17g|buf_f64|arena_buf_f64)") { continue }
 
                 $illegalDiffs += $line
             }

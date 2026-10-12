@@ -1,0 +1,94 @@
+// Invariant Level 2 Test for Step B3: Round-trip faithful floating-point formatting
+// Tests f32 (%.9g) and f64 (%.17g) against CRT formatting expectations.
+// Must fail if precision is truncated (e.g. legacy %.2f or implicit f64->f32 narrowing).
+
+fn test_f32_precision(): i32 {
+    // 1. 0.1 (not exact in IEEE 754 f32: 0x3dcccccd)
+    let val_0_1: f32 = 0.1;
+    let s_0_1 = f"{val_0_1}";
+    if (s_0_1 != "0.100000001") {
+        println($"FAIL: f32 0.1 expected '0.100000001', got '{s_0_1}'");
+        return 1;
+    }
+
+    // 2. 3.14159265
+    let val_pi: f32 = 3.14159265;
+    let s_pi = f"{val_pi}";
+    if (s_pi != "3.14159274") {
+        println($"FAIL: f32 pi expected '3.14159274', got '{s_pi}'");
+        return 2;
+    }
+
+    // 3. 1e-7 (0.0000001)
+    let val_1e_neg7: f32 = 0.0000001;
+    let s_1e_neg7 = f"{val_1e_neg7}";
+    if (s_1e_neg7 != "1.00000001e-07") {
+        println($"FAIL: f32 1e-7 expected '1.00000001e-07', got '{s_1e_neg7}'");
+        return 3;
+    }
+
+    // 4. 1e15 (1000000000000000.0)
+    let val_1e15: f32 = 1000000000000000.0;
+    let s_1e15 = f"{val_1e15}";
+    if (s_1e15 != "9.99999987e+14") {
+        println($"FAIL: f32 1e15 expected '9.99999987e+14', got '{s_1e15}'");
+        return 4;
+    }
+
+    // 5. -0.0
+    let val_neg_zero: f32 = -0.0;
+    let s_neg_zero = f"{val_neg_zero}";
+    if (s_neg_zero != "-0") {
+        println($"FAIL: f32 -0.0 expected '-0', got '{s_neg_zero}'");
+        return 5;
+    }
+
+    // 6. Denormal (1e-40 < min positive normal 1.17549435e-38)
+    let mut val_denorm: f32 = 0.000000001;
+    val_denorm = val_denorm * 0.000000001;
+    val_denorm = val_denorm * 0.000000001;
+    val_denorm = val_denorm * 0.000000001;
+    val_denorm = val_denorm * 0.0001;
+    let s_denorm = f"{val_denorm}";
+    if (s_denorm != "9.9999461e-41") {
+        println($"FAIL: f32 denorm expected '9.9999461e-41', got '{s_denorm}'");
+        return 6;
+    }
+
+    return 0;
+}
+
+fn test_f64_precision(): i32 {
+    // 7. f64 0.1 via double arithmetic (1.0 / 10.0)
+    let d_0_1: f64 = (1.0 as f64) / (10.0 as f64);
+    let s_d_0_1 = f"{d_0_1}";
+    if (s_d_0_1 != "0.10000000000000001") {
+        println($"FAIL: f64 0.1 expected '0.10000000000000001', got '{s_d_0_1}'");
+        return 7;
+    }
+
+    // 8. f64 -0.0
+    let d_neg_zero: f64 = -0.0 as f64;
+    let s_d_neg_zero = f"{d_neg_zero}";
+    if (s_d_neg_zero != "-0") {
+        println($"FAIL: f64 -0.0 expected '-0', got '{s_d_neg_zero}'");
+        return 8;
+    }
+
+    return 0;
+}
+
+fn main(): i32 {
+    let res32 = test_f32_precision();
+    if (res32 != 0) {
+        return res32;
+    }
+
+    let res64 = test_f64_precision();
+    if (res64 != 0) {
+        return res64;
+    }
+
+    println("B3 float precision invariants verified: f32 (%.9g) and f64 (%.17g) PASSED");
+    return 0;
+}

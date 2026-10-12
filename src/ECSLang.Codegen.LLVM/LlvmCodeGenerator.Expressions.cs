@@ -494,7 +494,7 @@ public sealed partial class LlvmCodeGenerator
                 var operand = CompileExpression(context, module, builder, function, un.Operand, locals, varTypes, ecs, putsType, putsFunc, printfType, printfFunc);
                 return un.Operator switch
                 {
-                    UnaryOperator.Negate => operand.TypeOf == context.FloatType
+                    UnaryOperator.Negate => (operand.TypeOf == context.FloatType || operand.TypeOf == context.DoubleType)
                         ? builder.BuildFNeg(operand, "fneg_tmp")
                         : builder.BuildNeg(operand, "neg_tmp"),
                     UnaryOperator.LogicalNot => builder.BuildNot(operand, "not_tmp"),
@@ -697,8 +697,12 @@ public sealed partial class LlvmCodeGenerator
                         }
                         else if (isValFloat || argType.IsFloatingPoint)
                         {
-                            var fmt = builder.BuildGlobalStringPtr(addNewline ? "%f\n" : "%f", "fmt_f");
-                            var doubleVal = val.TypeOf == context.DoubleType ? val : builder.BuildFPExt(val, context.DoubleType, "f_to_d");
+                            bool isValDouble = val.TypeOf == context.DoubleType || argType == TypeSymbol.F64;
+                            string formatStr = addNewline
+                                ? (isValDouble ? "%.17g\n" : "%.9g\n")
+                                : (isValDouble ? "%.17g" : "%.9g");
+                            var fmt = builder.BuildGlobalStringPtr(formatStr, isValDouble ? "fmt_f64_p" : "fmt_f32_p");
+                            var doubleVal = isValDouble ? val : builder.BuildFPExt(val, context.DoubleType, "f_to_d");
                             return builder.BuildCall2(printfType, printfFunc, new[] { fmt, doubleVal }, "printf_call");
                         }
                         else if (val.TypeOf == context.Int1Type || argType == TypeSymbol.Bool)
