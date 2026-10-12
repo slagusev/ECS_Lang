@@ -62,6 +62,8 @@ foreach ($t in $testList) {
     if ($LASTEXITCODE -ne 0 -or (-not (Test-Path $llPath))) {
         Write-Host " [BUILD FAIL]" -ForegroundColor Red
         Write-Host $buildOut
+        $flatOut = ($buildOut -join ' ') -replace '[\r\n]+', ' '
+        Write-Host "::error title=$tName Build Failed::$flatOut"
         $failed++
         $results += "| $tName | ❌ Build Failed | - |"
         continue
@@ -72,6 +74,8 @@ foreach ($t in $testList) {
     if ($LASTEXITCODE -ne 0) {
         Write-Host " [ASAN COMPILE FAIL]" -ForegroundColor Red
         Write-Host $clangOut
+        $flatClang = ($clangOut -join ' ') -replace '[\r\n]+', ' '
+        Write-Host "::error title=$tName ASan Link Failed::$flatClang"
         $failed++
         $results += "| $tName | ❌ ASan Link Failed | - |"
         continue
@@ -90,11 +94,14 @@ foreach ($t in $testList) {
 
     if ($exitCode -eq $expected) {
         Write-Host " [PASSED]" -ForegroundColor Green
+        Write-Host "::notice title=$tName::PASSED (ExitCode 0 under AddressSanitizer)"
         $passed++
         $results += "| $tName | ✅ Passed | 0 |"
     } else {
         Write-Host " [RUN FAIL: ExitCode $exitCode, expected $expected]" -ForegroundColor Red
         Write-Host "Output: $runOut"
+        $flatRun = ($runOut -join ' ') -replace '[\r\n]+', ' '
+        Write-Host "::error title=$tName Execution Failed (Exit $exitCode)::$flatRun"
         $failed++
         $results += "| $tName | ❌ Run Failed (Exit $exitCode) | - |"
     }
