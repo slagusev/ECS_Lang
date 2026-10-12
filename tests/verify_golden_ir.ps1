@@ -25,6 +25,17 @@ if ($newestSrc -and $newestSrc.LastWriteTime -gt $binMtime) {
     throw "STALE COMPILER DETECTED! Source '$($newestSrc.FullName)' ($($newestSrc.LastWriteTime)) is newer than binary '$cliDll' ($binMtime). Run 'dotnet build -c Release' before verification."
 }
 
+# Determine invocation command (cross-platform support for Linux/macOS or when .exe is unavailable)
+$useDotnetDll = [System.OperatingSystem]::IsLinux() -or [System.OperatingSystem]::IsMacOS() -or (-not (Test-Path $CliPath))
+function Invoke-EcsCompiler {
+    param([string[]]$CompilerArgs)
+    if ($useDotnetDll) {
+        & dotnet $cliDll @CompilerArgs
+    } else {
+        & $CliPath @CompilerArgs
+    }
+}
+
 # Dot-source B7 legacy patterns for safe deletion classification
 . "$PSScriptRoot/verify_b7_negative_invariants.ps1"
 $legacyPatternsDict = Get-B7LegacyPatterns
@@ -78,7 +89,7 @@ try {
 
         # 2. Invoke compiler freshly on isolated temp source
         Write-Host "  -> Compiling fresh $name to $tempDir..." -ForegroundColor DarkGray
-        & $CliPath build $tempSrc --emit-ir --emit-obj 2>&1 | Out-Null
+        Invoke-EcsCompiler @("build", $tempSrc, "--emit-ir", "--emit-obj") 2>&1 | Out-Null
         $genIr = Join-Path $tempDir "$name.ll"
 
         if (-not (Test-Path $genIr)) {

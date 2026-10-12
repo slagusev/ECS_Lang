@@ -166,6 +166,15 @@
 - **Статус**: **ВЫПОЛНЕНО** (коммит B6; strict 7/7 exact match, полный сьют тестов без единого зависания, канарейка бинарно ExitCode 0 без флагов).
 - **Шаблон коммита**: `feat(cli): gate console pause-on-exit behind explicit compiler flag (Step B6)`
 
+#### Шаг B5.2-lite — Linux CI, Кросс-хостовый детерминизм и ASan-контур (CI v1)
+- **Объём**: Добавление пакета `libLLVM.runtime.linux-x64` в проект кодогенератора. Создание GitHub Actions workflow `.github/workflows/ecs-linux.yml` на `ubuntu-latest` (push, pull_request, schedule 03:00 UTC, workflow_dispatch):
+  1. `dotnet build -c Release` на Linux.
+  2. Валидация **КРОСС-ХОСТОВОГО ДЕТЕРМИНИЗМА**: строгая проверка Golden IR 7/7 exact match (Windows-таргет с Linux-хоста).
+  3. Сквозной **AddressSanitizer (ASan)** прогон на системном `clang -fsanitize=address` для `canary_70_components` и всех консольных headless-примеров без `parallel`. Снятие условия №1 условности серии B7.
+- **Файлы**: `.github/workflows/ecs-linux.yml`, `.gitattributes`, `src/ECSLang.Codegen.LLVM/ECSLang.Codegen.LLVM.csproj`, `tests/verify_golden_ir.ps1`, `tests/run_asan_linux.ps1`.
+- **Критерий приёмки**: Зелёный CI workflow + 0 OOB/0 UAF в ASan-логах + доказательство кросс-хостового совпадения 7/7.
+- **Шаблон коммита**: `ci(linux): establish early B5.2-lite workflow with cross-host determinism and ASan suite`
+
 #### Шаг B3 — Настраиваемое форматирование `f32` / `f64`
 - **Объём**: Замена жесткого хардкода `%.2f` в интерполяции строк и `println` на настраиваемое форматирование с дефолтом `%g` / `%f`.
 - **Файлы**: `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Expressions.cs`.

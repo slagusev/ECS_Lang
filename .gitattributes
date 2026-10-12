@@ -1,0 +1,2 @@
+# Ensure LF line endings for LLVM IR golden baselines
+*.ll text eol=lf
