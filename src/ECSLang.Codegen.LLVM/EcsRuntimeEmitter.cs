@@ -36,6 +36,10 @@ public sealed partial class EcsRuntimeEmitter
     private int _stringArenaChunksWorldOffset = -1;
     private int _archIndexEntriesWorldOffset = -1;
     private int _archIndexCapWorldOffset = -1;
+    private int _entityGenWorldOffset = -1;
+    private int _freeEntitiesWorldOffset = -1;
+    private int _freeCountWorldOffset = -1;
+    private int _freeCapWorldOffset = -1;
 
     // Component Descriptor Table (Step B7)
     private LLVMTypeRef _compDescStructType;
@@ -55,6 +59,10 @@ public sealed partial class EcsRuntimeEmitter
     public int StringArenaChunksWorldOffset => _stringArenaChunksWorldOffset;
     public int ArchIndexEntriesWorldOffset => _archIndexEntriesWorldOffset;
     public int ArchIndexCapWorldOffset => _archIndexCapWorldOffset;
+    public int EntityGenWorldOffset => _entityGenWorldOffset;
+    public int FreeEntitiesWorldOffset => _freeEntitiesWorldOffset;
+    public int FreeCountWorldOffset => _freeCountWorldOffset;
+    public int FreeCapWorldOffset => _freeCapWorldOffset;
 
     public EcsRuntimeEmitter(
         LLVMContextRef context,
@@ -369,6 +377,20 @@ public sealed partial class EcsRuntimeEmitter
         _archIndexCapWorldOffset = worldFields.Count;
         worldFields.Add(_context.Int32Type);
 
+        // Generational Entity Recycling & Free-List (Step B2):
+        // entity_gen: ptr to u32 array of generation counters (aligned with entity_arch/entity_row)
+        // free_entities: ptr to i32 array of recycled entity slot indices
+        // free_count: i32 count of available slots in free_entities
+        // free_cap: i32 allocated capacity of free_entities
+        _entityGenWorldOffset = worldFields.Count;
+        worldFields.Add(LLVMTypeRef.CreatePointer(_context.Int32Type, 0));
+        _freeEntitiesWorldOffset = worldFields.Count;
+        worldFields.Add(LLVMTypeRef.CreatePointer(_context.Int32Type, 0));
+        _freeCountWorldOffset = worldFields.Count;
+        worldFields.Add(_context.Int32Type);
+        _freeCapWorldOffset = worldFields.Count;
+        worldFields.Add(_context.Int32Type);
+
         _worldStructType = _context.CreateNamedStruct("struct.EcsWorld");
         _worldStructType.StructSetBody(worldFields.ToArray(), false);
     }
@@ -419,7 +441,7 @@ public sealed partial class EcsRuntimeEmitter
             "str_view" => _context.GetStructType(new[] { LLVMTypeRef.CreatePointer(_context.Int8Type, 0), _context.Int32Type }, false),
             "World" or "world" => LLVMTypeRef.CreatePointer(_worldStructType, 0),
             "Commands" or "commands" => LLVMTypeRef.CreatePointer(_worldStructType, 0),
-            "Entity" or "entity" => _context.Int32Type,
+            "Entity" or "entity" => _context.Int64Type,
             _ => _compStructTypes.TryGetValue(typeName, out var st) ? st : _context.Int32Type
         };
     }

@@ -416,10 +416,10 @@ public sealed partial class EcsRuntimeEmitter
 
         var newArchCap64 = _builder.BuildZExt(newArchCap, _context.Int64Type, "new_cap64");
 
-        // Reallocate entities array (i32*): newArchCap * 4 bytes
+        // Reallocate entities array (i64*): newArchCap * 8 bytes
         var entSlotGr = _builder.BuildStructGEP2(_archStructType, archElemGr, 3, "ent_slot");
         var curEntRaw = _builder.BuildLoad2(i8PtrType, entSlotGr, "cur_ent_raw");
-        var entBytes = _builder.BuildMul(newArchCap64, LLVMValueRef.CreateConstInt(_context.Int64Type, 4), "ent_bytes");
+        var entBytes = _builder.BuildMul(newArchCap64, LLVMValueRef.CreateConstInt(_context.Int64Type, 8), "ent_bytes");
         var newEntRaw = _builder.BuildCall2(reallocType, reallocFunc, new[] { curEntRaw, entBytes }, "new_ent_raw");
         _builder.BuildStore(newEntRaw, entSlotGr);
 
@@ -766,9 +766,10 @@ public sealed partial class EcsRuntimeEmitter
         }
 
         // =========================================================================
-        // Helper: world_alloc_entity(ptr world) -> i32 entity_id
+        // Helper: world_alloc_entity(ptr world) -> i64 entity_handle
+        // Returns (u32 id) | ((u64)gen << 32). Recycles from free_entities stack if non-empty.
         // =========================================================================
-        var allocEntType = LLVMTypeRef.CreateFunction(_context.Int32Type, new[] { worldPtrType }, false);
+        var allocEntType = LLVMTypeRef.CreateFunction(_context.Int64Type, new[] { worldPtrType }, false);
         var allocEntFunc = _module.AddFunction("world_alloc_entity", allocEntType);
         var alEntryBB = allocEntFunc.AppendBasicBlock("entry");
         _builder.PositionAtEnd(alEntryBB);
@@ -778,7 +779,50 @@ public sealed partial class EcsRuntimeEmitter
         var entCapSlotAl = _builder.BuildStructGEP2(_worldStructType, worldParamAl, 4, "ent_cap_slot");
         var entArchSlotAl = _builder.BuildStructGEP2(_worldStructType, worldParamAl, 5, "ent_arch_slot");
         var entRowSlotAl = _builder.BuildStructGEP2(_worldStructType, worldParamAl, 6, "ent_row_slot");
+        var entGenSlotAl = _builder.BuildStructGEP2(_worldStructType, worldParamAl, (uint)_entityGenWorldOffset, "ent_gen_slot");
+        var freeEntitiesSlotAl = _builder.BuildStructGEP2(_worldStructType, worldParamAl, (uint)_freeEntitiesWorldOffset, "free_ents_slot");
+        var freeCountSlotAl = _builder.BuildStructGEP2(_worldStructType, worldParamAl, (uint)_freeCountWorldOffset, "free_cnt_slot");
+        var freeCapSlotAl = _builder.BuildStructGEP2(_worldStructType, worldParamAl, (uint)_freeCapWorldOffset, "free_cap_slot");
 
+        var curFreeCount = _builder.BuildLoad2(_context.Int32Type, freeCountSlotAl, "cur_free_cnt");
+        var hasFreeSlot = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, curFreeCount, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "has_free_slot");
+
+        var popFreeBB = allocEntFunc.AppendBasicBlock("pop_free");
+        var growAndAllocBB = allocEntFunc.AppendBasicBlock("grow_and_alloc");
+        _builder.BuildCondBr(hasFreeSlot, popFreeBB, growAndAllocBB);
+
+        // Path 1: Pop slot from free_entities stack
+        _builder.PositionAtEnd(popFreeBB);
+        var poppedIdx = _builder.BuildSub(curFreeCount, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "popped_idx");
+        _builder.BuildStore(poppedIdx, freeCountSlotAl);
+
+        var freeArrPop = _builder.BuildLoad2(i32PtrType, freeEntitiesSlotAl, "free_arr_pop");
+        var freeSlotPtr = _builder.BuildInBoundsGEP2(_context.Int32Type, freeArrPop, new[] { poppedIdx }, "free_slot_ptr");
+        var recycledId = _builder.BuildLoad2(_context.Int32Type, freeSlotPtr, "recycled_id");
+
+        // Mark recycled entity slot as pending (-1)
+        var archArrPop = _builder.BuildLoad2(i32PtrType, entArchSlotAl, "arch_arr_pop");
+        var archSlotPop = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrPop, new[] { recycledId }, "arch_slot_pop");
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1)), archSlotPop);
+
+        var rowArrPop = _builder.BuildLoad2(i32PtrType, entRowSlotAl, "row_arr_pop");
+        var rowSlotPop = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrPop, new[] { recycledId }, "row_slot_pop");
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1)), rowSlotPop);
+
+        // Load current generation (already incremented upon despawn)
+        var genArrPop = _builder.BuildLoad2(i32PtrType, entGenSlotAl, "gen_arr_pop");
+        var genSlotPop = _builder.BuildInBoundsGEP2(_context.Int32Type, genArrPop, new[] { recycledId }, "gen_slot_pop");
+        var curGenPop = _builder.BuildLoad2(_context.Int32Type, genSlotPop, "cur_gen_pop");
+
+        // Combine recycledId and curGenPop into i64 handle
+        var recycledId64 = _builder.BuildZExt(recycledId, _context.Int64Type, "recycled_id64");
+        var curGenPop64 = _builder.BuildZExt(curGenPop, _context.Int64Type, "cur_gen_pop64");
+        var genShiftedPop = _builder.BuildShl(curGenPop64, LLVMValueRef.CreateConstInt(_context.Int64Type, 32), "gen_shifted_pop");
+        var recycledHandle = _builder.BuildOr(recycledId64, genShiftedPop, "recycled_handle");
+        _builder.BuildRet(recycledHandle);
+
+        // Path 2: Free list empty - allocate fresh slot at total entity_count
+        _builder.PositionAtEnd(growAndAllocBB);
         var curEntCount = _builder.BuildLoad2(_context.Int32Type, entCountSlotAl, "cur_ent_count");
         var curEntCap = _builder.BuildLoad2(_context.Int32Type, entCapSlotAl, "cur_ent_cap");
         var needGrowEnt = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curEntCount, curEntCap, "need_grow_ent");
@@ -811,6 +855,13 @@ public sealed partial class EcsRuntimeEmitter
         var newRowArrTyped = _builder.BuildBitCast(newRowArrI8, i32PtrType, "new_row_typed");
         _builder.BuildStore(newRowArrTyped, entRowSlotAl);
 
+        // Realloc entity_gen
+        var curGenArrRaw = _builder.BuildLoad2(i32PtrType, entGenSlotAl, "cur_gen_arr");
+        var curGenArrI8 = _builder.BuildBitCast(curGenArrRaw, i8PtrType, "cur_gen_i8");
+        var newGenArrI8 = _builder.BuildCall2(reallocType, reallocFunc, new[] { curGenArrI8, bytesForEnt }, "new_gen_i8");
+        var newGenArrTyped = _builder.BuildBitCast(newGenArrI8, i32PtrType, "new_gen_typed");
+        _builder.BuildStore(newGenArrTyped, entGenSlotAl);
+
         _builder.BuildBr(assignEntBB);
 
         _builder.PositionAtEnd(assignEntBB);
@@ -818,7 +869,7 @@ public sealed partial class EcsRuntimeEmitter
         var nextEntCountVal = _builder.BuildAdd(curEntCount, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_ent_cnt");
         _builder.BuildStore(nextEntCountVal, entCountSlotAl);
 
-        // Initialize newly allocated entity slot to unassigned (-1)
+        // Initialize newly allocated entity slot: arch = -1 (pending), row = -1, gen = 1 (initial generation)
         var curArchArrAlloc = _builder.BuildLoad2(i32PtrType, entArchSlotAl, "cur_arch_arr_alloc");
         var eArchSlotAlloc = _builder.BuildInBoundsGEP2(_context.Int32Type, curArchArrAlloc, new[] { eAlloc }, "e_arch_slot_alloc");
         _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1)), eArchSlotAlloc);
@@ -827,22 +878,31 @@ public sealed partial class EcsRuntimeEmitter
         var eRowSlotAlloc = _builder.BuildInBoundsGEP2(_context.Int32Type, curRowArrAlloc, new[] { eAlloc }, "e_row_slot_alloc");
         _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1)), eRowSlotAlloc);
 
-        _builder.BuildRet(eAlloc);
+        var curGenArrAlloc = _builder.BuildLoad2(i32PtrType, entGenSlotAl, "cur_gen_arr_alloc");
+        var eGenSlotAlloc = _builder.BuildInBoundsGEP2(_context.Int32Type, curGenArrAlloc, new[] { eAlloc }, "e_gen_slot_alloc");
+        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, 1), eGenSlotAlloc); // Initial generation = 1
+
+        // Combine into i64 handle: (eAlloc) | (1UL << 32)
+        var eAlloc64 = _builder.BuildZExt(eAlloc, _context.Int64Type, "e_alloc64");
+        var initialGen64 = LLVMValueRef.CreateConstInt(_context.Int64Type, 1UL << 32);
+        var freshHandle = _builder.BuildOr(eAlloc64, initialGen64, "fresh_handle");
+        _builder.BuildRet(freshHandle);
 
         // =========================================================================
-        // Helper: world_assign_a0(ptr world, i32 entity_id) -> void
+        // Helper: world_assign_a0(ptr world, i64 entity_handle) -> void
         // =========================================================================
-        var assignA0Type = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType, _context.Int32Type }, false);
+        var assignA0Type = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType, _context.Int64Type }, false);
         var assignA0Func = _module.AddFunction("world_assign_a0", assignA0Type);
         var a0EntryBB = assignA0Func.AppendBasicBlock("entry");
         _builder.PositionAtEnd(a0EntryBB);
 
         var wArgA0 = assignA0Func.GetParam(0);
-        var eArgA0 = assignA0Func.GetParam(1);
+        var handleArgA0 = assignA0Func.GetParam(1);
+        var eIdA0 = _builder.BuildTrunc(handleArgA0, _context.Int32Type, "e_id_a0");
 
         var archArrA0Slot = _builder.BuildStructGEP2(_worldStructType, wArgA0, 5, "arch_arr_a0_slot");
         var archArrA0 = _builder.BuildLoad2(i32PtrType, archArrA0Slot, "arch_arr_a0");
-        var eArchSlotA0 = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrA0, new[] { eArgA0 }, "e_arch_slot_a0");
+        var eArchSlotA0 = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrA0, new[] { eIdA0 }, "e_arch_slot_a0");
         var curArchValA0 = _builder.BuildLoad2(_context.Int32Type, eArchSlotA0, "cur_arch_val_a0");
         var isUnassigned = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curArchValA0, LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1)), "is_unassigned");
 
@@ -878,20 +938,20 @@ public sealed partial class EcsRuntimeEmitter
         var nextCount0 = _builder.BuildAdd(row, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_cnt0");
         _builder.BuildStore(nextCount0, cntSlot0_2);
 
-        // a0.entities[row] = e
+        // a0.entities[row] = handleArgA0 (i64 handle)
         var entSlot0 = _builder.BuildStructGEP2(_archStructType, a0Ptr2, 3, "ent_slot0");
         var entRaw0 = _builder.BuildLoad2(i8PtrType, entSlot0, "ent_raw0");
-        var entTyped0 = _builder.BuildBitCast(entRaw0, i32PtrType, "ent_typed0");
-        var entElem0 = _builder.BuildInBoundsGEP2(_context.Int32Type, entTyped0, new[] { row }, "ent_elem0");
-        _builder.BuildStore(eArgA0, entElem0);
+        var entTyped0 = _builder.BuildBitCast(entRaw0, LLVMTypeRef.CreatePointer(_context.Int64Type, 0), "ent_typed0");
+        var entElem0 = _builder.BuildInBoundsGEP2(_context.Int64Type, entTyped0, new[] { row }, "ent_elem0");
+        _builder.BuildStore(handleArgA0, entElem0);
 
-        // world.entity_arch[e] = a0
+        // world.entity_arch[eId] = a0
         _builder.BuildStore(a0, eArchSlotA0);
 
-        // world.entity_row[e] = row
+        // world.entity_row[eId] = row
         var rowArrA0Slot = _builder.BuildStructGEP2(_worldStructType, wArgA0, 6, "row_arr_a0_slot");
         var rowArrA0 = _builder.BuildLoad2(i32PtrType, rowArrA0Slot, "row_arr_a0");
-        var eRowSlotA0 = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrA0, new[] { eArgA0 }, "e_row_slot_a0");
+        var eRowSlotA0 = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrA0, new[] { eIdA0 }, "e_row_slot_a0");
         _builder.BuildStore(row, eRowSlotA0);
         _builder.BuildBr(exitA0BB);
 
@@ -899,9 +959,9 @@ public sealed partial class EcsRuntimeEmitter
         _builder.BuildRetVoid();
 
         // =========================================================================
-        // Helper: world_spawn(ptr world) -> i32 entity_id
+        // Helper: world_spawn(ptr world) -> i64 entity_handle
         // =========================================================================
-        var spawnType = LLVMTypeRef.CreateFunction(_context.Int32Type, new[] { worldPtrType }, false);
+        var spawnType = LLVMTypeRef.CreateFunction(_context.Int64Type, new[] { worldPtrType }, false);
         var spawnFunc = _module.AddFunction("world_spawn", spawnType);
         var spEntryBB = spawnFunc.AppendBasicBlock("entry");
         _builder.PositionAtEnd(spEntryBB);
@@ -912,43 +972,89 @@ public sealed partial class EcsRuntimeEmitter
         _builder.BuildRet(eSpawn);
 
         // =========================================================================
-        // Helper: world_despawn(ptr world, i32 entity_id) -> void
+        // Helper: world_despawn(ptr world, i64 entity_handle) -> void
+        // Checks bounds, generation (ABA protection), liveness; recycles slot to free_entities
         // =========================================================================
-        var despawnType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType, _context.Int32Type }, false);
+        var despawnType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType, _context.Int64Type }, false);
         var despawnFunc = _module.AddFunction("world_despawn", despawnType);
         var dsEntryBB = despawnFunc.AppendBasicBlock("entry");
         _builder.PositionAtEnd(dsEntryBB);
 
         var wArgDs = despawnFunc.GetParam(0);
-        var eArgDs = despawnFunc.GetParam(1);
+        var handleArgDs = despawnFunc.GetParam(1);
+
+        // Unpack id and gen
+        var eIdDs = _builder.BuildTrunc(handleArgDs, _context.Int32Type, "e_id_ds");
+        var eGen64Ds = _builder.BuildLShr(handleArgDs, LLVMValueRef.CreateConstInt(_context.Int64Type, 32), "e_gen64_ds");
+        var eGenDs = _builder.BuildTrunc(eGen64Ds, _context.Int32Type, "e_gen_ds");
 
         var entCountSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, 3, "ent_count_slot_ds");
         var totalEntsDs = _builder.BuildLoad2(_context.Int32Type, entCountSlotDs, "total_ents_ds");
 
-        var eNonNegDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, eArgDs, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "e_non_neg_ds");
-        var eInBoundsDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, eArgDs, totalEntsDs, "e_in_bounds_ds");
+        var eNonNegDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, eIdDs, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "e_non_neg_ds");
+        var eInBoundsDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, eIdDs, totalEntsDs, "e_in_bounds_ds");
         var isValidIdDs = _builder.BuildAnd(eNonNegDs, eInBoundsDs, "is_valid_id_ds");
 
-        var checkArchBB = despawnFunc.AppendBasicBlock("check_arch");
-        var dsExitBB = despawnFunc.AppendBasicBlock("ds_exit");
-        _builder.BuildCondBr(isValidIdDs, checkArchBB, dsExitBB);
+        var checkLivenessDsBB = despawnFunc.AppendBasicBlock("ds_check_liveness");
+        var dsOobBB = despawnFunc.AppendBasicBlock("ds_oob_panic");
+        _builder.BuildCondBr(isValidIdDs, checkLivenessDsBB, dsOobBB);
 
-        _builder.PositionAtEnd(checkArchBB);
+        _builder.PositionAtEnd(dsOobBB);
+        var errOobDsStr = _builder.BuildGlobalStringPtr("[ECS Error] Attempted to despawn out of bounds entity.", "ecs_err_oob_ds");
+        _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errOobDsStr }, "");
+        _builder.BuildUnreachable();
+
+        // Load entity current archetype & row
+        _builder.PositionAtEnd(checkLivenessDsBB);
         var entArchSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, 5, "ent_arch_slot_ds");
         var entRowSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, 6, "ent_row_slot_ds");
         var tablesSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, 2, "tables_slot_ds");
 
         var archArrDs = _builder.BuildLoad2(i32PtrType, entArchSlotDs, "arch_arr_ds");
-        var eArchSlotDsInst = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrDs, new[] { eArgDs }, "e_arch_slot_ds_inst");
+        var eArchSlotDsInst = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrDs, new[] { eIdDs }, "e_arch_slot_ds_inst");
         var curArchIdxDs = _builder.BuildLoad2(_context.Int32Type, eArchSlotDsInst, "cur_arch_idx_ds");
 
-        var isAliveDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curArchIdxDs, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_alive_ds");
+        var isNegArchDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curArchIdxDs, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_neg_arch_ds");
+        var dsDeadErrBB = despawnFunc.AppendBasicBlock("ds_dead_panic");
+        var checkGenBB = despawnFunc.AppendBasicBlock("ds_check_gen");
+        _builder.BuildCondBr(isNegArchDs, dsDeadErrBB, checkGenBB);
+
+        _builder.PositionAtEnd(dsDeadErrBB);
+        var isDeadDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curArchIdxDs, LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-2)), "is_dead_ds");
+        var dsDeadRealBB = despawnFunc.AppendBasicBlock("ds_dead_real");
+        var dsPendRealBB = despawnFunc.AppendBasicBlock("ds_pend_real");
+        _builder.BuildCondBr(isDeadDs, dsDeadRealBB, dsPendRealBB);
+
+        _builder.PositionAtEnd(dsDeadRealBB);
+        var errDeadDsStr = _builder.BuildGlobalStringPtr("[ECS Error] Attempted to mutate despawned or dead entity with world_despawn.", "ecs_err_dead_ds");
+        _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errDeadDsStr }, "");
+        _builder.BuildUnreachable();
+
+        _builder.PositionAtEnd(dsPendRealBB);
+        var errPendDsStr = _builder.BuildGlobalStringPtr("[ECS Error] Attempted to mutate unassigned or pending entity with world_despawn.", "ecs_err_pend_ds");
+        _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errPendDsStr }, "");
+        _builder.BuildUnreachable();
+
+        // Check generation matching (ABA prevention) on alive entity
+        _builder.PositionAtEnd(checkGenBB);
+        var entGenSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, (uint)_entityGenWorldOffset, "ent_gen_slot_ds");
+        var genArrDs = _builder.BuildLoad2(i32PtrType, entGenSlotDs, "gen_arr_ds");
+        var curGenSlotDs = _builder.BuildInBoundsGEP2(_context.Int32Type, genArrDs, new[] { eIdDs }, "cur_gen_slot_ds");
+        var curGenDs = _builder.BuildLoad2(_context.Int32Type, curGenSlotDs, "cur_gen_ds");
+        var isGenMatchDs = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curGenDs, eGenDs, "is_gen_match_ds");
+
         var doDespawnBB = despawnFunc.AppendBasicBlock("do_despawn");
-        _builder.BuildCondBr(isAliveDs, doDespawnBB, dsExitBB);
+        var dsStaleBB = despawnFunc.AppendBasicBlock("ds_stale_panic");
+        _builder.BuildCondBr(isGenMatchDs, doDespawnBB, dsStaleBB);
+
+        _builder.PositionAtEnd(dsStaleBB);
+        var errStaleDsStr = _builder.BuildGlobalStringPtr("[ECS Error] Attempted to access entity with stale generation (ABA prevented).", "ecs_err_stale_ds");
+        _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errStaleDsStr }, "");
+        _builder.BuildUnreachable();
 
         _builder.PositionAtEnd(doDespawnBB);
         var rowArrDs = _builder.BuildLoad2(i32PtrType, entRowSlotDs, "row_arr_ds");
-        var eRowSlotDsInst = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrDs, new[] { eArgDs }, "e_row_slot_ds_inst");
+        var eRowSlotDsInst = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrDs, new[] { eIdDs }, "e_row_slot_ds_inst");
         var curRowDs = _builder.BuildLoad2(_context.Int32Type, eRowSlotDsInst, "cur_row_ds");
 
         var tablesBaseDs = _builder.BuildLoad2(archPtrType, tablesSlotDs, "tables_base_ds");
@@ -965,30 +1071,68 @@ public sealed partial class EcsRuntimeEmitter
         _builder.BuildCondBr(isLastRowDs, afterSwapDsBB, doSwapDsBB);
 
         _builder.PositionAtEnd(doSwapDsBB);
-        // Move entity ID from lastRow to curRow
+        // Move entity handle from lastRow to curRow
         var curEntSlotDs = _builder.BuildStructGEP2(_archStructType, curArchPtrDs, 3, "cur_ent_slot_ds");
         var curEntRawDs = _builder.BuildLoad2(i8PtrType, curEntSlotDs, "cur_ent_raw_ds");
-        var curEntTypedDs = _builder.BuildBitCast(curEntRawDs, i32PtrType, "cur_ent_typed_ds");
-        var lastEntElemDs = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntTypedDs, new[] { lastRowDs }, "last_ent_elem_ds");
-        var movedEDs = _builder.BuildLoad2(_context.Int32Type, lastEntElemDs, "moved_e_ds");
-        var curEntElemDs = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntTypedDs, new[] { curRowDs }, "cur_ent_elem_ds");
-        _builder.BuildStore(movedEDs, curEntElemDs);
+        var curEntTypedDs = _builder.BuildBitCast(curEntRawDs, LLVMTypeRef.CreatePointer(_context.Int64Type, 0), "cur_ent_typed_ds");
+        var lastEntElemDs = _builder.BuildInBoundsGEP2(_context.Int64Type, curEntTypedDs, new[] { lastRowDs }, "last_ent_elem_ds");
+        var movedHandleDs = _builder.BuildLoad2(_context.Int64Type, lastEntElemDs, "moved_handle_ds");
+        var curEntElemDs = _builder.BuildInBoundsGEP2(_context.Int64Type, curEntTypedDs, new[] { curRowDs }, "cur_ent_elem_ds");
+        _builder.BuildStore(movedHandleDs, curEntElemDs);
 
         // Copy all active components from lastRow to curRow via generic migration core
         _builder.BuildCall2(migrateFuncType, migrateFunc, new[] { wArgDs, curArchIdxDs, curArchIdxDs, lastRowDs, curRowDs }, "");
 
-        // Update world.entity_row[movedEDs] = curRowDs
-        var movedERowSlotDs = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrDs, new[] { movedEDs }, "moved_e_row_slot_ds");
+        // Update world.entity_row[movedId] = curRowDs
+        var movedIdDs = _builder.BuildTrunc(movedHandleDs, _context.Int32Type, "moved_id_ds");
+        var movedERowSlotDs = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrDs, new[] { movedIdDs }, "moved_e_row_slot_ds");
         _builder.BuildStore(curRowDs, movedERowSlotDs);
         _builder.BuildBr(afterSwapDsBB);
 
         _builder.PositionAtEnd(afterSwapDsBB);
-        // Mark despawned: world.entity_arch[e] = -2, world.entity_row[e] = -2
+        // Mark despawned: world.entity_arch[eId] = -2, world.entity_row[eId] = -2
         _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-2)), eArchSlotDsInst);
         _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-2)), eRowSlotDsInst);
-        _builder.BuildBr(dsExitBB);
 
-        _builder.PositionAtEnd(dsExitBB);
+        // Increment generation to invalidate stale handles
+        var nextGenVal = _builder.BuildAdd(curGenDs, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_gen_val");
+        _builder.BuildStore(nextGenVal, curGenSlotDs);
+
+        // Push eIdDs to free_entities stack
+        var freeEntitiesSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, (uint)_freeEntitiesWorldOffset, "free_ents_slot_ds");
+        var freeCountSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, (uint)_freeCountWorldOffset, "free_cnt_slot_ds");
+        var freeCapSlotDs = _builder.BuildStructGEP2(_worldStructType, wArgDs, (uint)_freeCapWorldOffset, "free_cap_slot_ds");
+
+        var curFreeCntDs = _builder.BuildLoad2(_context.Int32Type, freeCountSlotDs, "cur_free_cnt_ds");
+        var curFreeCapDs = _builder.BuildLoad2(_context.Int32Type, freeCapSlotDs, "cur_free_cap_ds");
+        var needGrowFree = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curFreeCntDs, curFreeCapDs, "need_grow_free");
+
+        var growFreeBB = despawnFunc.AppendBasicBlock("grow_free");
+        var pushFreeBB = despawnFunc.AppendBasicBlock("push_free");
+        _builder.BuildCondBr(needGrowFree, growFreeBB, pushFreeBB);
+
+        _builder.PositionAtEnd(growFreeBB);
+        var freeCapZero = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curFreeCapDs, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "free_cap_zero");
+        var doubleFreeCap = _builder.BuildMul(curFreeCapDs, LLVMValueRef.CreateConstInt(_context.Int32Type, 2), "double_free_cap");
+        var newFreeCap = _builder.BuildSelect(freeCapZero, LLVMValueRef.CreateConstInt(_context.Int32Type, 64), doubleFreeCap, "new_free_cap");
+        _builder.BuildStore(newFreeCap, freeCapSlotDs);
+
+        var newFreeCap64 = _builder.BuildZExt(newFreeCap, _context.Int64Type, "new_free_cap64");
+        var bytesForFree = _builder.BuildMul(newFreeCap64, LLVMValueRef.CreateConstInt(_context.Int64Type, 4), "bytes_for_free");
+        var curFreeArrRaw = _builder.BuildLoad2(i32PtrType, freeEntitiesSlotDs, "cur_free_arr_raw");
+        var curFreeArrI8 = _builder.BuildBitCast(curFreeArrRaw, i8PtrType, "cur_free_arr_i8");
+        var newFreeArrI8 = _builder.BuildCall2(reallocType, reallocFunc, new[] { curFreeArrI8, bytesForFree }, "new_free_arr_i8");
+        var newFreeArrTyped = _builder.BuildBitCast(newFreeArrI8, i32PtrType, "new_free_arr_typed");
+        _builder.BuildStore(newFreeArrTyped, freeEntitiesSlotDs);
+        _builder.BuildBr(pushFreeBB);
+
+        _builder.PositionAtEnd(pushFreeBB);
+        var freeArrNow = _builder.BuildLoad2(i32PtrType, freeEntitiesSlotDs, "free_arr_now");
+        var pushSlotPtr = _builder.BuildInBoundsGEP2(_context.Int32Type, freeArrNow, new[] { curFreeCntDs }, "push_slot_ptr");
+        _builder.BuildStore(eIdDs, pushSlotPtr);
+        var nextFreeCnt = _builder.BuildAdd(curFreeCntDs, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_free_cnt");
+        _builder.BuildStore(nextFreeCnt, freeCountSlotDs);
+
         _builder.BuildRetVoid();
 
         EmitCommandBufferCoreHelpers(
@@ -1022,7 +1166,7 @@ public sealed partial class EcsRuntimeEmitter
             // 1. world_set_Comp and world_add_Comp
             foreach (var prefix in new[] { "world_set_", "world_add_" })
             {
-                var paramTypes = new List<LLVMTypeRef> { worldPtrType, _context.Int32Type };
+                var paramTypes = new List<LLVMTypeRef> { worldPtrType, _context.Int64Type };
                 foreach (var f in compSym.Fields)
                 {
                     paramTypes.Add(MapType(f.Type.Name));
@@ -1037,39 +1181,43 @@ public sealed partial class EcsRuntimeEmitter
                 var targetRowAlloca = _builder.BuildAlloca(_context.Int32Type, "target_row");
 
                 var worldParamSet = setFunc.GetParam(0);
-                var eParam = setFunc.GetParam(1);
+                var handleParamSet = setFunc.GetParam(1);
 
-                // Bounds guard: 0 <= e < world.entity_count
+                // Unpack handle: id and gen
+                var eIdSet = _builder.BuildTrunc(handleParamSet, _context.Int32Type, "e_id_set");
+                var eGen64Set = _builder.BuildLShr(handleParamSet, LLVMValueRef.CreateConstInt(_context.Int64Type, 32), "e_gen64_set");
+                var eGenSet = _builder.BuildTrunc(eGen64Set, _context.Int32Type, "e_gen_set");
+
+                // Bounds guard: 0 <= id < world.entity_count
                 var entCountSlotSet = _builder.BuildStructGEP2(_worldStructType, worldParamSet, 3, "ent_count_slot_set");
                 var totalEntsSet = _builder.BuildLoad2(_context.Int32Type, entCountSlotSet, "total_ents_set");
 
-                var eNonNegSet = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, eParam, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "e_non_neg_set");
-                var eInBoundsSet = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, eParam, totalEntsSet, "e_in_bounds_set");
+                var eNonNegSet = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, eIdSet, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "e_non_neg_set");
+                var eInBoundsSet = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, eIdSet, totalEntsSet, "e_in_bounds_set");
                 var isValidIdSet = _builder.BuildAnd(eNonNegSet, eInBoundsSet, "is_valid_id_set");
-
-                var checkArchSetBB = setFunc.AppendBasicBlock("check_arch_set");
+                var checkLivenessSetBB = setFunc.AppendBasicBlock("check_liveness_set");
                 var oobBB = setFunc.AppendBasicBlock("set_oob_error");
-                _builder.BuildCondBr(isValidIdSet, checkArchSetBB, oobBB);
+                _builder.BuildCondBr(isValidIdSet, checkLivenessSetBB, oobBB);
 
                 _builder.PositionAtEnd(oobBB);
                 var errOobStr = _builder.BuildGlobalStringPtr($"[ECS Error] Attempted to mutate out of bounds entity with {prefix}{compName}.", $"ecs_err_oob_{prefix}{compName}");
                 _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errOobStr }, "");
                 _builder.BuildUnreachable();
 
-                _builder.PositionAtEnd(checkArchSetBB);
+                // Load entity current archetype & row
+                _builder.PositionAtEnd(checkLivenessSetBB);
                 var entArchSlotSet = _builder.BuildStructGEP2(_worldStructType, worldParamSet, 5, "ent_arch_slot_set");
                 var entRowSlotSet = _builder.BuildStructGEP2(_worldStructType, worldParamSet, 6, "ent_row_slot_set");
                 var tablesSlotSet = _builder.BuildStructGEP2(_worldStructType, worldParamSet, 2, "tables_slot_set");
 
-                // Load entity current archetype & row
                 var archArr = _builder.BuildLoad2(i32PtrType, entArchSlotSet, "arch_arr");
-                var entArchSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, archArr, new[] { eParam }, "ent_arch_slot");
+                var entArchSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, archArr, new[] { eIdSet }, "ent_arch_slot");
                 var curArchIdxRaw = _builder.BuildLoad2(_context.Int32Type, entArchSlot, "cur_arch_idx_raw");
 
                 var isNegArch = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curArchIdxRaw, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_neg_arch");
                 var errEntBB = setFunc.AppendBasicBlock("set_err_entity");
-                var contSetBB = setFunc.AppendBasicBlock("set_cont");
-                _builder.BuildCondBr(isNegArch, errEntBB, contSetBB);
+                var checkGenSetBB = setFunc.AppendBasicBlock("check_gen_set");
+                _builder.BuildCondBr(isNegArch, errEntBB, checkGenSetBB);
 
                 _builder.PositionAtEnd(errEntBB);
                 var isDead = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curArchIdxRaw, LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-2)), "is_dead");
@@ -1087,11 +1235,28 @@ public sealed partial class EcsRuntimeEmitter
                 _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errPendStr }, "");
                 _builder.BuildUnreachable();
 
+                // Generation guard (ABA prevention) on alive entity
+                _builder.PositionAtEnd(checkGenSetBB);
+                var entGenSlotSet = _builder.BuildStructGEP2(_worldStructType, worldParamSet, (uint)_entityGenWorldOffset, "ent_gen_slot_set");
+                var genArrSet = _builder.BuildLoad2(i32PtrType, entGenSlotSet, "gen_arr_set");
+                var curGenSlotSet = _builder.BuildInBoundsGEP2(_context.Int32Type, genArrSet, new[] { eIdSet }, "cur_gen_slot_set");
+                var curGenSet = _builder.BuildLoad2(_context.Int32Type, curGenSlotSet, "cur_gen_set");
+                var isGenMatchSet = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curGenSet, eGenSet, "is_gen_match_set");
+
+                var contSetBB = setFunc.AppendBasicBlock("set_cont");
+                var staleSetBB = setFunc.AppendBasicBlock("set_stale_error");
+                _builder.BuildCondBr(isGenMatchSet, contSetBB, staleSetBB);
+
+                _builder.PositionAtEnd(staleSetBB);
+                var errStaleSetStr = _builder.BuildGlobalStringPtr("[ECS Error] Attempted to access entity with stale generation (ABA prevented).", $"ecs_err_stale_{prefix}{compName}");
+                _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errStaleSetStr }, "");
+                _builder.BuildUnreachable();
+
                 _builder.PositionAtEnd(contSetBB);
                 var curArchIdx = curArchIdxRaw;
 
                 var rowArr = _builder.BuildLoad2(i32PtrType, entRowSlotSet, "row_arr");
-                var entRowSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArr, new[] { eParam }, "ent_row_slot");
+                var entRowSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArr, new[] { eIdSet }, "ent_row_slot");
                 var curRow = _builder.BuildLoad2(_context.Int32Type, entRowSlot, "cur_row");
 
                 var tablesBaseSet = _builder.BuildLoad2(archPtrType, tablesSlotSet, "tables_set");
@@ -1168,12 +1333,12 @@ public sealed partial class EcsRuntimeEmitter
                 var nextNewCnt = _builder.BuildAdd(newRow, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_new_cnt");
                 _builder.BuildStore(nextNewCnt, newCntSlot2);
 
-                // Store e into newArch.entities[newRow]
+                // Store handleParamSet into newArch.entities[newRow] (i64 handle)
                 var newEntSlot2 = _builder.BuildStructGEP2(_archStructType, newArchPtr2, 3, "new_ent_slot2");
                 var newEntRaw2 = _builder.BuildLoad2(i8PtrType, newEntSlot2, "new_ent_raw2");
-                var newEntTyped2 = _builder.BuildBitCast(newEntRaw2, i32PtrType, "new_ent_typed2");
-                var newEntElem2 = _builder.BuildInBoundsGEP2(_context.Int32Type, newEntTyped2, new[] { newRow }, "new_ent_elem2");
-                _builder.BuildStore(eParam, newEntElem2);
+                var newEntTyped2 = _builder.BuildBitCast(newEntRaw2, LLVMTypeRef.CreatePointer(_context.Int64Type, 0), "new_ent_typed2");
+                var newEntElem2 = _builder.BuildInBoundsGEP2(_context.Int64Type, newEntTyped2, new[] { newRow }, "new_ent_elem2");
+                _builder.BuildStore(handleParamSet, newEntElem2);
 
                 // Migrate all active components common to curArch and newArch via generic descriptor core
                 _builder.BuildCall2(migrateFuncType, migrateFunc, new[] { worldParamSet, curArchIdx, newArchIdx, curRow, newRow }, "");
@@ -1190,32 +1355,33 @@ public sealed partial class EcsRuntimeEmitter
                 _builder.BuildCondBr(isLastRow, afterSwapBB, doSwapBB);
 
                 _builder.PositionAtEnd(doSwapBB);
-                // Move entity ID from lastRow to curRow
+                // Move entity handle from lastRow to curRow
                 var curEntSlotSr = _builder.BuildStructGEP2(_archStructType, curArchPtr2, 3, "cur_ent_sr");
                 var curEntRawSr = _builder.BuildLoad2(i8PtrType, curEntSlotSr, "cur_ent_raw_sr");
-                var curEntTypedSr = _builder.BuildBitCast(curEntRawSr, i32PtrType, "cur_ent_typed_sr");
-                var lastEntElem = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntTypedSr, new[] { lastRow }, "last_ent_elem");
-                var movedE = _builder.BuildLoad2(_context.Int32Type, lastEntElem, "moved_e");
-                var curEntElemSr = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntTypedSr, new[] { curRow }, "cur_ent_elem_sr");
-                _builder.BuildStore(movedE, curEntElemSr);
+                var curEntTypedSr = _builder.BuildBitCast(curEntRawSr, LLVMTypeRef.CreatePointer(_context.Int64Type, 0), "cur_ent_typed_sr");
+                var lastEntElem = _builder.BuildInBoundsGEP2(_context.Int64Type, curEntTypedSr, new[] { lastRow }, "last_ent_elem");
+                var movedHandle = _builder.BuildLoad2(_context.Int64Type, lastEntElem, "moved_handle");
+                var curEntElemSr = _builder.BuildInBoundsGEP2(_context.Int64Type, curEntTypedSr, new[] { curRow }, "cur_ent_elem_sr");
+                _builder.BuildStore(movedHandle, curEntElemSr);
 
                 // Copy all components from lastRow to curRow via generic migration core
                 _builder.BuildCall2(migrateFuncType, migrateFunc, new[] { worldParamSet, curArchIdx, curArchIdx, lastRow, curRow }, "");
 
-                // Update world.entity_row[movedE] = curRow
+                // Update world.entity_row[movedId] = curRow
+                var movedId = _builder.BuildTrunc(movedHandle, _context.Int32Type, "moved_id");
                 var rowArrSr = _builder.BuildLoad2(i32PtrType, entRowSlotSet, "row_arr_sr");
-                var movedERowSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrSr, new[] { movedE }, "moved_e_row_slot");
+                var movedERowSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrSr, new[] { movedId }, "moved_e_row_slot");
                 _builder.BuildStore(curRow, movedERowSlot);
                 _builder.BuildBr(afterSwapBB);
 
                 _builder.PositionAtEnd(afterSwapBB);
                 // Update e's location
                 var archArrTr = _builder.BuildLoad2(i32PtrType, entArchSlotSet, "arch_arr_tr");
-                var eArchSlotTr = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrTr, new[] { eParam }, "e_arch_slot_tr");
+                var eArchSlotTr = _builder.BuildInBoundsGEP2(_context.Int32Type, archArrTr, new[] { eIdSet }, "e_arch_slot_tr");
                 _builder.BuildStore(newArchIdx, eArchSlotTr);
 
                 var rowArrTr = _builder.BuildLoad2(i32PtrType, entRowSlotSet, "row_arr_tr");
-                var eRowSlotTr = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrTr, new[] { eParam }, "e_row_slot_tr");
+                var eRowSlotTr = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrTr, new[] { eIdSet }, "e_row_slot_tr");
                 _builder.BuildStore(newRow, eRowSlotTr);
 
                 _builder.BuildStore(newArchIdx, targetArchAlloca);
@@ -1241,7 +1407,7 @@ public sealed partial class EcsRuntimeEmitter
 
                 for (int f = 0; f < compSym.Fields.Count; f++)
                 {
-                    var fVal = setFunc.GetParam((uint)(f + 2)); // Param 0 is world, Param 1 is e
+                    var fVal = setFunc.GetParam((uint)(f + 2)); // Param 0 is world, Param 1 is handle
                     var fGEP = _builder.BuildStructGEP2(compStructType, finalElem, (uint)f, $"{compSym.Fields[f].Name}_gep");
                     _builder.BuildStore(fVal, fGEP);
                 }
@@ -1249,16 +1415,21 @@ public sealed partial class EcsRuntimeEmitter
                 _builder.BuildRetVoid();
             }
 
-            // 2. world_remove_Comp(ptr world, i32 e) -> void
-            var remFuncType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType, _context.Int32Type }, false);
+            // 2. world_remove_Comp(ptr world, i64 e) -> void
+            var remFuncType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType, _context.Int64Type }, false);
             var remFunc = _module.AddFunction($"world_remove_{compName}", remFuncType);
             var remEntryBB = remFunc.AppendBasicBlock("entry");
             _builder.PositionAtEnd(remEntryBB);
 
             var worldParamRem = remFunc.GetParam(0);
-            var remE = remFunc.GetParam(1);
+            var remHandle = remFunc.GetParam(1);
 
-            // Bounds guard: 0 <= e < world.entity_count
+            // Unpack handle
+            var remE = _builder.BuildTrunc(remHandle, _context.Int32Type, "rem_id");
+            var remGen64 = _builder.BuildLShr(remHandle, LLVMValueRef.CreateConstInt(_context.Int64Type, 32), "rem_gen64");
+            var remGen = _builder.BuildTrunc(remGen64, _context.Int32Type, "rem_gen");
+
+            // Bounds guard: 0 <= id < world.entity_count
             var entCountSlotRem = _builder.BuildStructGEP2(_worldStructType, worldParamRem, 3, "ent_count_slot_rem");
             var totalEntsRem = _builder.BuildLoad2(_context.Int32Type, entCountSlotRem, "total_ents_rem");
 
@@ -1266,16 +1437,17 @@ public sealed partial class EcsRuntimeEmitter
             var eInBoundsRem = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, remE, totalEntsRem, "rem_in_bounds");
             var isValidIdRem = _builder.BuildAnd(eNonNegRem, eInBoundsRem, "rem_is_valid_id");
 
-            var checkArchRemBB = remFunc.AppendBasicBlock("check_arch_rem");
+            var checkLivenessRemBB = remFunc.AppendBasicBlock("check_liveness_rem");
             var oobRemBB = remFunc.AppendBasicBlock("rem_oob_error");
-            _builder.BuildCondBr(isValidIdRem, checkArchRemBB, oobRemBB);
+            _builder.BuildCondBr(isValidIdRem, checkLivenessRemBB, oobRemBB);
 
             _builder.PositionAtEnd(oobRemBB);
             var errOobStrRem = _builder.BuildGlobalStringPtr($"[ECS Error] Attempted to mutate out of bounds entity with world_remove_{compName}.", $"ecs_err_oob_rem_{compName}");
             _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errOobStrRem }, "");
             _builder.BuildUnreachable();
 
-            _builder.PositionAtEnd(checkArchRemBB);
+            // Load entity current archetype & row
+            _builder.PositionAtEnd(checkLivenessRemBB);
             var entArchSlotRem = _builder.BuildStructGEP2(_worldStructType, worldParamRem, 5, "ent_arch_slot_rem");
             var entRowSlotRem = _builder.BuildStructGEP2(_worldStructType, worldParamRem, 6, "ent_row_slot_rem");
             var tablesSlotRem = _builder.BuildStructGEP2(_worldStructType, worldParamRem, 2, "tables_slot_rem");
@@ -1286,8 +1458,8 @@ public sealed partial class EcsRuntimeEmitter
 
             var isNegArchRem = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curArchIdxRem, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_neg_arch_rem");
             var errRemBB = remFunc.AppendBasicBlock("rem_err_entity");
-            var contRemBB = remFunc.AppendBasicBlock("rem_cont");
-            _builder.BuildCondBr(isNegArchRem, errRemBB, contRemBB);
+            var checkGenRemBB = remFunc.AppendBasicBlock("check_gen_rem");
+            _builder.BuildCondBr(isNegArchRem, errRemBB, checkGenRemBB);
 
             _builder.PositionAtEnd(errRemBB);
             var isDeadRem = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curArchIdxRem, LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-2)), "is_dead_rem");
@@ -1303,6 +1475,23 @@ public sealed partial class EcsRuntimeEmitter
             _builder.PositionAtEnd(pendingRemBB);
             var errPendStrRem = _builder.BuildGlobalStringPtr($"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_{compName}.", $"ecs_err_pending_rem_{compName}");
             _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errPendStrRem }, "");
+            _builder.BuildUnreachable();
+
+            // Generation guard (ABA prevention) on alive entity
+            _builder.PositionAtEnd(checkGenRemBB);
+            var entGenSlotRem = _builder.BuildStructGEP2(_worldStructType, worldParamRem, (uint)_entityGenWorldOffset, "ent_gen_slot_rem");
+            var genArrRem = _builder.BuildLoad2(i32PtrType, entGenSlotRem, "gen_arr_rem");
+            var curGenSlotRem = _builder.BuildInBoundsGEP2(_context.Int32Type, genArrRem, new[] { remE }, "cur_gen_slot_rem");
+            var curGenRem = _builder.BuildLoad2(_context.Int32Type, curGenSlotRem, "cur_gen_rem");
+            var isGenMatchRem = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curGenRem, remGen, "is_gen_match_rem");
+
+            var contRemBB = remFunc.AppendBasicBlock("rem_cont");
+            var staleRemBB = remFunc.AppendBasicBlock("rem_stale_error");
+            _builder.BuildCondBr(isGenMatchRem, contRemBB, staleRemBB);
+
+            _builder.PositionAtEnd(staleRemBB);
+            var errStaleRemStr = _builder.BuildGlobalStringPtr($"[ECS Error] Attempted to access entity with stale generation (ABA prevented).", $"ecs_err_stale_rem_{compName}");
+            _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errStaleRemStr }, "");
             _builder.BuildUnreachable();
 
             _builder.PositionAtEnd(contRemBB);
@@ -1376,12 +1565,12 @@ public sealed partial class EcsRuntimeEmitter
             var nextNewCntRem = _builder.BuildAdd(newRowRem, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_cnt_rem");
             _builder.BuildStore(nextNewCntRem, newCntSlotRem2);
 
-            // Store entity in newArch
+            // Store entity in newArch (i64 handle)
             var newEntSlotRem2 = _builder.BuildStructGEP2(_archStructType, newArchPtrRem2, 3, "new_ent_rem");
             var newEntRawRem2 = _builder.BuildLoad2(i8PtrType, newEntSlotRem2, "new_ent_raw_rem");
-            var newEntTypedRem2 = _builder.BuildBitCast(newEntRawRem2, i32PtrType, "new_ent_typed_rem");
-            var newEntElemRem2 = _builder.BuildInBoundsGEP2(_context.Int32Type, newEntTypedRem2, new[] { newRowRem }, "new_ent_elem_rem");
-            _builder.BuildStore(remE, newEntElemRem2);
+            var newEntTypedRem2 = _builder.BuildBitCast(newEntRawRem2, LLVMTypeRef.CreatePointer(_context.Int64Type, 0), "new_ent_typed_rem");
+            var newEntElemRem2 = _builder.BuildInBoundsGEP2(_context.Int64Type, newEntTypedRem2, new[] { newRowRem }, "new_ent_elem_rem");
+            _builder.BuildStore(remHandle, newEntElemRem2);
 
             // Migrate active components remaining in newArch via generic descriptor core
             _builder.BuildCall2(migrateFuncType, migrateFunc, new[] { worldParamRem, curArchIdxRem, newArchIdxRem, curRowRem, newRowRem }, "");
@@ -1400,17 +1589,18 @@ public sealed partial class EcsRuntimeEmitter
             _builder.PositionAtEnd(doSwapRemBB);
             var curEntSlotRemSr = _builder.BuildStructGEP2(_archStructType, curArchPtrRem2, 3, "ent_sr_rem");
             var curEntRawRemSr = _builder.BuildLoad2(i8PtrType, curEntSlotRemSr, "ent_raw_sr_rem");
-            var curEntTypedRemSr = _builder.BuildBitCast(curEntRawRemSr, i32PtrType, "ent_typed_sr_rem");
-            var lastEntElemRem = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntTypedRemSr, new[] { lastRowRem }, "last_ent_rem");
-            var movedERem = _builder.BuildLoad2(_context.Int32Type, lastEntElemRem, "moved_e_rem");
-            var curEntElemRemSr = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntTypedRemSr, new[] { curRowRem }, "cur_ent_rem");
-            _builder.BuildStore(movedERem, curEntElemRemSr);
+            var curEntTypedRemSr = _builder.BuildBitCast(curEntRawRemSr, LLVMTypeRef.CreatePointer(_context.Int64Type, 0), "ent_typed_sr_rem");
+            var lastEntElemRem = _builder.BuildInBoundsGEP2(_context.Int64Type, curEntTypedRemSr, new[] { lastRowRem }, "last_ent_rem");
+            var movedHandleRem = _builder.BuildLoad2(_context.Int64Type, lastEntElemRem, "moved_handle_rem");
+            var curEntElemRemSr = _builder.BuildInBoundsGEP2(_context.Int64Type, curEntTypedRemSr, new[] { curRowRem }, "cur_ent_rem");
+            _builder.BuildStore(movedHandleRem, curEntElemRemSr);
 
             // Copy components of curArch from lastRow to curRow via generic migration core
             _builder.BuildCall2(migrateFuncType, migrateFunc, new[] { worldParamRem, curArchIdxRem, curArchIdxRem, lastRowRem, curRowRem }, "");
 
+            var movedIdRem = _builder.BuildTrunc(movedHandleRem, _context.Int32Type, "moved_id_rem");
             var rowArrRemSr = _builder.BuildLoad2(i32PtrType, entRowSlotRem, "row_arr_rem_sr");
-            var movedERowSlotRem = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrRemSr, new[] { movedERem }, "moved_e_row_slot_rem");
+            var movedERowSlotRem = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrRemSr, new[] { movedIdRem }, "moved_e_row_slot_rem");
             _builder.BuildStore(curRowRem, movedERowSlotRem);
             _builder.BuildBr(afterSwapRemBB);
 
@@ -1429,16 +1619,24 @@ public sealed partial class EcsRuntimeEmitter
             _builder.PositionAtEnd(exitRemBB);
             _builder.BuildRetVoid();
 
-            // 3. world_has_Comp(ptr world, i32 e) -> bool
-            var hasFuncType = LLVMTypeRef.CreateFunction(_context.Int1Type, new[] { worldPtrType, _context.Int32Type }, false);
+            // 3. world_has_Comp(ptr world, i64 e) -> bool
+            // Queries return false on bounds error, stale generation, or dead entity (no panic)
+            var hasFuncType = LLVMTypeRef.CreateFunction(_context.Int1Type, new[] { worldPtrType, _context.Int64Type }, false);
             var hasFunc = _module.AddFunction($"world_has_{compName}", hasFuncType);
             var hasEntryBB = hasFunc.AppendBasicBlock("entry");
             _builder.PositionAtEnd(hasEntryBB);
 
             var worldParamHas = hasFunc.GetParam(0);
-            var hasEParam = hasFunc.GetParam(1);
+            var hasHandle = hasFunc.GetParam(1);
 
-            // Bounds guard: 0 <= e < world.entity_count
+            // Unpack handle
+            var hasEParam = _builder.BuildTrunc(hasHandle, _context.Int32Type, "has_id");
+            var hasGen64 = _builder.BuildLShr(hasHandle, LLVMValueRef.CreateConstInt(_context.Int64Type, 32), "has_gen64");
+            var hasGen = _builder.BuildTrunc(hasGen64, _context.Int32Type, "has_gen");
+
+            var retFalseBB = hasFunc.AppendBasicBlock("ret_false");
+
+            // Bounds guard: 0 <= id < world.entity_count -> else return false
             var entCountSlotHas = _builder.BuildStructGEP2(_worldStructType, worldParamHas, 3, "ent_count_slot_has");
             var totalEntsHas = _builder.BuildLoad2(_context.Int32Type, entCountSlotHas, "total_ents_has");
 
@@ -1446,15 +1644,21 @@ public sealed partial class EcsRuntimeEmitter
             var eInBoundsHas = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, hasEParam, totalEntsHas, "has_in_bounds");
             var isValidIdHas = _builder.BuildAnd(eNonNegHas, eInBoundsHas, "has_is_valid_id");
 
+            var checkGenHasBB = hasFunc.AppendBasicBlock("check_gen_has");
+            _builder.BuildCondBr(isValidIdHas, checkGenHasBB, retFalseBB);
+
+            // Generation check: curGen == hasGen -> else return false
+            _builder.PositionAtEnd(checkGenHasBB);
+            var entGenSlotHas = _builder.BuildStructGEP2(_worldStructType, worldParamHas, (uint)_entityGenWorldOffset, "ent_gen_slot_has");
+            var genArrHas = _builder.BuildLoad2(i32PtrType, entGenSlotHas, "gen_arr_has");
+            var curGenSlotHas = _builder.BuildInBoundsGEP2(_context.Int32Type, genArrHas, new[] { hasEParam }, "cur_gen_slot_has");
+            var curGenHas = _builder.BuildLoad2(_context.Int32Type, curGenSlotHas, "cur_gen_has");
+            var isGenMatchHas = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curGenHas, hasGen, "is_gen_match_has");
+
             var checkArchHasBB = hasFunc.AppendBasicBlock("check_arch_has");
-            var oobHasBB = hasFunc.AppendBasicBlock("has_oob_error");
-            _builder.BuildCondBr(isValidIdHas, checkArchHasBB, oobHasBB);
+            _builder.BuildCondBr(isGenMatchHas, checkArchHasBB, retFalseBB);
 
-            _builder.PositionAtEnd(oobHasBB);
-            var errOobStrHas = _builder.BuildGlobalStringPtr($"[ECS Error] Attempted to query out of bounds entity with world_has_{compName}.", $"ecs_err_oob_has_{compName}");
-            _builder.BuildCall2(rtPanicType, rtPanicFunc, new[] { errOobStrHas }, "");
-            _builder.BuildUnreachable();
-
+            // Liveness check: arch >= 0 -> else return false
             _builder.PositionAtEnd(checkArchHasBB);
             var entArchSlotHas = _builder.BuildStructGEP2(_worldStructType, worldParamHas, 5, "ent_arch_slot_has");
             var tablesSlotHas = _builder.BuildStructGEP2(_worldStructType, worldParamHas, 2, "tables_slot_has");
@@ -1465,7 +1669,6 @@ public sealed partial class EcsRuntimeEmitter
 
             var isAliveHas = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curArchIdxHas, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_alive_has");
             var checkMaskBB = hasFunc.AppendBasicBlock("check_mask");
-            var retFalseBB = hasFunc.AppendBasicBlock("ret_false");
             _builder.BuildCondBr(isAliveHas, checkMaskBB, retFalseBB);
 
             _builder.PositionAtEnd(checkMaskBB);
@@ -1648,8 +1851,8 @@ public sealed partial class EcsRuntimeEmitter
             _builder.PositionAtEnd(dInitBodyBB);
             var childElem = _builder.BuildInBoundsGEP2(_compStructTypes["ChildOf"], coColTyped, new[] { curInitI }, "child_elem");
             var parentGEP = _builder.BuildStructGEP2(_compStructTypes["ChildOf"], childElem, 0, "parent_gep");
-            var parentId = _builder.BuildLoad2(_context.Int32Type, parentGEP, "parent_id");
-            var isRoot = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, parentId, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_root");
+            var parentHandle = _builder.BuildLoad2(_context.Int64Type, parentGEP, "parent_handle");
+            var isRoot = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, parentHandle, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), "is_root");
             var depthVal = _builder.BuildSelect(isRoot, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "depth_val");
             var depthsTyped = _builder.BuildBitCast(depthsRaw, i32PtrType, "depths_typed");
             var depthSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, depthsTyped, new[] { curInitI }, "depth_slot");
@@ -1706,21 +1909,23 @@ public sealed partial class EcsRuntimeEmitter
             _builder.BuildStore(dj, diSlot);
             _builder.BuildStore(di, djSlot);
 
-            // Swap entities
+            // Swap entities (i64 handles)
             var entSlotSh = _builder.BuildStructGEP2(_archStructType, curArch, 3, "ent_slot_sh");
             var entRawSh = _builder.BuildLoad2(i8PtrType, entSlotSh, "ent_raw_sh");
-            var entTypedSh = _builder.BuildBitCast(entRawSh, i32PtrType, "ent_typed_sh");
-            var eiSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, entTypedSh, new[] { curSortI }, "ei_slot");
-            var ejSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, entTypedSh, new[] { curSortJ }, "ej_slot");
-            var ei = _builder.BuildLoad2(_context.Int32Type, eiSlot, "ei");
-            var ej = _builder.BuildLoad2(_context.Int32Type, ejSlot, "ej");
-            _builder.BuildStore(ej, eiSlot);
-            _builder.BuildStore(ei, ejSlot);
+            var entTypedSh = _builder.BuildBitCast(entRawSh, LLVMTypeRef.CreatePointer(_context.Int64Type, 0), "ent_typed_sh");
+            var eiSlot = _builder.BuildInBoundsGEP2(_context.Int64Type, entTypedSh, new[] { curSortI }, "ei_slot");
+            var ejSlot = _builder.BuildInBoundsGEP2(_context.Int64Type, entTypedSh, new[] { curSortJ }, "ej_slot");
+            var eiHandle = _builder.BuildLoad2(_context.Int64Type, eiSlot, "ei_handle");
+            var ejHandle = _builder.BuildLoad2(_context.Int64Type, ejSlot, "ej_handle");
+            _builder.BuildStore(ejHandle, eiSlot);
+            _builder.BuildStore(eiHandle, ejSlot);
 
-            // Update world.entity_row
+            // Update world.entity_row for both entities using slot id = trunc(handle)
+            var eiId = _builder.BuildTrunc(eiHandle, _context.Int32Type, "ei_id");
+            var ejId = _builder.BuildTrunc(ejHandle, _context.Int32Type, "ej_id");
             var rowArrSh = _builder.BuildLoad2(i32PtrType, entRowSlotSh, "row_arr_sh");
-            var eiRowSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrSh, new[] { ei }, "ei_row_slot");
-            var ejRowSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrSh, new[] { ej }, "ej_row_slot");
+            var eiRowSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrSh, new[] { eiId }, "ei_row_slot");
+            var ejRowSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrSh, new[] { ejId }, "ej_row_slot");
             _builder.BuildStore(curSortJ, eiRowSlot);
             _builder.BuildStore(curSortI, ejRowSlot);
 

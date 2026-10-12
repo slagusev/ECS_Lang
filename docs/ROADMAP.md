@@ -206,10 +206,17 @@
 - **Шаблон коммита**: `perf(runtime): accelerate archetype lookup via embedded mask hash index (Step B4)`
 
 #### Шаг B2 — Рециклинг Entity ID (Dense Free-List)
-- **Объём**: Замена монотонного `world.next_entity_id++` на dense free-list повторного использования идентификаторов деспавненных сущностей с поколенческой защитой (generation counter) против ABA-проблемы.
-- **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`.
-- **Критерий приёмки**: Уровень 2 (инвариантный тест переиспользования id с валидацией поколений).
-- **Шаблон коммита**: `feat(runtime): introduce dense free-list with generational entity id recycling`
+- **Объём**: Замена монотонного `world.next_entity_id++` на dense free-list повторного использования идентификаторов деспавненных сущностей с поколенческой защитой (generation counter) против ABA-проблемы. Представление `entity` как непрозрачного 64-битного хэндла: `(u32 id) | ((u64)gen << 32)`. Конвенция `Entity.Null = 0UL`. Поколения слотов начинаются с 1. Иерархия guards: Bounds Check $\to$ Liveness Check (dead/pending) $\to$ Generation Check (ABA prevented) для мутаций; запросы `world_has_*` возвращают `false` при невалидности любого уровня.
+- **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.cs`, `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`, `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Commands.cs`, `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.cs`, `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Ecs.cs`, `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Expressions.cs`, `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.BulkSpawn.cs`, `src/ECSLang.Semantics/TypeChecker.cs`, `src/ECSLang.Semantics/TypeChecker.Declarations.cs`, `src/ECSLang.Semantics/TypeChecker.Expressions.cs`, `tests/verify_b2_aba_invariant.ecs`, `tests/verify_b2_aba_invariant.ps1`, `tests/verify_b2_freelist_soak.ecs`, `tests/verify_b2_freelist_soak.ps1`, `tests/verify_golden_ir.ps1`, `tests/golden_ir/*`, `ARCHITECTURE.md`, `REFERENCE.md`, `docs/ROADMAP.md`.
+- **Критерий приёмки**:
+  1. Немодифицированные инвариантные тесты: `tests/verify_a1_invariant.ps1` и `tests/verify_a6_bounds_invariant.ps1` пройдены без единой правки (Level 2).
+  2. Уровень 2 ABA invariant test (`tests/verify_b2_aba_invariant.ps1`): переиспользование слота $0$ с $gen=2$ подтверждено; доступ по старому хэндлу $e_1$ ($gen=1$) к живой сущности вызывает panic `[ECS Error] Attempted to access entity with stale generation (ABA prevented).` с кодом 1; запросы `world_has_*(stale)` возвращают `false`; проверка Null entity (`0UL`) подтверждена.
+  3. Уровень 2 Soak test (`tests/verify_b2_freelist_soak.ps1`): 100 000 циклов spawn/despawn выполнены за 316 мс без утечек памяти и без расширения массива сущностей.
+  4. Граничные тесты компонентов: 6/6 пройдены (63, 64, 65, 127, 128, 129).
+  5. Полный набор примеров: 29/29 скомпилированы, 23/23 выполнены с кодом 0.
+  6. Golden IR: strict 7/7 exact match подтвержден (категория `Legal Category 11: 64-bit Entity Handle and Generational Free-List`).
+- **Статус**: **ВЫПОЛНЕНО**
+- **Шаблон коммита**: `feat(runtime): introduce dense free-list with generational entity id recycling (Step B2)`
 
 #### Шаг B5 — POSIX-параллелизм и Linux-контур верификации
 Разделён на фазы; каждая — отдельный коммит и приёмка. Первичный контур — GitHub Actions (WSL исключён из-за лимитов RAM локальной машины).

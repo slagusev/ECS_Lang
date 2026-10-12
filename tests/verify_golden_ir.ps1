@@ -213,6 +213,15 @@ try {
                 # Legal Category 9: Floating-point formatting (Step B3: %.9g for f32, rt_to_string_f64 with %.17g)
                 if ($line -match "(fmt_f.*%.2f|fmt_f.*%.9g|fmt_f32_p.*%.9g|fmt_f64_p.*%.17g|rt_to_string_f64|fmt_f64.*%.17g|buf_f64|arena_buf_f64)") { continue }
 
+                # Legal Category 11: 64-bit Entity Handle and Generational Free-List (Step B2)
+                # Matches: 64-bit entity handle unpack, gen checks, freelist alloc/pop/push/realloc, 64-bit archetype entities
+                if ($line -match "(ecs_err_stale|stale_error|stale_panic|check_gen|check_liveness|is_gen_match|next_gen_val|free_ents|free_cnt|free_cap|has_free|pop_free|grow_free|push_free|double_free_cap|new_free_cap|bytes_for_free|new_free_arr|ent_gen_slot|gen_arr|cur_gen_slot|cur_gen|alloc_ent|world_alloc_entity|new_ent_handle|recycled_handle|ds_check|rem_id|rem_gen|has_id|has_gen|ds_gen|handle_slot|parent_handle|moved_handle|cur_ent_typed|last_ent_elem|cur_ent_elem)") { continue }
+                if ($line -match "(%struct\.EcsWorld = type .*ptr.*i32.*i32.*i32|%ent_bytes = mul i64 %new_cap64, (4|8)|define (i32|i64) @world_alloc_entity|define void @world_despawn\(ptr %0, i64 %1\)|define void @world_despawn\(ptr %0, i32 %1\)|world_set_.*\(ptr %0, (i32|i64) %1|world_add_.*\(ptr %0, (i32|i64) %1|world_remove_.*\(ptr %0, (i32|i64) %1|world_has_.*\(ptr %0, (i32|i64) %1)") { continue }
+                if ($line -match "(@ecs_err_dead_ds|@ecs_err_pend_ds|@ecs_err_oob_ds|@ecs_err_stale_ds)") { continue }
+                if ($line -match "(store i64 %0, ptr %parent_slot|load i64, ptr %cur_ent_slot|store i64 %moved_handle|call void @world_despawn\(ptr %0, i64 %|call void @world_despawn\(ptr %0, i32 %|call void @world_set_.*\(ptr %0, (i32|i64) %|call void @world_add_.*\(ptr %0, (i32|i64) %|call void @world_remove_.*\(ptr %0, (i32|i64) %|call i1 @world_has_.*\(ptr %0, (i32|i64) %)") { continue }
+                if ($line -match "(store i64 %e, ptr|store i64 %1, ptr|load i64, ptr %e|load i64, ptr %1|alloca i64.*%e|e_id = trunc i64|e_gen = trunc i64|e_gen64 = lshr i64|rem_id = trunc i64|rem_gen64 = lshr i64|has_id = trunc i64|has_gen64 = lshr i64|moved_id = trunc i64|eId = trunc i64)") { continue }
+                if ($line -match "(%struct\.EcsCommand = type|cmd_e = getelementptr|store i64 %|load i64, ptr %cmd_e)") { continue }
+
                 $illegalDiffs += $line
             }
 

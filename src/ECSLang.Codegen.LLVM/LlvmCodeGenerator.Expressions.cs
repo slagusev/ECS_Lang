@@ -487,6 +487,14 @@ public sealed partial class LlvmCodeGenerator
                 }
 
                 var mFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(mFunc);
+                for (int i = 0; i < mArgs.Count && i < (int)mFunc.ParamsCount; i++)
+                {
+                    var expectedParamType = mFunc.GetParam((uint)i).TypeOf;
+                    if (expectedParamType == context.Int64Type && mArgs[i].TypeOf == context.Int32Type)
+                    {
+                        mArgs[i] = builder.BuildZExt(mArgs[i], context.Int64Type, "zext_m_i64");
+                    }
+                }
                 string mCallName = mFuncType.ReturnType == context.VoidType ? "" : $"{methodCall.MethodName}_call";
                 return builder.BuildCall2(mFuncType, mFunc, mArgs.ToArray(), mCallName);
 
@@ -729,6 +737,11 @@ public sealed partial class LlvmCodeGenerator
                                 var fmt = builder.BuildGlobalStringPtr("%s", "fmt_s");
                                 return builder.BuildCall2(printfType, printfFunc, new[] { fmt, val }, "printf_call");
                             }
+                        }
+                        else if (val.TypeOf == context.Int64Type || argType == TypeSymbol.I64 || argType == TypeSymbol.U64 || argType == TypeSymbol.Entity)
+                        {
+                            var fmt = builder.BuildGlobalStringPtr(addNewline ? "%lld\n" : "%lld", "fmt_lld");
+                            return builder.BuildCall2(printfType, printfFunc, new[] { fmt, val }, "printf_call");
                         }
                         else
                         {

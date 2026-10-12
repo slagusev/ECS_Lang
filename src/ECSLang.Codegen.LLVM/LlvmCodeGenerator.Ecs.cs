@@ -340,13 +340,13 @@ public sealed partial class LlvmCodeGenerator
             }
             else if (qp.TypeName is "Entity" or "entity")
             {
-                var i32PtrType = LLVMTypeRef.CreatePointer(context.Int32Type, 0);
+                var i64PtrType = LLVMTypeRef.CreatePointer(context.Int64Type, 0);
                 var entArrSlot = builder.BuildStructGEP2(ecs.GetArchetypeStructType(), curArchPtr, 3, $"{qp.Name}_arr_slot");
                 var entArrRaw = builder.BuildLoad2(i8PtrType, entArrSlot, $"{qp.Name}_arr_raw");
-                var entArrTyped = builder.BuildBitCast(entArrRaw, i32PtrType, $"{qp.Name}_arr_typed");
-                var entElemPtr = builder.BuildInBoundsGEP2(context.Int32Type, entArrTyped, new[] { curRow }, $"{qp.Name}_elem_ptr");
-                var curEntityVal = builder.BuildLoad2(context.Int32Type, entElemPtr, $"{qp.Name}_val");
-                var entAlloca = CreateEntryBlockAlloca(context, sysFunc, context.Int32Type, $"{qp.Name}_alloca");
+                var entArrTyped = builder.BuildBitCast(entArrRaw, i64PtrType, $"{qp.Name}_arr_typed");
+                var entElemPtr = builder.BuildInBoundsGEP2(context.Int64Type, entArrTyped, new[] { curRow }, $"{qp.Name}_elem_ptr");
+                var curEntityVal = builder.BuildLoad2(context.Int64Type, entElemPtr, $"{qp.Name}_val");
+                var entAlloca = CreateEntryBlockAlloca(context, sysFunc, context.Int64Type, $"{qp.Name}_alloca");
                 builder.BuildStore(curEntityVal, entAlloca);
                 locals[qp.Name] = entAlloca;
             }

@@ -4,10 +4,10 @@ target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:
 target triple = "x86_64-pc-windows-msvc"
 
 %struct.ComponentDesc = type { i64, i64, i32, i32 }
-%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, ptr, %struct.res.TimeStep, ptr, i32, i32, ptr, ptr, ptr, i32 }
+%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, ptr, %struct.res.TimeStep, ptr, i32, i32, ptr, ptr, ptr, i32, ptr, ptr, i32, i32 }
 %struct.res.TimeStep = type { float }
 %struct.Archetype = type { [1 x i64], i32, i32, ptr, [4 x ptr] }
-%struct.ChildOf = type { i32 }
+%struct.ChildOf = type { i64 }
 %struct.Health = type { i32, i32 }
 %struct.Position = type { float, float }
 %struct.Velocity = type { float, float }
@@ -15,48 +15,60 @@ target triple = "x86_64-pc-windows-msvc"
 
 @NvOptimusEnablement = dllexport global i32 1
 @AmdPowerXpressRequestHighPerformance = dllexport global i32 1
-@_ecs_component_descriptors = internal constant [4 x %struct.ComponentDesc] [%struct.ComponentDesc { i64 1, i64 4, i32 4, i32 0 }, %struct.ComponentDesc { i64 2, i64 8, i32 4, i32 0 }, %struct.ComponentDesc { i64 4, i64 8, i32 4, i32 0 }, %struct.ComponentDesc { i64 8, i64 8, i32 4, i32 0 }]
+@_ecs_component_descriptors = internal constant [4 x %struct.ComponentDesc] [%struct.ComponentDesc { i64 1, i64 8, i32 8, i32 0 }, %struct.ComponentDesc { i64 2, i64 8, i32 4, i32 0 }, %struct.ComponentDesc { i64 4, i64 8, i32 4, i32 0 }, %struct.ComponentDesc { i64 8, i64 8, i32 4, i32 0 }]
 @_ecs_zero_mask = internal constant [1 x i64] zeroinitializer
+@ecs_err_oob_ds = private unnamed_addr constant [55 x i8] c"[ECS Error] Attempted to despawn out of bounds entity.\00", align 1
+@ecs_err_dead_ds = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_despawn.\00", align 1
+@ecs_err_pend_ds = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_despawn.\00", align 1
+@ecs_err_stale_ds = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_world_set_ChildOf = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_set_ChildOf.\00", align 1
 @ecs_err_dead_world_set_ChildOf = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_ChildOf.\00", align 1
 @ecs_err_pending_world_set_ChildOf = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_ChildOf.\00", align 1
+@ecs_err_stale_world_set_ChildOf = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_world_add_ChildOf = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_add_ChildOf.\00", align 1
 @ecs_err_dead_world_add_ChildOf = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_ChildOf.\00", align 1
 @ecs_err_pending_world_add_ChildOf = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_ChildOf.\00", align 1
+@ecs_err_stale_world_add_ChildOf = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_rem_ChildOf = private unnamed_addr constant [80 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_remove_ChildOf.\00", align 1
 @ecs_err_dead_rem_ChildOf = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_ChildOf.\00", align 1
 @ecs_err_pending_rem_ChildOf = private unnamed_addr constant [88 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_ChildOf.\00", align 1
-@ecs_err_oob_has_ChildOf = private unnamed_addr constant [76 x i8] c"[ECS Error] Attempted to query out of bounds entity with world_has_ChildOf.\00", align 1
+@ecs_err_stale_rem_ChildOf = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_world_set_Health = private unnamed_addr constant [76 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_set_Health.\00", align 1
 @ecs_err_dead_world_set_Health = private unnamed_addr constant [80 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Health.\00", align 1
 @ecs_err_pending_world_set_Health = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_Health.\00", align 1
+@ecs_err_stale_world_set_Health = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_world_add_Health = private unnamed_addr constant [76 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_add_Health.\00", align 1
 @ecs_err_dead_world_add_Health = private unnamed_addr constant [80 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Health.\00", align 1
 @ecs_err_pending_world_add_Health = private unnamed_addr constant [84 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_Health.\00", align 1
+@ecs_err_stale_world_add_Health = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_rem_Health = private unnamed_addr constant [79 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_remove_Health.\00", align 1
 @ecs_err_dead_rem_Health = private unnamed_addr constant [83 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Health.\00", align 1
 @ecs_err_pending_rem_Health = private unnamed_addr constant [87 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_Health.\00", align 1
-@ecs_err_oob_has_Health = private unnamed_addr constant [75 x i8] c"[ECS Error] Attempted to query out of bounds entity with world_has_Health.\00", align 1
+@ecs_err_stale_rem_Health = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_world_set_Position = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_set_Position.\00", align 1
 @ecs_err_dead_world_set_Position = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Position.\00", align 1
 @ecs_err_pending_world_set_Position = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_Position.\00", align 1
+@ecs_err_stale_world_set_Position = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_world_add_Position = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_add_Position.\00", align 1
 @ecs_err_dead_world_add_Position = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Position.\00", align 1
 @ecs_err_pending_world_add_Position = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_Position.\00", align 1
+@ecs_err_stale_world_add_Position = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_rem_Position = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_remove_Position.\00", align 1
 @ecs_err_dead_rem_Position = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Position.\00", align 1
 @ecs_err_pending_rem_Position = private unnamed_addr constant [89 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_Position.\00", align 1
-@ecs_err_oob_has_Position = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to query out of bounds entity with world_has_Position.\00", align 1
+@ecs_err_stale_rem_Position = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_world_set_Velocity = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_set_Velocity.\00", align 1
 @ecs_err_dead_world_set_Velocity = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_set_Velocity.\00", align 1
 @ecs_err_pending_world_set_Velocity = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_set_Velocity.\00", align 1
+@ecs_err_stale_world_set_Velocity = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_world_add_Velocity = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_add_Velocity.\00", align 1
 @ecs_err_dead_world_add_Velocity = private unnamed_addr constant [82 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_add_Velocity.\00", align 1
 @ecs_err_pending_world_add_Velocity = private unnamed_addr constant [86 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_add_Velocity.\00", align 1
+@ecs_err_stale_world_add_Velocity = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @ecs_err_oob_rem_Velocity = private unnamed_addr constant [81 x i8] c"[ECS Error] Attempted to mutate out of bounds entity with world_remove_Velocity.\00", align 1
 @ecs_err_dead_rem_Velocity = private unnamed_addr constant [85 x i8] c"[ECS Error] Attempted to mutate despawned or dead entity with world_remove_Velocity.\00", align 1
 @ecs_err_pending_rem_Velocity = private unnamed_addr constant [89 x i8] c"[ECS Error] Attempted to mutate unassigned or pending entity with world_remove_Velocity.\00", align 1
-@ecs_err_oob_has_Velocity = private unnamed_addr constant [77 x i8] c"[ECS Error] Attempted to query out of bounds entity with world_has_Velocity.\00", align 1
+@ecs_err_stale_rem_Velocity = private unnamed_addr constant [78 x i8] c"[ECS Error] Attempted to access entity with stale generation (ABA prevented).\00", align 1
 @g_ecs_profiler_visible = internal global i32 0
 @p_title = private unnamed_addr constant [44 x i8] c"[ ECS ARCHETYPE PROFILER & INSPECTOR (F1) ]\00", align 1
 @fps_fmt = private unnamed_addr constant [38 x i8] c"Performance: %d FPS (%.2f ms / frame)\00", align 1
@@ -71,11 +83,12 @@ target triple = "x86_64-pc-windows-msvc"
 @_ecs_query_req_system_StatusSystem = internal constant [1 x i64] [i64 6]
 @_ecs_query_without_system_StatusSystem = internal constant [1 x i64] zeroinitializer
 @str_lit = private unnamed_addr constant [12 x i8] c"   Entity #\00", align 1
-@fmt_d = private unnamed_addr constant [3 x i8] c"%d\00", align 1
+@fmt_lld = private unnamed_addr constant [5 x i8] c"%lld\00", align 1
 @str_lit.1 = private unnamed_addr constant [8 x i8] c": Pos=(\00", align 1
 @fmt_f = private unnamed_addr constant [5 x i8] c"%.9g\00", align 1
 @str_lit.2 = private unnamed_addr constant [3 x i8] c", \00", align 1
 @str_lit.3 = private unnamed_addr constant [9 x i8] c") | HP: \00", align 1
+@fmt_d = private unnamed_addr constant [3 x i8] c"%d\00", align 1
 @str_lit.4 = private unnamed_addr constant [2 x i8] c"/\00", align 1
 @str_lit.5 = private unnamed_addr constant [50 x i8] c"=================================================\00", align 1
 @str_lit.6 = private unnamed_addr constant [50 x i8] c"      ECSLang Example 08: ECS Architecture       \00", align 1
@@ -446,7 +459,7 @@ entry:
   %new_cap64 = zext i32 %new_arch_cap to i64
   %ent_slot = getelementptr inbounds nuw %struct.Archetype, ptr %arch_elem, i32 0, i32 3
   %cur_ent_raw = load ptr, ptr %ent_slot, align 8
-  %ent_bytes = mul i64 %new_cap64, 4
+  %ent_bytes = mul i64 %new_cap64, 8
   %new_ent_raw = call ptr @realloc(ptr %cur_ent_raw, i64 %ent_bytes)
   store ptr %new_ent_raw, ptr %ent_slot, align 8
   %mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %arch_elem, i32 0, i32 0
@@ -541,8 +554,8 @@ m_w0_bit_loop:                                    ; preds = %m_w0_bit_loop, %m_w
 
 define ptr @ecs_create_world() {
 entry:
-  %raw_world = call ptr @malloc(i64 128)
-  %0 = call ptr @memset(ptr %raw_world, i32 0, i64 128)
+  %raw_world = call ptr @malloc(i64 152)
+  %0 = call ptr @memset(ptr %raw_world, i32 0, i64 152)
   %a0_init = call i32 @world_get_or_create_archetype(ptr %raw_world, ptr @_ecs_zero_mask)
   ret ptr %raw_world
 }
@@ -560,18 +573,48 @@ entry:
 
 declare void @exit(i32)
 
-define i32 @world_alloc_entity(ptr %0) {
+define i64 @world_alloc_entity(ptr %0) {
 entry:
   %ent_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %ent_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 4
   %ent_arch_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %ent_gen_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %free_ents_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 21
+  %free_cnt_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 22
+  %free_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 23
+  %cur_free_cnt = load i32, ptr %free_cnt_slot, align 4
+  %has_free_slot = icmp sgt i32 %cur_free_cnt, 0
+  br i1 %has_free_slot, label %pop_free, label %grow_and_alloc
+
+pop_free:                                         ; preds = %entry
+  %popped_idx = sub i32 %cur_free_cnt, 1
+  store i32 %popped_idx, ptr %free_cnt_slot, align 4
+  %free_arr_pop = load ptr, ptr %free_ents_slot, align 8
+  %free_slot_ptr = getelementptr inbounds i32, ptr %free_arr_pop, i32 %popped_idx
+  %recycled_id = load i32, ptr %free_slot_ptr, align 4
+  %arch_arr_pop = load ptr, ptr %ent_arch_slot, align 8
+  %arch_slot_pop = getelementptr inbounds i32, ptr %arch_arr_pop, i32 %recycled_id
+  store i32 -1, ptr %arch_slot_pop, align 4
+  %row_arr_pop = load ptr, ptr %ent_row_slot, align 8
+  %row_slot_pop = getelementptr inbounds i32, ptr %row_arr_pop, i32 %recycled_id
+  store i32 -1, ptr %row_slot_pop, align 4
+  %gen_arr_pop = load ptr, ptr %ent_gen_slot, align 8
+  %gen_slot_pop = getelementptr inbounds i32, ptr %gen_arr_pop, i32 %recycled_id
+  %cur_gen_pop = load i32, ptr %gen_slot_pop, align 4
+  %recycled_id64 = zext i32 %recycled_id to i64
+  %cur_gen_pop64 = zext i32 %cur_gen_pop to i64
+  %gen_shifted_pop = shl i64 %cur_gen_pop64, 32
+  %recycled_handle = or i64 %recycled_id64, %gen_shifted_pop
+  ret i64 %recycled_handle
+
+grow_and_alloc:                                   ; preds = %entry
   %cur_ent_count = load i32, ptr %ent_count_slot, align 4
   %cur_ent_cap = load i32, ptr %ent_cap_slot, align 4
   %need_grow_ent = icmp sge i32 %cur_ent_count, %cur_ent_cap
   br i1 %need_grow_ent, label %grow_ent, label %assign_ent
 
-grow_ent:                                         ; preds = %entry
+grow_ent:                                         ; preds = %grow_and_alloc
   %ent_cap_zero = icmp eq i32 %cur_ent_cap, 0
   %double_ent_cap = mul i32 %cur_ent_cap, 2
   %new_ent_cap = select i1 %ent_cap_zero, i32 64, i32 %double_ent_cap
@@ -584,9 +627,12 @@ grow_ent:                                         ; preds = %entry
   %cur_row_arr = load ptr, ptr %ent_row_slot, align 8
   %new_row_i8 = call ptr @realloc(ptr %cur_row_arr, i64 %bytes_for_ent)
   store ptr %new_row_i8, ptr %ent_row_slot, align 8
+  %cur_gen_arr = load ptr, ptr %ent_gen_slot, align 8
+  %new_gen_i8 = call ptr @realloc(ptr %cur_gen_arr, i64 %bytes_for_ent)
+  store ptr %new_gen_i8, ptr %ent_gen_slot, align 8
   br label %assign_ent
 
-assign_ent:                                       ; preds = %grow_ent, %entry
+assign_ent:                                       ; preds = %grow_ent, %grow_and_alloc
   %next_ent_cnt = add i32 %cur_ent_count, 1
   store i32 %next_ent_cnt, ptr %ent_count_slot, align 4
   %cur_arch_arr_alloc = load ptr, ptr %ent_arch_slot, align 8
@@ -595,14 +641,20 @@ assign_ent:                                       ; preds = %grow_ent, %entry
   %cur_row_arr_alloc = load ptr, ptr %ent_row_slot, align 8
   %e_row_slot_alloc = getelementptr inbounds i32, ptr %cur_row_arr_alloc, i32 %cur_ent_count
   store i32 -1, ptr %e_row_slot_alloc, align 4
-  ret i32 %cur_ent_count
+  %cur_gen_arr_alloc = load ptr, ptr %ent_gen_slot, align 8
+  %e_gen_slot_alloc = getelementptr inbounds i32, ptr %cur_gen_arr_alloc, i32 %cur_ent_count
+  store i32 1, ptr %e_gen_slot_alloc, align 4
+  %e_alloc64 = zext i32 %cur_ent_count to i64
+  %fresh_handle = or i64 %e_alloc64, 4294967296
+  ret i64 %fresh_handle
 }
 
-define void @world_assign_a0(ptr %0, i32 %1) {
+define void @world_assign_a0(ptr %0, i64 %1) {
 entry:
+  %e_id_a0 = trunc i64 %1 to i32
   %arch_arr_a0_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %arch_arr_a0 = load ptr, ptr %arch_arr_a0_slot, align 8
-  %e_arch_slot_a0 = getelementptr inbounds i32, ptr %arch_arr_a0, i32 %1
+  %e_arch_slot_a0 = getelementptr inbounds i32, ptr %arch_arr_a0, i32 %e_id_a0
   %cur_arch_val_a0 = load i32, ptr %e_arch_slot_a0, align 4
   %is_unassigned = icmp eq i32 %cur_arch_val_a0, -1
   br i1 %is_unassigned, label %do_assign, label %exit_a0
@@ -635,48 +687,72 @@ after_grow_a0:                                    ; preds = %grow_a0, %do_assign
   store i32 %next_cnt0, ptr %cnt_slot0_2, align 4
   %ent_slot0 = getelementptr inbounds nuw %struct.Archetype, ptr %a0_ptr2, i32 0, i32 3
   %ent_raw0 = load ptr, ptr %ent_slot0, align 8
-  %ent_elem0 = getelementptr inbounds i32, ptr %ent_raw0, i32 %row
-  store i32 %1, ptr %ent_elem0, align 4
+  %ent_elem0 = getelementptr inbounds i64, ptr %ent_raw0, i32 %row
+  store i64 %1, ptr %ent_elem0, align 8
   store i32 %a0, ptr %e_arch_slot_a0, align 4
   %row_arr_a0_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %row_arr_a0 = load ptr, ptr %row_arr_a0_slot, align 8
-  %e_row_slot_a0 = getelementptr inbounds i32, ptr %row_arr_a0, i32 %1
+  %e_row_slot_a0 = getelementptr inbounds i32, ptr %row_arr_a0, i32 %e_id_a0
   store i32 %row, ptr %e_row_slot_a0, align 4
   br label %exit_a0
 }
 
-define i32 @world_spawn(ptr %0) {
+define i64 @world_spawn(ptr %0) {
 entry:
-  %e_spawn = call i32 @world_alloc_entity(ptr %0)
-  call void @world_assign_a0(ptr %0, i32 %e_spawn)
-  ret i32 %e_spawn
+  %e_spawn = call i64 @world_alloc_entity(ptr %0)
+  call void @world_assign_a0(ptr %0, i64 %e_spawn)
+  ret i64 %e_spawn
 }
 
-define void @world_despawn(ptr %0, i32 %1) {
+define void @world_despawn(ptr %0, i64 %1) {
 entry:
+  %e_id_ds = trunc i64 %1 to i32
+  %e_gen64_ds = lshr i64 %1, 32
+  %e_gen_ds = trunc i64 %e_gen64_ds to i32
   %ent_count_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_ds = load i32, ptr %ent_count_slot_ds, align 4
-  %e_non_neg_ds = icmp sge i32 %1, 0
-  %e_in_bounds_ds = icmp slt i32 %1, %total_ents_ds
+  %e_non_neg_ds = icmp sge i32 %e_id_ds, 0
+  %e_in_bounds_ds = icmp slt i32 %e_id_ds, %total_ents_ds
   %is_valid_id_ds = and i1 %e_non_neg_ds, %e_in_bounds_ds
-  br i1 %is_valid_id_ds, label %check_arch, label %ds_exit
+  br i1 %is_valid_id_ds, label %ds_check_liveness, label %ds_oob_panic
 
-check_arch:                                       ; preds = %entry
+ds_check_liveness:                                ; preds = %entry
   %ent_arch_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_ds = load ptr, ptr %ent_arch_slot_ds, align 8
-  %e_arch_slot_ds_inst = getelementptr inbounds i32, ptr %arch_arr_ds, i32 %1
+  %e_arch_slot_ds_inst = getelementptr inbounds i32, ptr %arch_arr_ds, i32 %e_id_ds
   %cur_arch_idx_ds = load i32, ptr %e_arch_slot_ds_inst, align 4
-  %is_alive_ds = icmp sge i32 %cur_arch_idx_ds, 0
-  br i1 %is_alive_ds, label %do_despawn, label %ds_exit
+  %is_neg_arch_ds = icmp slt i32 %cur_arch_idx_ds, 0
+  br i1 %is_neg_arch_ds, label %ds_dead_panic, label %ds_check_gen
 
-ds_exit:                                          ; preds = %after_swap_ds, %check_arch, %entry
-  ret void
+ds_oob_panic:                                     ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_ds)
+  unreachable
 
-do_despawn:                                       ; preds = %check_arch
+ds_dead_panic:                                    ; preds = %ds_check_liveness
+  %is_dead_ds = icmp eq i32 %cur_arch_idx_ds, -2
+  br i1 %is_dead_ds, label %ds_dead_real, label %ds_pend_real
+
+ds_check_gen:                                     ; preds = %ds_check_liveness
+  %ent_gen_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_ds = load ptr, ptr %ent_gen_slot_ds, align 8
+  %cur_gen_slot_ds = getelementptr inbounds i32, ptr %gen_arr_ds, i32 %e_id_ds
+  %cur_gen_ds = load i32, ptr %cur_gen_slot_ds, align 4
+  %is_gen_match_ds = icmp eq i32 %cur_gen_ds, %e_gen_ds
+  br i1 %is_gen_match_ds, label %do_despawn, label %ds_stale_panic
+
+ds_dead_real:                                     ; preds = %ds_dead_panic
+  call void @rt_panic(ptr @ecs_err_dead_ds)
+  unreachable
+
+ds_pend_real:                                     ; preds = %ds_dead_panic
+  call void @rt_panic(ptr @ecs_err_pend_ds)
+  unreachable
+
+do_despawn:                                       ; preds = %ds_check_gen
   %row_arr_ds = load ptr, ptr %ent_row_slot_ds, align 8
-  %e_row_slot_ds_inst = getelementptr inbounds i32, ptr %row_arr_ds, i32 %1
+  %e_row_slot_ds_inst = getelementptr inbounds i32, ptr %row_arr_ds, i32 %e_id_ds
   %cur_row_ds = load i32, ptr %e_row_slot_ds_inst, align 4
   %tables_base_ds = load ptr, ptr %tables_slot_ds, align 8
   %cur_arch_ptr_ds = getelementptr inbounds %struct.Archetype, ptr %tables_base_ds, i32 %cur_arch_idx_ds
@@ -687,22 +763,55 @@ do_despawn:                                       ; preds = %check_arch
   %is_last_row_ds = icmp eq i32 %cur_row_ds, %last_row_ds
   br i1 %is_last_row_ds, label %after_swap_ds, label %do_swap_ds
 
+ds_stale_panic:                                   ; preds = %ds_check_gen
+  call void @rt_panic(ptr @ecs_err_stale_ds)
+  unreachable
+
 do_swap_ds:                                       ; preds = %do_despawn
   %cur_ent_slot_ds = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_ds, i32 0, i32 3
   %cur_ent_raw_ds = load ptr, ptr %cur_ent_slot_ds, align 8
-  %last_ent_elem_ds = getelementptr inbounds i32, ptr %cur_ent_raw_ds, i32 %last_row_ds
-  %moved_e_ds = load i32, ptr %last_ent_elem_ds, align 4
-  %cur_ent_elem_ds = getelementptr inbounds i32, ptr %cur_ent_raw_ds, i32 %cur_row_ds
-  store i32 %moved_e_ds, ptr %cur_ent_elem_ds, align 4
+  %last_ent_elem_ds = getelementptr inbounds i64, ptr %cur_ent_raw_ds, i32 %last_row_ds
+  %moved_handle_ds = load i64, ptr %last_ent_elem_ds, align 8
+  %cur_ent_elem_ds = getelementptr inbounds i64, ptr %cur_ent_raw_ds, i32 %cur_row_ds
+  store i64 %moved_handle_ds, ptr %cur_ent_elem_ds, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_ds, i32 %cur_arch_idx_ds, i32 %last_row_ds, i32 %cur_row_ds)
-  %moved_e_row_slot_ds = getelementptr inbounds i32, ptr %row_arr_ds, i32 %moved_e_ds
+  %moved_id_ds = trunc i64 %moved_handle_ds to i32
+  %moved_e_row_slot_ds = getelementptr inbounds i32, ptr %row_arr_ds, i32 %moved_id_ds
   store i32 %cur_row_ds, ptr %moved_e_row_slot_ds, align 4
   br label %after_swap_ds
 
 after_swap_ds:                                    ; preds = %do_swap_ds, %do_despawn
   store i32 -2, ptr %e_arch_slot_ds_inst, align 4
   store i32 -2, ptr %e_row_slot_ds_inst, align 4
-  br label %ds_exit
+  %next_gen_val = add i32 %cur_gen_ds, 1
+  store i32 %next_gen_val, ptr %cur_gen_slot_ds, align 4
+  %free_ents_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 21
+  %free_cnt_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 22
+  %free_cap_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 23
+  %cur_free_cnt_ds = load i32, ptr %free_cnt_slot_ds, align 4
+  %cur_free_cap_ds = load i32, ptr %free_cap_slot_ds, align 4
+  %need_grow_free = icmp sge i32 %cur_free_cnt_ds, %cur_free_cap_ds
+  br i1 %need_grow_free, label %grow_free, label %push_free
+
+grow_free:                                        ; preds = %after_swap_ds
+  %free_cap_zero = icmp eq i32 %cur_free_cap_ds, 0
+  %double_free_cap = mul i32 %cur_free_cap_ds, 2
+  %new_free_cap = select i1 %free_cap_zero, i32 64, i32 %double_free_cap
+  store i32 %new_free_cap, ptr %free_cap_slot_ds, align 4
+  %new_free_cap64 = zext i32 %new_free_cap to i64
+  %bytes_for_free = mul i64 %new_free_cap64, 4
+  %cur_free_arr_raw = load ptr, ptr %free_ents_slot_ds, align 8
+  %new_free_arr_i8 = call ptr @realloc(ptr %cur_free_arr_raw, i64 %bytes_for_free)
+  store ptr %new_free_arr_i8, ptr %free_ents_slot_ds, align 8
+  br label %push_free
+
+push_free:                                        ; preds = %grow_free, %after_swap_ds
+  %free_arr_now = load ptr, ptr %free_ents_slot_ds, align 8
+  %push_slot_ptr = getelementptr inbounds i32, ptr %free_arr_now, i32 %cur_free_cnt_ds
+  store i32 %e_id_ds, ptr %push_slot_ptr, align 4
+  %next_free_cnt = add i32 %cur_free_cnt_ds, 1
+  store i32 %next_free_cnt, ptr %free_cnt_slot_ds, align 4
+  ret void
 }
 
 define void @world_cmd_ensure_cap(ptr %0, i32 %1) {
@@ -733,12 +842,12 @@ ec_exit:                                          ; preds = %grow_cmd, %entry
   ret void
 }
 
-define i32 @world_cmd_spawn(ptr %0) {
+define i64 @world_cmd_spawn(ptr %0) {
 entry:
   %cmd_lock_slot_cs = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_cs)
-  %e_alloc_cs = call i32 @world_alloc_entity(ptr %0)
-  call void @world_cmd_ensure_cap(ptr %0, i32 8)
+  %e_alloc_cs = call i64 @world_alloc_entity(ptr %0)
+  call void @world_cmd_ensure_cap(ptr %0, i32 16)
   %cmd_cnt_slot_cs = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_cs = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_cs = load i32, ptr %cmd_cnt_slot_cs, align 4
@@ -747,19 +856,21 @@ entry:
   %write_ptr_cs = getelementptr inbounds i8, ptr %data_ptr_cs, i64 %cur_cnt_cs64
   %op_slot_cs = getelementptr inbounds i32, ptr %write_ptr_cs, i32 0
   store i32 1, ptr %op_slot_cs, align 4
-  %e_slot_cs = getelementptr inbounds i32, ptr %write_ptr_cs, i32 1
-  store i32 %e_alloc_cs, ptr %e_slot_cs, align 4
-  %new_cnt_cs = add i32 %cur_cnt_cs, 8
+  %pad_slot_cs = getelementptr inbounds i32, ptr %write_ptr_cs, i32 1
+  store i32 0, ptr %pad_slot_cs, align 4
+  %handle_ptr_cs_raw = getelementptr inbounds i8, ptr %write_ptr_cs, i64 8
+  store i64 %e_alloc_cs, ptr %handle_ptr_cs_raw, align 8
+  %new_cnt_cs = add i32 %cur_cnt_cs, 16
   store i32 %new_cnt_cs, ptr %cmd_cnt_slot_cs, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_cs)
-  ret i32 %e_alloc_cs
+  ret i64 %e_alloc_cs
 }
 
-define void @world_cmd_despawn(ptr %0, i32 %1) {
+define void @world_cmd_despawn(ptr %0, i64 %1) {
 entry:
   %cmd_lock_slot_cd = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_cd)
-  call void @world_cmd_ensure_cap(ptr %0, i32 8)
+  call void @world_cmd_ensure_cap(ptr %0, i32 16)
   %cmd_cnt_slot_cd = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_cd = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_cd = load i32, ptr %cmd_cnt_slot_cd, align 4
@@ -768,55 +879,55 @@ entry:
   %write_ptr_cd = getelementptr inbounds i8, ptr %data_ptr_cd, i64 %cur_cnt_cd64
   %op_slot_cd = getelementptr inbounds i32, ptr %write_ptr_cd, i32 0
   store i32 2, ptr %op_slot_cd, align 4
-  %e_slot_cd = getelementptr inbounds i32, ptr %write_ptr_cd, i32 1
-  store i32 %1, ptr %e_slot_cd, align 4
-  %new_cnt_cd = add i32 %cur_cnt_cd, 8
+  %pad_slot_cd = getelementptr inbounds i32, ptr %write_ptr_cd, i32 1
+  store i32 0, ptr %pad_slot_cd, align 4
+  %handle_ptr_cd_raw = getelementptr inbounds i8, ptr %write_ptr_cd, i64 8
+  store i64 %1, ptr %handle_ptr_cd_raw, align 8
+  %new_cnt_cd = add i32 %cur_cnt_cd, 16
   store i32 %new_cnt_cd, ptr %cmd_cnt_slot_cd, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_cd)
   ret void
 }
 
-define void @world_set_ChildOf(ptr %0, i32 %1, i32 %2) {
+define void @world_set_ChildOf(ptr %0, i64 %1, i64 %2) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %e_id_set = trunc i64 %1 to i32
+  %e_gen64_set = lshr i64 %1, 32
+  %e_gen_set = trunc i64 %e_gen64_set to i32
   %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
-  %e_non_neg_set = icmp sge i32 %1, 0
-  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %e_non_neg_set = icmp sge i32 %e_id_set, 0
+  %e_in_bounds_set = icmp slt i32 %e_id_set, %total_ents_set
   %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
-  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+  br i1 %is_valid_id_set, label %check_liveness_set, label %set_oob_error
 
-check_arch_set:                                   ; preds = %entry
+check_liveness_set:                               ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %e_id_set
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %check_gen_set
 
 set_oob_error:                                    ; preds = %entry
   call void @rt_panic(ptr @ecs_err_oob_world_set_ChildOf)
   unreachable
 
-set_err_entity:                                   ; preds = %check_arch_set
+set_err_entity:                                   ; preds = %check_liveness_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %check_arch_set
-  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
-  %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
-  %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
-  %has_bit = and i64 %cur_mask, 1
-  %already_has = icmp ne i64 %has_bit, 0
-  br i1 %already_has, label %in_place_update, label %transition
+check_gen_set:                                    ; preds = %check_liveness_set
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
+  %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
+  %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
+  %is_gen_match_set = icmp eq i32 %cur_gen_set, %e_gen_set
+  br i1 %is_gen_match_set, label %set_cont, label %set_stale_error
 
 set_dead_entity_error:                            ; preds = %set_err_entity
   call void @rt_panic(ptr @ecs_err_dead_world_set_ChildOf)
@@ -826,122 +937,9 @@ set_pending_entity_error:                         ; preds = %set_err_entity
   call void @rt_panic(ptr @ecs_err_pending_world_set_ChildOf)
   unreachable
 
-in_place_update:                                  ; preds = %set_cont
-  store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
-  store i32 %cur_row, ptr %target_row, align 4
-  br label %store_fields
-
-transition:                                       ; preds = %set_cont
-  %new_mask = or i64 %cur_mask, 1
-  %temp_mask_set = alloca [1 x i64], align 8
-  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
-  %val_set_w0 = load i64, ptr %src_set_w0, align 8
-  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
-  store i64 %new_mask, ptr %dst_set_w0, align 8
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
-  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
-  %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
-  %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
-  %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
-  %new_cap_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 2
-  %new_cap1 = load i32, ptr %new_cap_slot1, align 4
-  %need_grow_new = icmp sge i32 %new_cnt1, %new_cap1
-  br i1 %need_grow_new, label %grow_new_arch, label %after_grow_new_arch
-
-store_fields:                                     ; preds = %after_swap_remove, %in_place_update
-  %final_arch = load i32, ptr %target_arch, align 4
-  %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
-  %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
-  %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 0
-  %final_col_raw = load ptr, ptr %final_col_slot, align 8
-  %final_elem = getelementptr inbounds %struct.ChildOf, ptr %final_col_raw, i32 %final_row
-  %parent_gep = getelementptr inbounds nuw %struct.ChildOf, ptr %final_elem, i32 0, i32 0
-  store i32 %2, ptr %parent_gep, align 4
-  ret void
-
-grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
-  br label %after_grow_new_arch
-
-after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx_raw
-  %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
-  %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
-  %new_row = load i32, ptr %new_cnt_slot2, align 4
-  %next_new_cnt = add i32 %new_row, 1
-  store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
-  %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
-  %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
-  %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %1, ptr %new_ent_elem2, align 4
-  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
-  %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
-  %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
-  %last_row = sub i32 %cur_arch_count, 1
-  store i32 %last_row, ptr %cur_cnt_slot, align 4
-  %is_last_row = icmp eq i32 %cur_row, %last_row
-  br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
-
-do_swap_remove:                                   ; preds = %after_grow_new_arch
-  %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
-  %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
-  %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
-  %moved_e = load i32, ptr %last_ent_elem, align 4
-  %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
-  store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
-  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
-  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
-  store i32 %cur_row, ptr %moved_e_row_slot, align 4
-  br label %after_swap_remove
-
-after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
-  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
-  store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
-  store i32 %new_row, ptr %e_row_slot_tr, align 4
-  store i32 %new_arch_idx, ptr %target_arch, align 4
-  store i32 %new_row, ptr %target_row, align 4
-  br label %store_fields
-}
-
-define void @world_add_ChildOf(ptr %0, i32 %1, i32 %2) {
-entry:
-  %target_arch = alloca i32, align 4
-  %target_row = alloca i32, align 4
-  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
-  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
-  %e_non_neg_set = icmp sge i32 %1, 0
-  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
-  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
-  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
-
-check_arch_set:                                   ; preds = %entry
-  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
-  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
-  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
-  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
-  %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
-  %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
-
-set_oob_error:                                    ; preds = %entry
-  call void @rt_panic(ptr @ecs_err_oob_world_add_ChildOf)
-  unreachable
-
-set_err_entity:                                   ; preds = %check_arch_set
-  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
-  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
-
-set_cont:                                         ; preds = %check_arch_set
+set_cont:                                         ; preds = %check_gen_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %e_id_set
   %cur_row = load i32, ptr %ent_row_slot, align 4
   %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
@@ -952,12 +950,8 @@ set_cont:                                         ; preds = %check_arch_set
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
 
-set_dead_entity_error:                            ; preds = %set_err_entity
-  call void @rt_panic(ptr @ecs_err_dead_world_add_ChildOf)
-  unreachable
-
-set_pending_entity_error:                         ; preds = %set_err_entity
-  call void @rt_panic(ptr @ecs_err_pending_world_add_ChildOf)
+set_stale_error:                                  ; preds = %check_gen_set
+  call void @rt_panic(ptr @ecs_err_stale_world_set_ChildOf)
   unreachable
 
 in_place_update:                                  ; preds = %set_cont
@@ -992,7 +986,7 @@ store_fields:                                     ; preds = %after_swap_remove, 
   %final_col_raw = load ptr, ptr %final_col_slot, align 8
   %final_elem = getelementptr inbounds %struct.ChildOf, ptr %final_col_raw, i32 %final_row
   %parent_gep = getelementptr inbounds nuw %struct.ChildOf, ptr %final_elem, i32 0, i32 0
-  store i32 %2, ptr %parent_gep, align 4
+  store i64 %2, ptr %parent_gep, align 8
   ret void
 
 grow_new_arch:                                    ; preds = %transition
@@ -1009,8 +1003,8 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
   %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
   %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
-  %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %1, ptr %new_ent_elem2, align 4
+  %new_ent_elem2 = getelementptr inbounds i64, ptr %new_ent_raw2, i32 %new_row
+  store i64 %1, ptr %new_ent_elem2, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
@@ -1022,58 +1016,228 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
 do_swap_remove:                                   ; preds = %after_grow_new_arch
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
-  %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
-  %moved_e = load i32, ptr %last_ent_elem, align 4
-  %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
-  store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
+  %last_ent_elem = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %last_row
+  %moved_handle = load i64, ptr %last_ent_elem, align 8
+  %cur_ent_elem_sr = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %cur_row
+  store i64 %moved_handle, ptr %cur_ent_elem_sr, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
+  %moved_id = trunc i64 %moved_handle to i32
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
-  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
+  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_id
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 
 after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %e_id_set
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
   %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %e_id_set
   store i32 %new_row, ptr %e_row_slot_tr, align 4
   store i32 %new_arch_idx, ptr %target_arch, align 4
   store i32 %new_row, ptr %target_row, align 4
   br label %store_fields
 }
 
-define void @world_remove_ChildOf(ptr %0, i32 %1) {
+define void @world_add_ChildOf(ptr %0, i64 %1, i64 %2) {
 entry:
+  %target_arch = alloca i32, align 4
+  %target_row = alloca i32, align 4
+  %e_id_set = trunc i64 %1 to i32
+  %e_gen64_set = lshr i64 %1, 32
+  %e_gen_set = trunc i64 %e_gen64_set to i32
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %e_id_set, 0
+  %e_in_bounds_set = icmp slt i32 %e_id_set, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_liveness_set, label %set_oob_error
+
+check_liveness_set:                               ; preds = %entry
+  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %e_id_set
+  %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
+  %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
+  br i1 %is_neg_arch, label %set_err_entity, label %check_gen_set
+
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_add_ChildOf)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_liveness_set
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
+
+check_gen_set:                                    ; preds = %check_liveness_set
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
+  %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
+  %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
+  %is_gen_match_set = icmp eq i32 %cur_gen_set, %e_gen_set
+  br i1 %is_gen_match_set, label %set_cont, label %set_stale_error
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_add_ChildOf)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_add_ChildOf)
+  unreachable
+
+set_cont:                                         ; preds = %check_gen_set
+  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %e_id_set
+  %cur_row = load i32, ptr %ent_row_slot, align 4
+  %tables_set = load ptr, ptr %tables_slot_set, align 8
+  %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
+  %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
+  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
+  %has_bit = and i64 %cur_mask, 1
+  %already_has = icmp ne i64 %has_bit, 0
+  br i1 %already_has, label %in_place_update, label %transition
+
+set_stale_error:                                  ; preds = %check_gen_set
+  call void @rt_panic(ptr @ecs_err_stale_world_add_ChildOf)
+  unreachable
+
+in_place_update:                                  ; preds = %set_cont
+  store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
+  store i32 %cur_row, ptr %target_row, align 4
+  br label %store_fields
+
+transition:                                       ; preds = %set_cont
+  %new_mask = or i64 %cur_mask, 1
+  %temp_mask_set = alloca [1 x i64], align 8
+  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %val_set_w0 = load i64, ptr %src_set_w0, align 8
+  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
+  store i64 %new_mask, ptr %dst_set_w0, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
+  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
+  %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
+  %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
+  %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
+  %new_cap_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 2
+  %new_cap1 = load i32, ptr %new_cap_slot1, align 4
+  %need_grow_new = icmp sge i32 %new_cnt1, %new_cap1
+  br i1 %need_grow_new, label %grow_new_arch, label %after_grow_new_arch
+
+store_fields:                                     ; preds = %after_swap_remove, %in_place_update
+  %final_arch = load i32, ptr %target_arch, align 4
+  %final_row = load i32, ptr %target_row, align 4
+  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
+  %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
+  %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 0
+  %final_col_raw = load ptr, ptr %final_col_slot, align 8
+  %final_elem = getelementptr inbounds %struct.ChildOf, ptr %final_col_raw, i32 %final_row
+  %parent_gep = getelementptr inbounds nuw %struct.ChildOf, ptr %final_elem, i32 0, i32 0
+  store i64 %2, ptr %parent_gep, align 8
+  ret void
+
+grow_new_arch:                                    ; preds = %transition
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
+  br label %after_grow_new_arch
+
+after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
+  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
+  %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx_raw
+  %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
+  %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
+  %new_row = load i32, ptr %new_cnt_slot2, align 4
+  %next_new_cnt = add i32 %new_row, 1
+  store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
+  %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
+  %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
+  %new_ent_elem2 = getelementptr inbounds i64, ptr %new_ent_raw2, i32 %new_row
+  store i64 %1, ptr %new_ent_elem2, align 8
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
+  %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
+  %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
+  %last_row = sub i32 %cur_arch_count, 1
+  store i32 %last_row, ptr %cur_cnt_slot, align 4
+  %is_last_row = icmp eq i32 %cur_row, %last_row
+  br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
+
+do_swap_remove:                                   ; preds = %after_grow_new_arch
+  %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
+  %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
+  %last_ent_elem = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %last_row
+  %moved_handle = load i64, ptr %last_ent_elem, align 8
+  %cur_ent_elem_sr = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %cur_row
+  store i64 %moved_handle, ptr %cur_ent_elem_sr, align 8
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
+  %moved_id = trunc i64 %moved_handle to i32
+  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
+  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_id
+  store i32 %cur_row, ptr %moved_e_row_slot, align 4
+  br label %after_swap_remove
+
+after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
+  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %e_id_set
+  store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
+  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %e_id_set
+  store i32 %new_row, ptr %e_row_slot_tr, align 4
+  store i32 %new_arch_idx, ptr %target_arch, align 4
+  store i32 %new_row, ptr %target_row, align 4
+  br label %store_fields
+}
+
+define void @world_remove_ChildOf(ptr %0, i64 %1) {
+entry:
+  %rem_id = trunc i64 %1 to i32
+  %rem_gen64 = lshr i64 %1, 32
+  %rem_gen = trunc i64 %rem_gen64 to i32
   %ent_count_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_rem = load i32, ptr %ent_count_slot_rem, align 4
-  %rem_non_neg = icmp sge i32 %1, 0
-  %rem_in_bounds = icmp slt i32 %1, %total_ents_rem
+  %rem_non_neg = icmp sge i32 %rem_id, 0
+  %rem_in_bounds = icmp slt i32 %rem_id, %total_ents_rem
   %rem_is_valid_id = and i1 %rem_non_neg, %rem_in_bounds
-  br i1 %rem_is_valid_id, label %check_arch_rem, label %rem_oob_error
+  br i1 %rem_is_valid_id, label %check_liveness_rem, label %rem_oob_error
 
-check_arch_rem:                                   ; preds = %entry
+check_liveness_rem:                               ; preds = %entry
   %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
-  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
+  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %rem_id
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
   %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
-  br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
+  br i1 %is_neg_arch_rem, label %rem_err_entity, label %check_gen_rem
 
 rem_oob_error:                                    ; preds = %entry
   call void @rt_panic(ptr @ecs_err_oob_rem_ChildOf)
   unreachable
 
-rem_err_entity:                                   ; preds = %check_arch_rem
+rem_err_entity:                                   ; preds = %check_liveness_rem
   %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
-rem_cont:                                         ; preds = %check_arch_rem
+check_gen_rem:                                    ; preds = %check_liveness_rem
+  %ent_gen_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_rem = load ptr, ptr %ent_gen_slot_rem, align 8
+  %cur_gen_slot_rem = getelementptr inbounds i32, ptr %gen_arr_rem, i32 %rem_id
+  %cur_gen_rem = load i32, ptr %cur_gen_slot_rem, align 4
+  %is_gen_match_rem = icmp eq i32 %cur_gen_rem, %rem_gen
+  br i1 %is_gen_match_rem, label %rem_cont, label %rem_stale_error
+
+rem_dead_entity_error:                            ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_rem_ChildOf)
+  unreachable
+
+rem_pending_entity_error:                         ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_rem_ChildOf)
+  unreachable
+
+rem_cont:                                         ; preds = %check_gen_rem
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
-  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
+  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %rem_id
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
   %tables_rem = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem = getelementptr inbounds %struct.Archetype, ptr %tables_rem, i32 %cur_arch_rem
@@ -1084,12 +1248,8 @@ rem_cont:                                         ; preds = %check_arch_rem
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
 
-rem_dead_entity_error:                            ; preds = %rem_err_entity
-  call void @rt_panic(ptr @ecs_err_dead_rem_ChildOf)
-  unreachable
-
-rem_pending_entity_error:                         ; preds = %rem_err_entity
-  call void @rt_panic(ptr @ecs_err_pending_rem_ChildOf)
+rem_stale_error:                                  ; preds = %check_gen_rem
+  call void @rt_panic(ptr @ecs_err_stale_rem_ChildOf)
   unreachable
 
 do_remove:                                        ; preds = %rem_cont
@@ -1126,8 +1286,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %next_cnt_rem, ptr %cnt_slot_rem2, align 4
   %new_ent_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 3
   %new_ent_raw_rem = load ptr, ptr %new_ent_rem, align 8
-  %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
-  store i32 %1, ptr %new_ent_elem_rem, align 4
+  %new_ent_elem_rem = getelementptr inbounds i64, ptr %new_ent_raw_rem, i32 %new_row_rem
+  store i64 %1, ptr %new_ent_elem_rem, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
@@ -1139,47 +1299,58 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
 do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
-  %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
-  %moved_e_rem = load i32, ptr %last_ent_rem, align 4
-  %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
-  store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
+  %last_ent_rem = getelementptr inbounds i64, ptr %ent_raw_sr_rem, i32 %last_row_rem
+  %moved_handle_rem = load i64, ptr %last_ent_rem, align 8
+  %cur_ent_rem = getelementptr inbounds i64, ptr %ent_raw_sr_rem, i32 %cur_row_rem
+  store i64 %moved_handle_rem, ptr %cur_ent_rem, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %cur_arch_rem, i32 %last_row_rem, i32 %cur_row_rem)
+  %moved_id_rem = trunc i64 %moved_handle_rem to i32
   %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
-  %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
+  %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_id_rem
   store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
   br label %after_swap_rem
 
 after_swap_rem:                                   ; preds = %do_swap_rem, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
-  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
+  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %rem_id
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
   %row_arr_rem_tr = load ptr, ptr %ent_row_slot_rem, align 8
-  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %1
+  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %rem_id
   store i32 %new_row_rem, ptr %rem_row_slot_tr, align 4
   br label %exit_remove
 }
 
-define i1 @world_has_ChildOf(ptr %0, i32 %1) {
+define i1 @world_has_ChildOf(ptr %0, i64 %1) {
 entry:
+  %has_id = trunc i64 %1 to i32
+  %has_gen64 = lshr i64 %1, 32
+  %has_gen = trunc i64 %has_gen64 to i32
   %ent_count_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_has = load i32, ptr %ent_count_slot_has, align 4
-  %has_non_neg = icmp sge i32 %1, 0
-  %has_in_bounds = icmp slt i32 %1, %total_ents_has
+  %has_non_neg = icmp sge i32 %has_id, 0
+  %has_in_bounds = icmp slt i32 %has_id, %total_ents_has
   %has_is_valid_id = and i1 %has_non_neg, %has_in_bounds
-  br i1 %has_is_valid_id, label %check_arch_has, label %has_oob_error
+  br i1 %has_is_valid_id, label %check_gen_has, label %ret_false
 
-check_arch_has:                                   ; preds = %entry
+ret_false:                                        ; preds = %check_arch_has, %check_gen_has, %entry
+  ret i1 false
+
+check_gen_has:                                    ; preds = %entry
+  %ent_gen_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_has = load ptr, ptr %ent_gen_slot_has, align 8
+  %cur_gen_slot_has = getelementptr inbounds i32, ptr %gen_arr_has, i32 %has_id
+  %cur_gen_has = load i32, ptr %cur_gen_slot_has, align 4
+  %is_gen_match_has = icmp eq i32 %cur_gen_has, %has_gen
+  br i1 %is_gen_match_has, label %check_arch_has, label %ret_false
+
+check_arch_has:                                   ; preds = %check_gen_has
   %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
-  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %1
+  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %has_id
   %cur_arch_idx_has = load i32, ptr %has_arch_slot, align 4
   %is_alive_has = icmp sge i32 %cur_arch_idx_has, 0
   br i1 %is_alive_has, label %check_mask, label %ret_false
-
-has_oob_error:                                    ; preds = %entry
-  call void @rt_panic(ptr @ecs_err_oob_has_ChildOf)
-  unreachable
 
 check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
@@ -1190,16 +1361,13 @@ check_mask:                                       ; preds = %check_arch_has
   %bit_and_has = and i64 %arch_mask_has, 1
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
-
-ret_false:                                        ; preds = %check_arch_has
-  ret i1 false
 }
 
-define void @world_cmd_set_ChildOf(ptr %0, i32 %1, i32 %2) {
+define void @world_cmd_set_ChildOf(ptr %0, i64 %1, i64 %2) {
 entry:
   %cmd_lock_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_cset)
-  call void @world_cmd_ensure_cap(ptr %0, i32 16)
+  call void @world_cmd_ensure_cap(ptr %0, i32 24)
   %cmd_cnt_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_cset = load i32, ptr %cmd_cnt_slot_cset, align 4
@@ -1208,24 +1376,24 @@ entry:
   %write_ptr_cset = getelementptr inbounds i8, ptr %data_ptr_cset, i64 %cur_cnt_cset64
   %op_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 0
   store i32 3, ptr %op_slot_cset, align 4
-  %e_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
-  store i32 %1, ptr %e_slot_cset, align 4
-  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 2
+  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
   store i32 0, ptr %comp_id_slot_cset, align 4
-  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 12
+  %handle_ptr_cset_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 8
+  store i64 %1, ptr %handle_ptr_cset_raw, align 8
+  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 16
   %f_slot_0 = getelementptr inbounds nuw %struct.ChildOf, ptr %payload_raw, i32 0, i32 0
-  store i32 %2, ptr %f_slot_0, align 4
-  %new_cnt_cset = add i32 %cur_cnt_cset, 16
+  store i64 %2, ptr %f_slot_0, align 8
+  %new_cnt_cset = add i32 %cur_cnt_cset, 24
   store i32 %new_cnt_cset, ptr %cmd_cnt_slot_cset, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_cset)
   ret void
 }
 
-define void @world_cmd_add_ChildOf(ptr %0, i32 %1, i32 %2) {
+define void @world_cmd_add_ChildOf(ptr %0, i64 %1, i64 %2) {
 entry:
   %cmd_lock_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_cset)
-  call void @world_cmd_ensure_cap(ptr %0, i32 16)
+  call void @world_cmd_ensure_cap(ptr %0, i32 24)
   %cmd_cnt_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_cset = load i32, ptr %cmd_cnt_slot_cset, align 4
@@ -1234,24 +1402,24 @@ entry:
   %write_ptr_cset = getelementptr inbounds i8, ptr %data_ptr_cset, i64 %cur_cnt_cset64
   %op_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 0
   store i32 3, ptr %op_slot_cset, align 4
-  %e_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
-  store i32 %1, ptr %e_slot_cset, align 4
-  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 2
+  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
   store i32 0, ptr %comp_id_slot_cset, align 4
-  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 12
+  %handle_ptr_cset_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 8
+  store i64 %1, ptr %handle_ptr_cset_raw, align 8
+  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 16
   %f_slot_0 = getelementptr inbounds nuw %struct.ChildOf, ptr %payload_raw, i32 0, i32 0
-  store i32 %2, ptr %f_slot_0, align 4
-  %new_cnt_cset = add i32 %cur_cnt_cset, 16
+  store i64 %2, ptr %f_slot_0, align 8
+  %new_cnt_cset = add i32 %cur_cnt_cset, 24
   store i32 %new_cnt_cset, ptr %cmd_cnt_slot_cset, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_cset)
   ret void
 }
 
-define void @world_cmd_remove_ChildOf(ptr %0, i32 %1) {
+define void @world_cmd_remove_ChildOf(ptr %0, i64 %1) {
 entry:
   %cmd_lock_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_crem)
-  call void @world_cmd_ensure_cap(ptr %0, i32 12)
+  call void @world_cmd_ensure_cap(ptr %0, i32 16)
   %cmd_cnt_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_crem = load i32, ptr %cmd_cnt_slot_crem, align 4
@@ -1260,57 +1428,55 @@ entry:
   %write_ptr_crem = getelementptr inbounds i8, ptr %data_ptr_crem, i64 %cur_cnt_crem64
   %op_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 0
   store i32 4, ptr %op_slot_crem, align 4
-  %e_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 1
-  store i32 %1, ptr %e_slot_crem, align 4
-  %comp_id_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 2
+  %comp_id_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 1
   store i32 0, ptr %comp_id_slot_crem, align 4
-  %new_cnt_crem = add i32 %cur_cnt_crem, 12
+  %handle_ptr_crem_raw = getelementptr inbounds i8, ptr %write_ptr_crem, i64 8
+  store i64 %1, ptr %handle_ptr_crem_raw, align 8
+  %new_cnt_crem = add i32 %cur_cnt_crem, 16
   store i32 %new_cnt_crem, ptr %cmd_cnt_slot_crem, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_crem)
   ret void
 }
 
-define void @world_set_Health(ptr %0, i32 %1, i32 %2, i32 %3) {
+define void @world_set_Health(ptr %0, i64 %1, i32 %2, i32 %3) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %e_id_set = trunc i64 %1 to i32
+  %e_gen64_set = lshr i64 %1, 32
+  %e_gen_set = trunc i64 %e_gen64_set to i32
   %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
-  %e_non_neg_set = icmp sge i32 %1, 0
-  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %e_non_neg_set = icmp sge i32 %e_id_set, 0
+  %e_in_bounds_set = icmp slt i32 %e_id_set, %total_ents_set
   %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
-  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+  br i1 %is_valid_id_set, label %check_liveness_set, label %set_oob_error
 
-check_arch_set:                                   ; preds = %entry
+check_liveness_set:                               ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %e_id_set
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %check_gen_set
 
 set_oob_error:                                    ; preds = %entry
   call void @rt_panic(ptr @ecs_err_oob_world_set_Health)
   unreachable
 
-set_err_entity:                                   ; preds = %check_arch_set
+set_err_entity:                                   ; preds = %check_liveness_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %check_arch_set
-  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
-  %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
-  %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
-  %has_bit = and i64 %cur_mask, 2
-  %already_has = icmp ne i64 %has_bit, 0
-  br i1 %already_has, label %in_place_update, label %transition
+check_gen_set:                                    ; preds = %check_liveness_set
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
+  %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
+  %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
+  %is_gen_match_set = icmp eq i32 %cur_gen_set, %e_gen_set
+  br i1 %is_gen_match_set, label %set_cont, label %set_stale_error
 
 set_dead_entity_error:                            ; preds = %set_err_entity
   call void @rt_panic(ptr @ecs_err_dead_world_set_Health)
@@ -1320,124 +1486,9 @@ set_pending_entity_error:                         ; preds = %set_err_entity
   call void @rt_panic(ptr @ecs_err_pending_world_set_Health)
   unreachable
 
-in_place_update:                                  ; preds = %set_cont
-  store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
-  store i32 %cur_row, ptr %target_row, align 4
-  br label %store_fields
-
-transition:                                       ; preds = %set_cont
-  %new_mask = or i64 %cur_mask, 2
-  %temp_mask_set = alloca [1 x i64], align 8
-  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
-  %val_set_w0 = load i64, ptr %src_set_w0, align 8
-  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
-  store i64 %new_mask, ptr %dst_set_w0, align 8
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
-  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
-  %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
-  %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
-  %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
-  %new_cap_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 2
-  %new_cap1 = load i32, ptr %new_cap_slot1, align 4
-  %need_grow_new = icmp sge i32 %new_cnt1, %new_cap1
-  br i1 %need_grow_new, label %grow_new_arch, label %after_grow_new_arch
-
-store_fields:                                     ; preds = %after_swap_remove, %in_place_update
-  %final_arch = load i32, ptr %target_arch, align 4
-  %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
-  %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
-  %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 1
-  %final_col_raw = load ptr, ptr %final_col_slot, align 8
-  %final_elem = getelementptr inbounds %struct.Health, ptr %final_col_raw, i32 %final_row
-  %hp_gep = getelementptr inbounds nuw %struct.Health, ptr %final_elem, i32 0, i32 0
-  store i32 %2, ptr %hp_gep, align 4
-  %max_hp_gep = getelementptr inbounds nuw %struct.Health, ptr %final_elem, i32 0, i32 1
-  store i32 %3, ptr %max_hp_gep, align 4
-  ret void
-
-grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
-  br label %after_grow_new_arch
-
-after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx_raw
-  %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
-  %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
-  %new_row = load i32, ptr %new_cnt_slot2, align 4
-  %next_new_cnt = add i32 %new_row, 1
-  store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
-  %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
-  %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
-  %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %1, ptr %new_ent_elem2, align 4
-  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
-  %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
-  %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
-  %last_row = sub i32 %cur_arch_count, 1
-  store i32 %last_row, ptr %cur_cnt_slot, align 4
-  %is_last_row = icmp eq i32 %cur_row, %last_row
-  br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
-
-do_swap_remove:                                   ; preds = %after_grow_new_arch
-  %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
-  %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
-  %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
-  %moved_e = load i32, ptr %last_ent_elem, align 4
-  %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
-  store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
-  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
-  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
-  store i32 %cur_row, ptr %moved_e_row_slot, align 4
-  br label %after_swap_remove
-
-after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
-  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
-  store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
-  store i32 %new_row, ptr %e_row_slot_tr, align 4
-  store i32 %new_arch_idx, ptr %target_arch, align 4
-  store i32 %new_row, ptr %target_row, align 4
-  br label %store_fields
-}
-
-define void @world_add_Health(ptr %0, i32 %1, i32 %2, i32 %3) {
-entry:
-  %target_arch = alloca i32, align 4
-  %target_row = alloca i32, align 4
-  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
-  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
-  %e_non_neg_set = icmp sge i32 %1, 0
-  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
-  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
-  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
-
-check_arch_set:                                   ; preds = %entry
-  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
-  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
-  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
-  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
-  %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
-  %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
-
-set_oob_error:                                    ; preds = %entry
-  call void @rt_panic(ptr @ecs_err_oob_world_add_Health)
-  unreachable
-
-set_err_entity:                                   ; preds = %check_arch_set
-  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
-  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
-
-set_cont:                                         ; preds = %check_arch_set
+set_cont:                                         ; preds = %check_gen_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %e_id_set
   %cur_row = load i32, ptr %ent_row_slot, align 4
   %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
@@ -1448,12 +1499,8 @@ set_cont:                                         ; preds = %check_arch_set
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
 
-set_dead_entity_error:                            ; preds = %set_err_entity
-  call void @rt_panic(ptr @ecs_err_dead_world_add_Health)
-  unreachable
-
-set_pending_entity_error:                         ; preds = %set_err_entity
-  call void @rt_panic(ptr @ecs_err_pending_world_add_Health)
+set_stale_error:                                  ; preds = %check_gen_set
+  call void @rt_panic(ptr @ecs_err_stale_world_set_Health)
   unreachable
 
 in_place_update:                                  ; preds = %set_cont
@@ -1507,8 +1554,8 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
   %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
   %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
-  %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %1, ptr %new_ent_elem2, align 4
+  %new_ent_elem2 = getelementptr inbounds i64, ptr %new_ent_raw2, i32 %new_row
+  store i64 %1, ptr %new_ent_elem2, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
@@ -1520,58 +1567,230 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
 do_swap_remove:                                   ; preds = %after_grow_new_arch
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
-  %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
-  %moved_e = load i32, ptr %last_ent_elem, align 4
-  %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
-  store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
+  %last_ent_elem = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %last_row
+  %moved_handle = load i64, ptr %last_ent_elem, align 8
+  %cur_ent_elem_sr = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %cur_row
+  store i64 %moved_handle, ptr %cur_ent_elem_sr, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
+  %moved_id = trunc i64 %moved_handle to i32
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
-  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
+  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_id
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 
 after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %e_id_set
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
   %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %e_id_set
   store i32 %new_row, ptr %e_row_slot_tr, align 4
   store i32 %new_arch_idx, ptr %target_arch, align 4
   store i32 %new_row, ptr %target_row, align 4
   br label %store_fields
 }
 
-define void @world_remove_Health(ptr %0, i32 %1) {
+define void @world_add_Health(ptr %0, i64 %1, i32 %2, i32 %3) {
 entry:
+  %target_arch = alloca i32, align 4
+  %target_row = alloca i32, align 4
+  %e_id_set = trunc i64 %1 to i32
+  %e_gen64_set = lshr i64 %1, 32
+  %e_gen_set = trunc i64 %e_gen64_set to i32
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %e_id_set, 0
+  %e_in_bounds_set = icmp slt i32 %e_id_set, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_liveness_set, label %set_oob_error
+
+check_liveness_set:                               ; preds = %entry
+  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %e_id_set
+  %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
+  %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
+  br i1 %is_neg_arch, label %set_err_entity, label %check_gen_set
+
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_add_Health)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_liveness_set
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
+
+check_gen_set:                                    ; preds = %check_liveness_set
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
+  %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
+  %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
+  %is_gen_match_set = icmp eq i32 %cur_gen_set, %e_gen_set
+  br i1 %is_gen_match_set, label %set_cont, label %set_stale_error
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_add_Health)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_add_Health)
+  unreachable
+
+set_cont:                                         ; preds = %check_gen_set
+  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %e_id_set
+  %cur_row = load i32, ptr %ent_row_slot, align 4
+  %tables_set = load ptr, ptr %tables_slot_set, align 8
+  %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
+  %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
+  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
+  %has_bit = and i64 %cur_mask, 2
+  %already_has = icmp ne i64 %has_bit, 0
+  br i1 %already_has, label %in_place_update, label %transition
+
+set_stale_error:                                  ; preds = %check_gen_set
+  call void @rt_panic(ptr @ecs_err_stale_world_add_Health)
+  unreachable
+
+in_place_update:                                  ; preds = %set_cont
+  store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
+  store i32 %cur_row, ptr %target_row, align 4
+  br label %store_fields
+
+transition:                                       ; preds = %set_cont
+  %new_mask = or i64 %cur_mask, 2
+  %temp_mask_set = alloca [1 x i64], align 8
+  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %val_set_w0 = load i64, ptr %src_set_w0, align 8
+  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
+  store i64 %new_mask, ptr %dst_set_w0, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
+  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
+  %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
+  %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
+  %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
+  %new_cap_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 2
+  %new_cap1 = load i32, ptr %new_cap_slot1, align 4
+  %need_grow_new = icmp sge i32 %new_cnt1, %new_cap1
+  br i1 %need_grow_new, label %grow_new_arch, label %after_grow_new_arch
+
+store_fields:                                     ; preds = %after_swap_remove, %in_place_update
+  %final_arch = load i32, ptr %target_arch, align 4
+  %final_row = load i32, ptr %target_row, align 4
+  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
+  %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
+  %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 1
+  %final_col_raw = load ptr, ptr %final_col_slot, align 8
+  %final_elem = getelementptr inbounds %struct.Health, ptr %final_col_raw, i32 %final_row
+  %hp_gep = getelementptr inbounds nuw %struct.Health, ptr %final_elem, i32 0, i32 0
+  store i32 %2, ptr %hp_gep, align 4
+  %max_hp_gep = getelementptr inbounds nuw %struct.Health, ptr %final_elem, i32 0, i32 1
+  store i32 %3, ptr %max_hp_gep, align 4
+  ret void
+
+grow_new_arch:                                    ; preds = %transition
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
+  br label %after_grow_new_arch
+
+after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
+  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
+  %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx_raw
+  %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
+  %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
+  %new_row = load i32, ptr %new_cnt_slot2, align 4
+  %next_new_cnt = add i32 %new_row, 1
+  store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
+  %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
+  %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
+  %new_ent_elem2 = getelementptr inbounds i64, ptr %new_ent_raw2, i32 %new_row
+  store i64 %1, ptr %new_ent_elem2, align 8
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
+  %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
+  %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
+  %last_row = sub i32 %cur_arch_count, 1
+  store i32 %last_row, ptr %cur_cnt_slot, align 4
+  %is_last_row = icmp eq i32 %cur_row, %last_row
+  br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
+
+do_swap_remove:                                   ; preds = %after_grow_new_arch
+  %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
+  %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
+  %last_ent_elem = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %last_row
+  %moved_handle = load i64, ptr %last_ent_elem, align 8
+  %cur_ent_elem_sr = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %cur_row
+  store i64 %moved_handle, ptr %cur_ent_elem_sr, align 8
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
+  %moved_id = trunc i64 %moved_handle to i32
+  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
+  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_id
+  store i32 %cur_row, ptr %moved_e_row_slot, align 4
+  br label %after_swap_remove
+
+after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
+  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %e_id_set
+  store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
+  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %e_id_set
+  store i32 %new_row, ptr %e_row_slot_tr, align 4
+  store i32 %new_arch_idx, ptr %target_arch, align 4
+  store i32 %new_row, ptr %target_row, align 4
+  br label %store_fields
+}
+
+define void @world_remove_Health(ptr %0, i64 %1) {
+entry:
+  %rem_id = trunc i64 %1 to i32
+  %rem_gen64 = lshr i64 %1, 32
+  %rem_gen = trunc i64 %rem_gen64 to i32
   %ent_count_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_rem = load i32, ptr %ent_count_slot_rem, align 4
-  %rem_non_neg = icmp sge i32 %1, 0
-  %rem_in_bounds = icmp slt i32 %1, %total_ents_rem
+  %rem_non_neg = icmp sge i32 %rem_id, 0
+  %rem_in_bounds = icmp slt i32 %rem_id, %total_ents_rem
   %rem_is_valid_id = and i1 %rem_non_neg, %rem_in_bounds
-  br i1 %rem_is_valid_id, label %check_arch_rem, label %rem_oob_error
+  br i1 %rem_is_valid_id, label %check_liveness_rem, label %rem_oob_error
 
-check_arch_rem:                                   ; preds = %entry
+check_liveness_rem:                               ; preds = %entry
   %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
-  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
+  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %rem_id
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
   %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
-  br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
+  br i1 %is_neg_arch_rem, label %rem_err_entity, label %check_gen_rem
 
 rem_oob_error:                                    ; preds = %entry
   call void @rt_panic(ptr @ecs_err_oob_rem_Health)
   unreachable
 
-rem_err_entity:                                   ; preds = %check_arch_rem
+rem_err_entity:                                   ; preds = %check_liveness_rem
   %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
-rem_cont:                                         ; preds = %check_arch_rem
+check_gen_rem:                                    ; preds = %check_liveness_rem
+  %ent_gen_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_rem = load ptr, ptr %ent_gen_slot_rem, align 8
+  %cur_gen_slot_rem = getelementptr inbounds i32, ptr %gen_arr_rem, i32 %rem_id
+  %cur_gen_rem = load i32, ptr %cur_gen_slot_rem, align 4
+  %is_gen_match_rem = icmp eq i32 %cur_gen_rem, %rem_gen
+  br i1 %is_gen_match_rem, label %rem_cont, label %rem_stale_error
+
+rem_dead_entity_error:                            ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_rem_Health)
+  unreachable
+
+rem_pending_entity_error:                         ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_rem_Health)
+  unreachable
+
+rem_cont:                                         ; preds = %check_gen_rem
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
-  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
+  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %rem_id
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
   %tables_rem = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem = getelementptr inbounds %struct.Archetype, ptr %tables_rem, i32 %cur_arch_rem
@@ -1582,12 +1801,8 @@ rem_cont:                                         ; preds = %check_arch_rem
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
 
-rem_dead_entity_error:                            ; preds = %rem_err_entity
-  call void @rt_panic(ptr @ecs_err_dead_rem_Health)
-  unreachable
-
-rem_pending_entity_error:                         ; preds = %rem_err_entity
-  call void @rt_panic(ptr @ecs_err_pending_rem_Health)
+rem_stale_error:                                  ; preds = %check_gen_rem
+  call void @rt_panic(ptr @ecs_err_stale_rem_Health)
   unreachable
 
 do_remove:                                        ; preds = %rem_cont
@@ -1624,8 +1839,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %next_cnt_rem, ptr %cnt_slot_rem2, align 4
   %new_ent_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 3
   %new_ent_raw_rem = load ptr, ptr %new_ent_rem, align 8
-  %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
-  store i32 %1, ptr %new_ent_elem_rem, align 4
+  %new_ent_elem_rem = getelementptr inbounds i64, ptr %new_ent_raw_rem, i32 %new_row_rem
+  store i64 %1, ptr %new_ent_elem_rem, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
@@ -1637,47 +1852,58 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
 do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
-  %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
-  %moved_e_rem = load i32, ptr %last_ent_rem, align 4
-  %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
-  store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
+  %last_ent_rem = getelementptr inbounds i64, ptr %ent_raw_sr_rem, i32 %last_row_rem
+  %moved_handle_rem = load i64, ptr %last_ent_rem, align 8
+  %cur_ent_rem = getelementptr inbounds i64, ptr %ent_raw_sr_rem, i32 %cur_row_rem
+  store i64 %moved_handle_rem, ptr %cur_ent_rem, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %cur_arch_rem, i32 %last_row_rem, i32 %cur_row_rem)
+  %moved_id_rem = trunc i64 %moved_handle_rem to i32
   %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
-  %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
+  %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_id_rem
   store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
   br label %after_swap_rem
 
 after_swap_rem:                                   ; preds = %do_swap_rem, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
-  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
+  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %rem_id
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
   %row_arr_rem_tr = load ptr, ptr %ent_row_slot_rem, align 8
-  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %1
+  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %rem_id
   store i32 %new_row_rem, ptr %rem_row_slot_tr, align 4
   br label %exit_remove
 }
 
-define i1 @world_has_Health(ptr %0, i32 %1) {
+define i1 @world_has_Health(ptr %0, i64 %1) {
 entry:
+  %has_id = trunc i64 %1 to i32
+  %has_gen64 = lshr i64 %1, 32
+  %has_gen = trunc i64 %has_gen64 to i32
   %ent_count_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_has = load i32, ptr %ent_count_slot_has, align 4
-  %has_non_neg = icmp sge i32 %1, 0
-  %has_in_bounds = icmp slt i32 %1, %total_ents_has
+  %has_non_neg = icmp sge i32 %has_id, 0
+  %has_in_bounds = icmp slt i32 %has_id, %total_ents_has
   %has_is_valid_id = and i1 %has_non_neg, %has_in_bounds
-  br i1 %has_is_valid_id, label %check_arch_has, label %has_oob_error
+  br i1 %has_is_valid_id, label %check_gen_has, label %ret_false
 
-check_arch_has:                                   ; preds = %entry
+ret_false:                                        ; preds = %check_arch_has, %check_gen_has, %entry
+  ret i1 false
+
+check_gen_has:                                    ; preds = %entry
+  %ent_gen_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_has = load ptr, ptr %ent_gen_slot_has, align 8
+  %cur_gen_slot_has = getelementptr inbounds i32, ptr %gen_arr_has, i32 %has_id
+  %cur_gen_has = load i32, ptr %cur_gen_slot_has, align 4
+  %is_gen_match_has = icmp eq i32 %cur_gen_has, %has_gen
+  br i1 %is_gen_match_has, label %check_arch_has, label %ret_false
+
+check_arch_has:                                   ; preds = %check_gen_has
   %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
-  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %1
+  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %has_id
   %cur_arch_idx_has = load i32, ptr %has_arch_slot, align 4
   %is_alive_has = icmp sge i32 %cur_arch_idx_has, 0
   br i1 %is_alive_has, label %check_mask, label %ret_false
-
-has_oob_error:                                    ; preds = %entry
-  call void @rt_panic(ptr @ecs_err_oob_has_Health)
-  unreachable
 
 check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
@@ -1688,16 +1914,13 @@ check_mask:                                       ; preds = %check_arch_has
   %bit_and_has = and i64 %arch_mask_has, 2
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
-
-ret_false:                                        ; preds = %check_arch_has
-  ret i1 false
 }
 
-define void @world_cmd_set_Health(ptr %0, i32 %1, i32 %2, i32 %3) {
+define void @world_cmd_set_Health(ptr %0, i64 %1, i32 %2, i32 %3) {
 entry:
   %cmd_lock_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_cset)
-  call void @world_cmd_ensure_cap(ptr %0, i32 20)
+  call void @world_cmd_ensure_cap(ptr %0, i32 24)
   %cmd_cnt_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_cset = load i32, ptr %cmd_cnt_slot_cset, align 4
@@ -1706,26 +1929,26 @@ entry:
   %write_ptr_cset = getelementptr inbounds i8, ptr %data_ptr_cset, i64 %cur_cnt_cset64
   %op_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 0
   store i32 3, ptr %op_slot_cset, align 4
-  %e_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
-  store i32 %1, ptr %e_slot_cset, align 4
-  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 2
+  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
   store i32 1, ptr %comp_id_slot_cset, align 4
-  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 12
+  %handle_ptr_cset_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 8
+  store i64 %1, ptr %handle_ptr_cset_raw, align 8
+  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 16
   %f_slot_0 = getelementptr inbounds nuw %struct.Health, ptr %payload_raw, i32 0, i32 0
   store i32 %2, ptr %f_slot_0, align 4
   %f_slot_1 = getelementptr inbounds nuw %struct.Health, ptr %payload_raw, i32 0, i32 1
   store i32 %3, ptr %f_slot_1, align 4
-  %new_cnt_cset = add i32 %cur_cnt_cset, 20
+  %new_cnt_cset = add i32 %cur_cnt_cset, 24
   store i32 %new_cnt_cset, ptr %cmd_cnt_slot_cset, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_cset)
   ret void
 }
 
-define void @world_cmd_add_Health(ptr %0, i32 %1, i32 %2, i32 %3) {
+define void @world_cmd_add_Health(ptr %0, i64 %1, i32 %2, i32 %3) {
 entry:
   %cmd_lock_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_cset)
-  call void @world_cmd_ensure_cap(ptr %0, i32 20)
+  call void @world_cmd_ensure_cap(ptr %0, i32 24)
   %cmd_cnt_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_cset = load i32, ptr %cmd_cnt_slot_cset, align 4
@@ -1734,26 +1957,26 @@ entry:
   %write_ptr_cset = getelementptr inbounds i8, ptr %data_ptr_cset, i64 %cur_cnt_cset64
   %op_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 0
   store i32 3, ptr %op_slot_cset, align 4
-  %e_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
-  store i32 %1, ptr %e_slot_cset, align 4
-  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 2
+  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
   store i32 1, ptr %comp_id_slot_cset, align 4
-  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 12
+  %handle_ptr_cset_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 8
+  store i64 %1, ptr %handle_ptr_cset_raw, align 8
+  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 16
   %f_slot_0 = getelementptr inbounds nuw %struct.Health, ptr %payload_raw, i32 0, i32 0
   store i32 %2, ptr %f_slot_0, align 4
   %f_slot_1 = getelementptr inbounds nuw %struct.Health, ptr %payload_raw, i32 0, i32 1
   store i32 %3, ptr %f_slot_1, align 4
-  %new_cnt_cset = add i32 %cur_cnt_cset, 20
+  %new_cnt_cset = add i32 %cur_cnt_cset, 24
   store i32 %new_cnt_cset, ptr %cmd_cnt_slot_cset, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_cset)
   ret void
 }
 
-define void @world_cmd_remove_Health(ptr %0, i32 %1) {
+define void @world_cmd_remove_Health(ptr %0, i64 %1) {
 entry:
   %cmd_lock_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_crem)
-  call void @world_cmd_ensure_cap(ptr %0, i32 12)
+  call void @world_cmd_ensure_cap(ptr %0, i32 16)
   %cmd_cnt_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_crem = load i32, ptr %cmd_cnt_slot_crem, align 4
@@ -1762,57 +1985,55 @@ entry:
   %write_ptr_crem = getelementptr inbounds i8, ptr %data_ptr_crem, i64 %cur_cnt_crem64
   %op_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 0
   store i32 4, ptr %op_slot_crem, align 4
-  %e_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 1
-  store i32 %1, ptr %e_slot_crem, align 4
-  %comp_id_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 2
+  %comp_id_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 1
   store i32 1, ptr %comp_id_slot_crem, align 4
-  %new_cnt_crem = add i32 %cur_cnt_crem, 12
+  %handle_ptr_crem_raw = getelementptr inbounds i8, ptr %write_ptr_crem, i64 8
+  store i64 %1, ptr %handle_ptr_crem_raw, align 8
+  %new_cnt_crem = add i32 %cur_cnt_crem, 16
   store i32 %new_cnt_crem, ptr %cmd_cnt_slot_crem, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_crem)
   ret void
 }
 
-define void @world_set_Position(ptr %0, i32 %1, float %2, float %3) {
+define void @world_set_Position(ptr %0, i64 %1, float %2, float %3) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %e_id_set = trunc i64 %1 to i32
+  %e_gen64_set = lshr i64 %1, 32
+  %e_gen_set = trunc i64 %e_gen64_set to i32
   %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
-  %e_non_neg_set = icmp sge i32 %1, 0
-  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %e_non_neg_set = icmp sge i32 %e_id_set, 0
+  %e_in_bounds_set = icmp slt i32 %e_id_set, %total_ents_set
   %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
-  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+  br i1 %is_valid_id_set, label %check_liveness_set, label %set_oob_error
 
-check_arch_set:                                   ; preds = %entry
+check_liveness_set:                               ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %e_id_set
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %check_gen_set
 
 set_oob_error:                                    ; preds = %entry
   call void @rt_panic(ptr @ecs_err_oob_world_set_Position)
   unreachable
 
-set_err_entity:                                   ; preds = %check_arch_set
+set_err_entity:                                   ; preds = %check_liveness_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %check_arch_set
-  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
-  %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
-  %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
-  %has_bit = and i64 %cur_mask, 4
-  %already_has = icmp ne i64 %has_bit, 0
-  br i1 %already_has, label %in_place_update, label %transition
+check_gen_set:                                    ; preds = %check_liveness_set
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
+  %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
+  %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
+  %is_gen_match_set = icmp eq i32 %cur_gen_set, %e_gen_set
+  br i1 %is_gen_match_set, label %set_cont, label %set_stale_error
 
 set_dead_entity_error:                            ; preds = %set_err_entity
   call void @rt_panic(ptr @ecs_err_dead_world_set_Position)
@@ -1822,124 +2043,9 @@ set_pending_entity_error:                         ; preds = %set_err_entity
   call void @rt_panic(ptr @ecs_err_pending_world_set_Position)
   unreachable
 
-in_place_update:                                  ; preds = %set_cont
-  store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
-  store i32 %cur_row, ptr %target_row, align 4
-  br label %store_fields
-
-transition:                                       ; preds = %set_cont
-  %new_mask = or i64 %cur_mask, 4
-  %temp_mask_set = alloca [1 x i64], align 8
-  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
-  %val_set_w0 = load i64, ptr %src_set_w0, align 8
-  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
-  store i64 %new_mask, ptr %dst_set_w0, align 8
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
-  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
-  %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
-  %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
-  %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
-  %new_cap_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 2
-  %new_cap1 = load i32, ptr %new_cap_slot1, align 4
-  %need_grow_new = icmp sge i32 %new_cnt1, %new_cap1
-  br i1 %need_grow_new, label %grow_new_arch, label %after_grow_new_arch
-
-store_fields:                                     ; preds = %after_swap_remove, %in_place_update
-  %final_arch = load i32, ptr %target_arch, align 4
-  %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
-  %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
-  %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 2
-  %final_col_raw = load ptr, ptr %final_col_slot, align 8
-  %final_elem = getelementptr inbounds %struct.Position, ptr %final_col_raw, i32 %final_row
-  %x_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 0
-  store float %2, ptr %x_gep, align 4
-  %y_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 1
-  store float %3, ptr %y_gep, align 4
-  ret void
-
-grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
-  br label %after_grow_new_arch
-
-after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx_raw
-  %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
-  %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
-  %new_row = load i32, ptr %new_cnt_slot2, align 4
-  %next_new_cnt = add i32 %new_row, 1
-  store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
-  %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
-  %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
-  %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %1, ptr %new_ent_elem2, align 4
-  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
-  %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
-  %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
-  %last_row = sub i32 %cur_arch_count, 1
-  store i32 %last_row, ptr %cur_cnt_slot, align 4
-  %is_last_row = icmp eq i32 %cur_row, %last_row
-  br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
-
-do_swap_remove:                                   ; preds = %after_grow_new_arch
-  %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
-  %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
-  %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
-  %moved_e = load i32, ptr %last_ent_elem, align 4
-  %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
-  store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
-  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
-  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
-  store i32 %cur_row, ptr %moved_e_row_slot, align 4
-  br label %after_swap_remove
-
-after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
-  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
-  store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
-  store i32 %new_row, ptr %e_row_slot_tr, align 4
-  store i32 %new_arch_idx, ptr %target_arch, align 4
-  store i32 %new_row, ptr %target_row, align 4
-  br label %store_fields
-}
-
-define void @world_add_Position(ptr %0, i32 %1, float %2, float %3) {
-entry:
-  %target_arch = alloca i32, align 4
-  %target_row = alloca i32, align 4
-  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
-  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
-  %e_non_neg_set = icmp sge i32 %1, 0
-  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
-  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
-  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
-
-check_arch_set:                                   ; preds = %entry
-  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
-  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
-  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
-  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
-  %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
-  %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
-
-set_oob_error:                                    ; preds = %entry
-  call void @rt_panic(ptr @ecs_err_oob_world_add_Position)
-  unreachable
-
-set_err_entity:                                   ; preds = %check_arch_set
-  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
-  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
-
-set_cont:                                         ; preds = %check_arch_set
+set_cont:                                         ; preds = %check_gen_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %e_id_set
   %cur_row = load i32, ptr %ent_row_slot, align 4
   %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
@@ -1950,12 +2056,8 @@ set_cont:                                         ; preds = %check_arch_set
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
 
-set_dead_entity_error:                            ; preds = %set_err_entity
-  call void @rt_panic(ptr @ecs_err_dead_world_add_Position)
-  unreachable
-
-set_pending_entity_error:                         ; preds = %set_err_entity
-  call void @rt_panic(ptr @ecs_err_pending_world_add_Position)
+set_stale_error:                                  ; preds = %check_gen_set
+  call void @rt_panic(ptr @ecs_err_stale_world_set_Position)
   unreachable
 
 in_place_update:                                  ; preds = %set_cont
@@ -2009,8 +2111,8 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
   %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
   %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
-  %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %1, ptr %new_ent_elem2, align 4
+  %new_ent_elem2 = getelementptr inbounds i64, ptr %new_ent_raw2, i32 %new_row
+  store i64 %1, ptr %new_ent_elem2, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
@@ -2022,58 +2124,230 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
 do_swap_remove:                                   ; preds = %after_grow_new_arch
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
-  %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
-  %moved_e = load i32, ptr %last_ent_elem, align 4
-  %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
-  store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
+  %last_ent_elem = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %last_row
+  %moved_handle = load i64, ptr %last_ent_elem, align 8
+  %cur_ent_elem_sr = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %cur_row
+  store i64 %moved_handle, ptr %cur_ent_elem_sr, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
+  %moved_id = trunc i64 %moved_handle to i32
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
-  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
+  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_id
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 
 after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %e_id_set
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
   %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %e_id_set
   store i32 %new_row, ptr %e_row_slot_tr, align 4
   store i32 %new_arch_idx, ptr %target_arch, align 4
   store i32 %new_row, ptr %target_row, align 4
   br label %store_fields
 }
 
-define void @world_remove_Position(ptr %0, i32 %1) {
+define void @world_add_Position(ptr %0, i64 %1, float %2, float %3) {
 entry:
+  %target_arch = alloca i32, align 4
+  %target_row = alloca i32, align 4
+  %e_id_set = trunc i64 %1 to i32
+  %e_gen64_set = lshr i64 %1, 32
+  %e_gen_set = trunc i64 %e_gen64_set to i32
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %e_id_set, 0
+  %e_in_bounds_set = icmp slt i32 %e_id_set, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_liveness_set, label %set_oob_error
+
+check_liveness_set:                               ; preds = %entry
+  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %e_id_set
+  %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
+  %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
+  br i1 %is_neg_arch, label %set_err_entity, label %check_gen_set
+
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_add_Position)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_liveness_set
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
+
+check_gen_set:                                    ; preds = %check_liveness_set
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
+  %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
+  %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
+  %is_gen_match_set = icmp eq i32 %cur_gen_set, %e_gen_set
+  br i1 %is_gen_match_set, label %set_cont, label %set_stale_error
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_add_Position)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_add_Position)
+  unreachable
+
+set_cont:                                         ; preds = %check_gen_set
+  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %e_id_set
+  %cur_row = load i32, ptr %ent_row_slot, align 4
+  %tables_set = load ptr, ptr %tables_slot_set, align 8
+  %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
+  %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
+  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
+  %has_bit = and i64 %cur_mask, 4
+  %already_has = icmp ne i64 %has_bit, 0
+  br i1 %already_has, label %in_place_update, label %transition
+
+set_stale_error:                                  ; preds = %check_gen_set
+  call void @rt_panic(ptr @ecs_err_stale_world_add_Position)
+  unreachable
+
+in_place_update:                                  ; preds = %set_cont
+  store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
+  store i32 %cur_row, ptr %target_row, align 4
+  br label %store_fields
+
+transition:                                       ; preds = %set_cont
+  %new_mask = or i64 %cur_mask, 4
+  %temp_mask_set = alloca [1 x i64], align 8
+  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %val_set_w0 = load i64, ptr %src_set_w0, align 8
+  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
+  store i64 %new_mask, ptr %dst_set_w0, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
+  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
+  %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
+  %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
+  %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
+  %new_cap_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 2
+  %new_cap1 = load i32, ptr %new_cap_slot1, align 4
+  %need_grow_new = icmp sge i32 %new_cnt1, %new_cap1
+  br i1 %need_grow_new, label %grow_new_arch, label %after_grow_new_arch
+
+store_fields:                                     ; preds = %after_swap_remove, %in_place_update
+  %final_arch = load i32, ptr %target_arch, align 4
+  %final_row = load i32, ptr %target_row, align 4
+  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
+  %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
+  %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 2
+  %final_col_raw = load ptr, ptr %final_col_slot, align 8
+  %final_elem = getelementptr inbounds %struct.Position, ptr %final_col_raw, i32 %final_row
+  %x_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 0
+  store float %2, ptr %x_gep, align 4
+  %y_gep = getelementptr inbounds nuw %struct.Position, ptr %final_elem, i32 0, i32 1
+  store float %3, ptr %y_gep, align 4
+  ret void
+
+grow_new_arch:                                    ; preds = %transition
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
+  br label %after_grow_new_arch
+
+after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
+  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
+  %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx_raw
+  %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
+  %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
+  %new_row = load i32, ptr %new_cnt_slot2, align 4
+  %next_new_cnt = add i32 %new_row, 1
+  store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
+  %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
+  %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
+  %new_ent_elem2 = getelementptr inbounds i64, ptr %new_ent_raw2, i32 %new_row
+  store i64 %1, ptr %new_ent_elem2, align 8
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
+  %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
+  %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
+  %last_row = sub i32 %cur_arch_count, 1
+  store i32 %last_row, ptr %cur_cnt_slot, align 4
+  %is_last_row = icmp eq i32 %cur_row, %last_row
+  br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
+
+do_swap_remove:                                   ; preds = %after_grow_new_arch
+  %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
+  %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
+  %last_ent_elem = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %last_row
+  %moved_handle = load i64, ptr %last_ent_elem, align 8
+  %cur_ent_elem_sr = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %cur_row
+  store i64 %moved_handle, ptr %cur_ent_elem_sr, align 8
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
+  %moved_id = trunc i64 %moved_handle to i32
+  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
+  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_id
+  store i32 %cur_row, ptr %moved_e_row_slot, align 4
+  br label %after_swap_remove
+
+after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
+  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %e_id_set
+  store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
+  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %e_id_set
+  store i32 %new_row, ptr %e_row_slot_tr, align 4
+  store i32 %new_arch_idx, ptr %target_arch, align 4
+  store i32 %new_row, ptr %target_row, align 4
+  br label %store_fields
+}
+
+define void @world_remove_Position(ptr %0, i64 %1) {
+entry:
+  %rem_id = trunc i64 %1 to i32
+  %rem_gen64 = lshr i64 %1, 32
+  %rem_gen = trunc i64 %rem_gen64 to i32
   %ent_count_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_rem = load i32, ptr %ent_count_slot_rem, align 4
-  %rem_non_neg = icmp sge i32 %1, 0
-  %rem_in_bounds = icmp slt i32 %1, %total_ents_rem
+  %rem_non_neg = icmp sge i32 %rem_id, 0
+  %rem_in_bounds = icmp slt i32 %rem_id, %total_ents_rem
   %rem_is_valid_id = and i1 %rem_non_neg, %rem_in_bounds
-  br i1 %rem_is_valid_id, label %check_arch_rem, label %rem_oob_error
+  br i1 %rem_is_valid_id, label %check_liveness_rem, label %rem_oob_error
 
-check_arch_rem:                                   ; preds = %entry
+check_liveness_rem:                               ; preds = %entry
   %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
-  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
+  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %rem_id
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
   %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
-  br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
+  br i1 %is_neg_arch_rem, label %rem_err_entity, label %check_gen_rem
 
 rem_oob_error:                                    ; preds = %entry
   call void @rt_panic(ptr @ecs_err_oob_rem_Position)
   unreachable
 
-rem_err_entity:                                   ; preds = %check_arch_rem
+rem_err_entity:                                   ; preds = %check_liveness_rem
   %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
-rem_cont:                                         ; preds = %check_arch_rem
+check_gen_rem:                                    ; preds = %check_liveness_rem
+  %ent_gen_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_rem = load ptr, ptr %ent_gen_slot_rem, align 8
+  %cur_gen_slot_rem = getelementptr inbounds i32, ptr %gen_arr_rem, i32 %rem_id
+  %cur_gen_rem = load i32, ptr %cur_gen_slot_rem, align 4
+  %is_gen_match_rem = icmp eq i32 %cur_gen_rem, %rem_gen
+  br i1 %is_gen_match_rem, label %rem_cont, label %rem_stale_error
+
+rem_dead_entity_error:                            ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_rem_Position)
+  unreachable
+
+rem_pending_entity_error:                         ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_rem_Position)
+  unreachable
+
+rem_cont:                                         ; preds = %check_gen_rem
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
-  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
+  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %rem_id
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
   %tables_rem = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem = getelementptr inbounds %struct.Archetype, ptr %tables_rem, i32 %cur_arch_rem
@@ -2084,12 +2358,8 @@ rem_cont:                                         ; preds = %check_arch_rem
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
 
-rem_dead_entity_error:                            ; preds = %rem_err_entity
-  call void @rt_panic(ptr @ecs_err_dead_rem_Position)
-  unreachable
-
-rem_pending_entity_error:                         ; preds = %rem_err_entity
-  call void @rt_panic(ptr @ecs_err_pending_rem_Position)
+rem_stale_error:                                  ; preds = %check_gen_rem
+  call void @rt_panic(ptr @ecs_err_stale_rem_Position)
   unreachable
 
 do_remove:                                        ; preds = %rem_cont
@@ -2126,8 +2396,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %next_cnt_rem, ptr %cnt_slot_rem2, align 4
   %new_ent_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 3
   %new_ent_raw_rem = load ptr, ptr %new_ent_rem, align 8
-  %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
-  store i32 %1, ptr %new_ent_elem_rem, align 4
+  %new_ent_elem_rem = getelementptr inbounds i64, ptr %new_ent_raw_rem, i32 %new_row_rem
+  store i64 %1, ptr %new_ent_elem_rem, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
@@ -2139,47 +2409,58 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
 do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
-  %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
-  %moved_e_rem = load i32, ptr %last_ent_rem, align 4
-  %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
-  store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
+  %last_ent_rem = getelementptr inbounds i64, ptr %ent_raw_sr_rem, i32 %last_row_rem
+  %moved_handle_rem = load i64, ptr %last_ent_rem, align 8
+  %cur_ent_rem = getelementptr inbounds i64, ptr %ent_raw_sr_rem, i32 %cur_row_rem
+  store i64 %moved_handle_rem, ptr %cur_ent_rem, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %cur_arch_rem, i32 %last_row_rem, i32 %cur_row_rem)
+  %moved_id_rem = trunc i64 %moved_handle_rem to i32
   %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
-  %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
+  %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_id_rem
   store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
   br label %after_swap_rem
 
 after_swap_rem:                                   ; preds = %do_swap_rem, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
-  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
+  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %rem_id
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
   %row_arr_rem_tr = load ptr, ptr %ent_row_slot_rem, align 8
-  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %1
+  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %rem_id
   store i32 %new_row_rem, ptr %rem_row_slot_tr, align 4
   br label %exit_remove
 }
 
-define i1 @world_has_Position(ptr %0, i32 %1) {
+define i1 @world_has_Position(ptr %0, i64 %1) {
 entry:
+  %has_id = trunc i64 %1 to i32
+  %has_gen64 = lshr i64 %1, 32
+  %has_gen = trunc i64 %has_gen64 to i32
   %ent_count_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_has = load i32, ptr %ent_count_slot_has, align 4
-  %has_non_neg = icmp sge i32 %1, 0
-  %has_in_bounds = icmp slt i32 %1, %total_ents_has
+  %has_non_neg = icmp sge i32 %has_id, 0
+  %has_in_bounds = icmp slt i32 %has_id, %total_ents_has
   %has_is_valid_id = and i1 %has_non_neg, %has_in_bounds
-  br i1 %has_is_valid_id, label %check_arch_has, label %has_oob_error
+  br i1 %has_is_valid_id, label %check_gen_has, label %ret_false
 
-check_arch_has:                                   ; preds = %entry
+ret_false:                                        ; preds = %check_arch_has, %check_gen_has, %entry
+  ret i1 false
+
+check_gen_has:                                    ; preds = %entry
+  %ent_gen_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_has = load ptr, ptr %ent_gen_slot_has, align 8
+  %cur_gen_slot_has = getelementptr inbounds i32, ptr %gen_arr_has, i32 %has_id
+  %cur_gen_has = load i32, ptr %cur_gen_slot_has, align 4
+  %is_gen_match_has = icmp eq i32 %cur_gen_has, %has_gen
+  br i1 %is_gen_match_has, label %check_arch_has, label %ret_false
+
+check_arch_has:                                   ; preds = %check_gen_has
   %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
-  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %1
+  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %has_id
   %cur_arch_idx_has = load i32, ptr %has_arch_slot, align 4
   %is_alive_has = icmp sge i32 %cur_arch_idx_has, 0
   br i1 %is_alive_has, label %check_mask, label %ret_false
-
-has_oob_error:                                    ; preds = %entry
-  call void @rt_panic(ptr @ecs_err_oob_has_Position)
-  unreachable
 
 check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
@@ -2190,16 +2471,13 @@ check_mask:                                       ; preds = %check_arch_has
   %bit_and_has = and i64 %arch_mask_has, 4
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
-
-ret_false:                                        ; preds = %check_arch_has
-  ret i1 false
 }
 
-define void @world_cmd_set_Position(ptr %0, i32 %1, float %2, float %3) {
+define void @world_cmd_set_Position(ptr %0, i64 %1, float %2, float %3) {
 entry:
   %cmd_lock_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_cset)
-  call void @world_cmd_ensure_cap(ptr %0, i32 20)
+  call void @world_cmd_ensure_cap(ptr %0, i32 24)
   %cmd_cnt_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_cset = load i32, ptr %cmd_cnt_slot_cset, align 4
@@ -2208,26 +2486,26 @@ entry:
   %write_ptr_cset = getelementptr inbounds i8, ptr %data_ptr_cset, i64 %cur_cnt_cset64
   %op_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 0
   store i32 3, ptr %op_slot_cset, align 4
-  %e_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
-  store i32 %1, ptr %e_slot_cset, align 4
-  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 2
+  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
   store i32 2, ptr %comp_id_slot_cset, align 4
-  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 12
+  %handle_ptr_cset_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 8
+  store i64 %1, ptr %handle_ptr_cset_raw, align 8
+  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 16
   %f_slot_0 = getelementptr inbounds nuw %struct.Position, ptr %payload_raw, i32 0, i32 0
   store float %2, ptr %f_slot_0, align 4
   %f_slot_1 = getelementptr inbounds nuw %struct.Position, ptr %payload_raw, i32 0, i32 1
   store float %3, ptr %f_slot_1, align 4
-  %new_cnt_cset = add i32 %cur_cnt_cset, 20
+  %new_cnt_cset = add i32 %cur_cnt_cset, 24
   store i32 %new_cnt_cset, ptr %cmd_cnt_slot_cset, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_cset)
   ret void
 }
 
-define void @world_cmd_add_Position(ptr %0, i32 %1, float %2, float %3) {
+define void @world_cmd_add_Position(ptr %0, i64 %1, float %2, float %3) {
 entry:
   %cmd_lock_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_cset)
-  call void @world_cmd_ensure_cap(ptr %0, i32 20)
+  call void @world_cmd_ensure_cap(ptr %0, i32 24)
   %cmd_cnt_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_cset = load i32, ptr %cmd_cnt_slot_cset, align 4
@@ -2236,26 +2514,26 @@ entry:
   %write_ptr_cset = getelementptr inbounds i8, ptr %data_ptr_cset, i64 %cur_cnt_cset64
   %op_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 0
   store i32 3, ptr %op_slot_cset, align 4
-  %e_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
-  store i32 %1, ptr %e_slot_cset, align 4
-  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 2
+  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
   store i32 2, ptr %comp_id_slot_cset, align 4
-  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 12
+  %handle_ptr_cset_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 8
+  store i64 %1, ptr %handle_ptr_cset_raw, align 8
+  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 16
   %f_slot_0 = getelementptr inbounds nuw %struct.Position, ptr %payload_raw, i32 0, i32 0
   store float %2, ptr %f_slot_0, align 4
   %f_slot_1 = getelementptr inbounds nuw %struct.Position, ptr %payload_raw, i32 0, i32 1
   store float %3, ptr %f_slot_1, align 4
-  %new_cnt_cset = add i32 %cur_cnt_cset, 20
+  %new_cnt_cset = add i32 %cur_cnt_cset, 24
   store i32 %new_cnt_cset, ptr %cmd_cnt_slot_cset, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_cset)
   ret void
 }
 
-define void @world_cmd_remove_Position(ptr %0, i32 %1) {
+define void @world_cmd_remove_Position(ptr %0, i64 %1) {
 entry:
   %cmd_lock_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_crem)
-  call void @world_cmd_ensure_cap(ptr %0, i32 12)
+  call void @world_cmd_ensure_cap(ptr %0, i32 16)
   %cmd_cnt_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_crem = load i32, ptr %cmd_cnt_slot_crem, align 4
@@ -2264,57 +2542,55 @@ entry:
   %write_ptr_crem = getelementptr inbounds i8, ptr %data_ptr_crem, i64 %cur_cnt_crem64
   %op_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 0
   store i32 4, ptr %op_slot_crem, align 4
-  %e_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 1
-  store i32 %1, ptr %e_slot_crem, align 4
-  %comp_id_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 2
+  %comp_id_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 1
   store i32 2, ptr %comp_id_slot_crem, align 4
-  %new_cnt_crem = add i32 %cur_cnt_crem, 12
+  %handle_ptr_crem_raw = getelementptr inbounds i8, ptr %write_ptr_crem, i64 8
+  store i64 %1, ptr %handle_ptr_crem_raw, align 8
+  %new_cnt_crem = add i32 %cur_cnt_crem, 16
   store i32 %new_cnt_crem, ptr %cmd_cnt_slot_crem, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_crem)
   ret void
 }
 
-define void @world_set_Velocity(ptr %0, i32 %1, float %2, float %3) {
+define void @world_set_Velocity(ptr %0, i64 %1, float %2, float %3) {
 entry:
   %target_arch = alloca i32, align 4
   %target_row = alloca i32, align 4
+  %e_id_set = trunc i64 %1 to i32
+  %e_gen64_set = lshr i64 %1, 32
+  %e_gen_set = trunc i64 %e_gen64_set to i32
   %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
-  %e_non_neg_set = icmp sge i32 %1, 0
-  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
+  %e_non_neg_set = icmp sge i32 %e_id_set, 0
+  %e_in_bounds_set = icmp slt i32 %e_id_set, %total_ents_set
   %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
-  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
+  br i1 %is_valid_id_set, label %check_liveness_set, label %set_oob_error
 
-check_arch_set:                                   ; preds = %entry
+check_liveness_set:                               ; preds = %entry
   %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %e_id_set
   %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
   %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
+  br i1 %is_neg_arch, label %set_err_entity, label %check_gen_set
 
 set_oob_error:                                    ; preds = %entry
   call void @rt_panic(ptr @ecs_err_oob_world_set_Velocity)
   unreachable
 
-set_err_entity:                                   ; preds = %check_arch_set
+set_err_entity:                                   ; preds = %check_liveness_set
   %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
-set_cont:                                         ; preds = %check_arch_set
-  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
-  %cur_row = load i32, ptr %ent_row_slot, align 4
-  %tables_set = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
-  %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
-  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
-  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
-  %has_bit = and i64 %cur_mask, 8
-  %already_has = icmp ne i64 %has_bit, 0
-  br i1 %already_has, label %in_place_update, label %transition
+check_gen_set:                                    ; preds = %check_liveness_set
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
+  %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
+  %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
+  %is_gen_match_set = icmp eq i32 %cur_gen_set, %e_gen_set
+  br i1 %is_gen_match_set, label %set_cont, label %set_stale_error
 
 set_dead_entity_error:                            ; preds = %set_err_entity
   call void @rt_panic(ptr @ecs_err_dead_world_set_Velocity)
@@ -2324,124 +2600,9 @@ set_pending_entity_error:                         ; preds = %set_err_entity
   call void @rt_panic(ptr @ecs_err_pending_world_set_Velocity)
   unreachable
 
-in_place_update:                                  ; preds = %set_cont
-  store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
-  store i32 %cur_row, ptr %target_row, align 4
-  br label %store_fields
-
-transition:                                       ; preds = %set_cont
-  %new_mask = or i64 %cur_mask, 8
-  %temp_mask_set = alloca [1 x i64], align 8
-  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
-  %val_set_w0 = load i64, ptr %src_set_w0, align 8
-  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
-  store i64 %new_mask, ptr %dst_set_w0, align 8
-  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
-  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
-  %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
-  %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
-  %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
-  %new_cap_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 2
-  %new_cap1 = load i32, ptr %new_cap_slot1, align 4
-  %need_grow_new = icmp sge i32 %new_cnt1, %new_cap1
-  br i1 %need_grow_new, label %grow_new_arch, label %after_grow_new_arch
-
-store_fields:                                     ; preds = %after_swap_remove, %in_place_update
-  %final_arch = load i32, ptr %target_arch, align 4
-  %final_row = load i32, ptr %target_row, align 4
-  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
-  %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
-  %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
-  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 3
-  %final_col_raw = load ptr, ptr %final_col_slot, align 8
-  %final_elem = getelementptr inbounds %struct.Velocity, ptr %final_col_raw, i32 %final_row
-  %vx_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 0
-  store float %2, ptr %vx_gep, align 4
-  %vy_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 1
-  store float %3, ptr %vy_gep, align 4
-  ret void
-
-grow_new_arch:                                    ; preds = %transition
-  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
-  br label %after_grow_new_arch
-
-after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
-  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
-  %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx_raw
-  %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
-  %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
-  %new_row = load i32, ptr %new_cnt_slot2, align 4
-  %next_new_cnt = add i32 %new_row, 1
-  store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
-  %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
-  %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
-  %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %1, ptr %new_ent_elem2, align 4
-  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
-  %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
-  %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
-  %last_row = sub i32 %cur_arch_count, 1
-  store i32 %last_row, ptr %cur_cnt_slot, align 4
-  %is_last_row = icmp eq i32 %cur_row, %last_row
-  br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
-
-do_swap_remove:                                   ; preds = %after_grow_new_arch
-  %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
-  %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
-  %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
-  %moved_e = load i32, ptr %last_ent_elem, align 4
-  %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
-  store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
-  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
-  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
-  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
-  store i32 %cur_row, ptr %moved_e_row_slot, align 4
-  br label %after_swap_remove
-
-after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
-  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
-  store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
-  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
-  store i32 %new_row, ptr %e_row_slot_tr, align 4
-  store i32 %new_arch_idx, ptr %target_arch, align 4
-  store i32 %new_row, ptr %target_row, align 4
-  br label %store_fields
-}
-
-define void @world_add_Velocity(ptr %0, i32 %1, float %2, float %3) {
-entry:
-  %target_arch = alloca i32, align 4
-  %target_row = alloca i32, align 4
-  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
-  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
-  %e_non_neg_set = icmp sge i32 %1, 0
-  %e_in_bounds_set = icmp slt i32 %1, %total_ents_set
-  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
-  br i1 %is_valid_id_set, label %check_arch_set, label %set_oob_error
-
-check_arch_set:                                   ; preds = %entry
-  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
-  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
-  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
-  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
-  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %1
-  %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
-  %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
-  br i1 %is_neg_arch, label %set_err_entity, label %set_cont
-
-set_oob_error:                                    ; preds = %entry
-  call void @rt_panic(ptr @ecs_err_oob_world_add_Velocity)
-  unreachable
-
-set_err_entity:                                   ; preds = %check_arch_set
-  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
-  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
-
-set_cont:                                         ; preds = %check_arch_set
+set_cont:                                         ; preds = %check_gen_set
   %row_arr = load ptr, ptr %ent_row_slot_set, align 8
-  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %1
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %e_id_set
   %cur_row = load i32, ptr %ent_row_slot, align 4
   %tables_set = load ptr, ptr %tables_slot_set, align 8
   %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
@@ -2452,12 +2613,8 @@ set_cont:                                         ; preds = %check_arch_set
   %already_has = icmp ne i64 %has_bit, 0
   br i1 %already_has, label %in_place_update, label %transition
 
-set_dead_entity_error:                            ; preds = %set_err_entity
-  call void @rt_panic(ptr @ecs_err_dead_world_add_Velocity)
-  unreachable
-
-set_pending_entity_error:                         ; preds = %set_err_entity
-  call void @rt_panic(ptr @ecs_err_pending_world_add_Velocity)
+set_stale_error:                                  ; preds = %check_gen_set
+  call void @rt_panic(ptr @ecs_err_stale_world_set_Velocity)
   unreachable
 
 in_place_update:                                  ; preds = %set_cont
@@ -2511,8 +2668,8 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
   store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
   %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
   %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
-  %new_ent_elem2 = getelementptr inbounds i32, ptr %new_ent_raw2, i32 %new_row
-  store i32 %1, ptr %new_ent_elem2, align 4
+  %new_ent_elem2 = getelementptr inbounds i64, ptr %new_ent_raw2, i32 %new_row
+  store i64 %1, ptr %new_ent_elem2, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
   %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
   %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
@@ -2524,58 +2681,230 @@ after_grow_new_arch:                              ; preds = %grow_new_arch, %tra
 do_swap_remove:                                   ; preds = %after_grow_new_arch
   %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
   %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
-  %last_ent_elem = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %last_row
-  %moved_e = load i32, ptr %last_ent_elem, align 4
-  %cur_ent_elem_sr = getelementptr inbounds i32, ptr %cur_ent_raw_sr, i32 %cur_row
-  store i32 %moved_e, ptr %cur_ent_elem_sr, align 4
+  %last_ent_elem = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %last_row
+  %moved_handle = load i64, ptr %last_ent_elem, align 8
+  %cur_ent_elem_sr = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %cur_row
+  store i64 %moved_handle, ptr %cur_ent_elem_sr, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
+  %moved_id = trunc i64 %moved_handle to i32
   %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
-  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_e
+  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_id
   store i32 %cur_row, ptr %moved_e_row_slot, align 4
   br label %after_swap_remove
 
 after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
   %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
-  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %1
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %e_id_set
   store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
   %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
-  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %1
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %e_id_set
   store i32 %new_row, ptr %e_row_slot_tr, align 4
   store i32 %new_arch_idx, ptr %target_arch, align 4
   store i32 %new_row, ptr %target_row, align 4
   br label %store_fields
 }
 
-define void @world_remove_Velocity(ptr %0, i32 %1) {
+define void @world_add_Velocity(ptr %0, i64 %1, float %2, float %3) {
 entry:
+  %target_arch = alloca i32, align 4
+  %target_row = alloca i32, align 4
+  %e_id_set = trunc i64 %1 to i32
+  %e_gen64_set = lshr i64 %1, 32
+  %e_gen_set = trunc i64 %e_gen64_set to i32
+  %ent_count_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
+  %total_ents_set = load i32, ptr %ent_count_slot_set, align 4
+  %e_non_neg_set = icmp sge i32 %e_id_set, 0
+  %e_in_bounds_set = icmp slt i32 %e_id_set, %total_ents_set
+  %is_valid_id_set = and i1 %e_non_neg_set, %e_in_bounds_set
+  br i1 %is_valid_id_set, label %check_liveness_set, label %set_oob_error
+
+check_liveness_set:                               ; preds = %entry
+  %ent_arch_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
+  %ent_row_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
+  %tables_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_arr = load ptr, ptr %ent_arch_slot_set, align 8
+  %ent_arch_slot = getelementptr inbounds i32, ptr %arch_arr, i32 %e_id_set
+  %cur_arch_idx_raw = load i32, ptr %ent_arch_slot, align 4
+  %is_neg_arch = icmp slt i32 %cur_arch_idx_raw, 0
+  br i1 %is_neg_arch, label %set_err_entity, label %check_gen_set
+
+set_oob_error:                                    ; preds = %entry
+  call void @rt_panic(ptr @ecs_err_oob_world_add_Velocity)
+  unreachable
+
+set_err_entity:                                   ; preds = %check_liveness_set
+  %is_dead = icmp eq i32 %cur_arch_idx_raw, -2
+  br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
+
+check_gen_set:                                    ; preds = %check_liveness_set
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
+  %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
+  %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
+  %is_gen_match_set = icmp eq i32 %cur_gen_set, %e_gen_set
+  br i1 %is_gen_match_set, label %set_cont, label %set_stale_error
+
+set_dead_entity_error:                            ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_world_add_Velocity)
+  unreachable
+
+set_pending_entity_error:                         ; preds = %set_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_world_add_Velocity)
+  unreachable
+
+set_cont:                                         ; preds = %check_gen_set
+  %row_arr = load ptr, ptr %ent_row_slot_set, align 8
+  %ent_row_slot = getelementptr inbounds i32, ptr %row_arr, i32 %e_id_set
+  %cur_row = load i32, ptr %ent_row_slot, align 4
+  %tables_set = load ptr, ptr %tables_slot_set, align 8
+  %cur_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %tables_set, i32 %cur_arch_idx_raw
+  %cur_mask_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 0
+  %cur_mask_w0_ptr = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %cur_mask = load i64, ptr %cur_mask_w0_ptr, align 8
+  %has_bit = and i64 %cur_mask, 8
+  %already_has = icmp ne i64 %has_bit, 0
+  br i1 %already_has, label %in_place_update, label %transition
+
+set_stale_error:                                  ; preds = %check_gen_set
+  call void @rt_panic(ptr @ecs_err_stale_world_add_Velocity)
+  unreachable
+
+in_place_update:                                  ; preds = %set_cont
+  store i32 %cur_arch_idx_raw, ptr %target_arch, align 4
+  store i32 %cur_row, ptr %target_row, align 4
+  br label %store_fields
+
+transition:                                       ; preds = %set_cont
+  %new_mask = or i64 %cur_mask, 8
+  %temp_mask_set = alloca [1 x i64], align 8
+  %src_set_w0 = getelementptr inbounds [1 x i64], ptr %cur_mask_slot, i32 0, i32 0
+  %val_set_w0 = load i64, ptr %src_set_w0, align 8
+  %dst_set_w0 = getelementptr inbounds [1 x i64], ptr %temp_mask_set, i32 0, i32 0
+  store i64 %new_mask, ptr %dst_set_w0, align 8
+  %new_arch_idx = call i32 @world_get_or_create_archetype(ptr %0, ptr %temp_mask_set)
+  %tables_tr1 = load ptr, ptr %tables_slot_set, align 8
+  %new_arch_ptr1 = getelementptr inbounds %struct.Archetype, ptr %tables_tr1, i32 %new_arch_idx
+  %new_cnt_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 1
+  %new_cnt1 = load i32, ptr %new_cnt_slot1, align 4
+  %new_cap_slot1 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr1, i32 0, i32 2
+  %new_cap1 = load i32, ptr %new_cap_slot1, align 4
+  %need_grow_new = icmp sge i32 %new_cnt1, %new_cap1
+  br i1 %need_grow_new, label %grow_new_arch, label %after_grow_new_arch
+
+store_fields:                                     ; preds = %after_swap_remove, %in_place_update
+  %final_arch = load i32, ptr %target_arch, align 4
+  %final_row = load i32, ptr %target_row, align 4
+  %latest_tables_sf = load ptr, ptr %tables_slot_set, align 8
+  %final_arch_ptr = getelementptr inbounds %struct.Archetype, ptr %latest_tables_sf, i32 %final_arch
+  %final_cols = getelementptr inbounds nuw %struct.Archetype, ptr %final_arch_ptr, i32 0, i32 4
+  %final_col_slot = getelementptr inbounds [4 x ptr], ptr %final_cols, i32 0, i32 3
+  %final_col_raw = load ptr, ptr %final_col_slot, align 8
+  %final_elem = getelementptr inbounds %struct.Velocity, ptr %final_col_raw, i32 %final_row
+  %vx_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 0
+  store float %2, ptr %vx_gep, align 4
+  %vy_gep = getelementptr inbounds nuw %struct.Velocity, ptr %final_elem, i32 0, i32 1
+  store float %3, ptr %vy_gep, align 4
+  ret void
+
+grow_new_arch:                                    ; preds = %transition
+  call void @world_grow_archetype(ptr %0, i32 %new_arch_idx)
+  br label %after_grow_new_arch
+
+after_grow_new_arch:                              ; preds = %grow_new_arch, %transition
+  %tables_tr2 = load ptr, ptr %tables_slot_set, align 8
+  %cur_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %cur_arch_idx_raw
+  %new_arch_ptr2 = getelementptr inbounds %struct.Archetype, ptr %tables_tr2, i32 %new_arch_idx
+  %new_cnt_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 1
+  %new_row = load i32, ptr %new_cnt_slot2, align 4
+  %next_new_cnt = add i32 %new_row, 1
+  store i32 %next_new_cnt, ptr %new_cnt_slot2, align 4
+  %new_ent_slot2 = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr2, i32 0, i32 3
+  %new_ent_raw2 = load ptr, ptr %new_ent_slot2, align 8
+  %new_ent_elem2 = getelementptr inbounds i64, ptr %new_ent_raw2, i32 %new_row
+  store i64 %1, ptr %new_ent_elem2, align 8
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %new_arch_idx, i32 %cur_row, i32 %new_row)
+  %cur_cnt_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 1
+  %cur_arch_count = load i32, ptr %cur_cnt_slot, align 4
+  %last_row = sub i32 %cur_arch_count, 1
+  store i32 %last_row, ptr %cur_cnt_slot, align 4
+  %is_last_row = icmp eq i32 %cur_row, %last_row
+  br i1 %is_last_row, label %after_swap_remove, label %do_swap_remove
+
+do_swap_remove:                                   ; preds = %after_grow_new_arch
+  %cur_ent_sr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr2, i32 0, i32 3
+  %cur_ent_raw_sr = load ptr, ptr %cur_ent_sr, align 8
+  %last_ent_elem = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %last_row
+  %moved_handle = load i64, ptr %last_ent_elem, align 8
+  %cur_ent_elem_sr = getelementptr inbounds i64, ptr %cur_ent_raw_sr, i32 %cur_row
+  store i64 %moved_handle, ptr %cur_ent_elem_sr, align 8
+  call void @world_migrate_entity(ptr %0, i32 %cur_arch_idx_raw, i32 %cur_arch_idx_raw, i32 %last_row, i32 %cur_row)
+  %moved_id = trunc i64 %moved_handle to i32
+  %row_arr_sr = load ptr, ptr %ent_row_slot_set, align 8
+  %moved_e_row_slot = getelementptr inbounds i32, ptr %row_arr_sr, i32 %moved_id
+  store i32 %cur_row, ptr %moved_e_row_slot, align 4
+  br label %after_swap_remove
+
+after_swap_remove:                                ; preds = %do_swap_remove, %after_grow_new_arch
+  %arch_arr_tr = load ptr, ptr %ent_arch_slot_set, align 8
+  %e_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_tr, i32 %e_id_set
+  store i32 %new_arch_idx, ptr %e_arch_slot_tr, align 4
+  %row_arr_tr = load ptr, ptr %ent_row_slot_set, align 8
+  %e_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_tr, i32 %e_id_set
+  store i32 %new_row, ptr %e_row_slot_tr, align 4
+  store i32 %new_arch_idx, ptr %target_arch, align 4
+  store i32 %new_row, ptr %target_row, align 4
+  br label %store_fields
+}
+
+define void @world_remove_Velocity(ptr %0, i64 %1) {
+entry:
+  %rem_id = trunc i64 %1 to i32
+  %rem_gen64 = lshr i64 %1, 32
+  %rem_gen = trunc i64 %rem_gen64 to i32
   %ent_count_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_rem = load i32, ptr %ent_count_slot_rem, align 4
-  %rem_non_neg = icmp sge i32 %1, 0
-  %rem_in_bounds = icmp slt i32 %1, %total_ents_rem
+  %rem_non_neg = icmp sge i32 %rem_id, 0
+  %rem_in_bounds = icmp slt i32 %rem_id, %total_ents_rem
   %rem_is_valid_id = and i1 %rem_non_neg, %rem_in_bounds
-  br i1 %rem_is_valid_id, label %check_arch_rem, label %rem_oob_error
+  br i1 %rem_is_valid_id, label %check_liveness_rem, label %rem_oob_error
 
-check_arch_rem:                                   ; preds = %entry
+check_liveness_rem:                               ; preds = %entry
   %ent_arch_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
   %tables_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_rem = load ptr, ptr %ent_arch_slot_rem, align 8
-  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %1
+  %rem_arch_slot = getelementptr inbounds i32, ptr %arch_arr_rem, i32 %rem_id
   %cur_arch_rem = load i32, ptr %rem_arch_slot, align 4
   %is_neg_arch_rem = icmp slt i32 %cur_arch_rem, 0
-  br i1 %is_neg_arch_rem, label %rem_err_entity, label %rem_cont
+  br i1 %is_neg_arch_rem, label %rem_err_entity, label %check_gen_rem
 
 rem_oob_error:                                    ; preds = %entry
   call void @rt_panic(ptr @ecs_err_oob_rem_Velocity)
   unreachable
 
-rem_err_entity:                                   ; preds = %check_arch_rem
+rem_err_entity:                                   ; preds = %check_liveness_rem
   %is_dead_rem = icmp eq i32 %cur_arch_rem, -2
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
-rem_cont:                                         ; preds = %check_arch_rem
+check_gen_rem:                                    ; preds = %check_liveness_rem
+  %ent_gen_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_rem = load ptr, ptr %ent_gen_slot_rem, align 8
+  %cur_gen_slot_rem = getelementptr inbounds i32, ptr %gen_arr_rem, i32 %rem_id
+  %cur_gen_rem = load i32, ptr %cur_gen_slot_rem, align 4
+  %is_gen_match_rem = icmp eq i32 %cur_gen_rem, %rem_gen
+  br i1 %is_gen_match_rem, label %rem_cont, label %rem_stale_error
+
+rem_dead_entity_error:                            ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_dead_rem_Velocity)
+  unreachable
+
+rem_pending_entity_error:                         ; preds = %rem_err_entity
+  call void @rt_panic(ptr @ecs_err_pending_rem_Velocity)
+  unreachable
+
+rem_cont:                                         ; preds = %check_gen_rem
   %row_arr_rem = load ptr, ptr %ent_row_slot_rem, align 8
-  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %1
+  %rem_row_slot = getelementptr inbounds i32, ptr %row_arr_rem, i32 %rem_id
   %cur_row_rem = load i32, ptr %rem_row_slot, align 4
   %tables_rem = load ptr, ptr %tables_slot_rem, align 8
   %cur_arch_ptr_rem = getelementptr inbounds %struct.Archetype, ptr %tables_rem, i32 %cur_arch_rem
@@ -2586,12 +2915,8 @@ rem_cont:                                         ; preds = %check_arch_rem
   %has_comp_rem = icmp ne i64 %rem_has_bit, 0
   br i1 %has_comp_rem, label %do_remove, label %exit_remove
 
-rem_dead_entity_error:                            ; preds = %rem_err_entity
-  call void @rt_panic(ptr @ecs_err_dead_rem_Velocity)
-  unreachable
-
-rem_pending_entity_error:                         ; preds = %rem_err_entity
-  call void @rt_panic(ptr @ecs_err_pending_rem_Velocity)
+rem_stale_error:                                  ; preds = %check_gen_rem
+  call void @rt_panic(ptr @ecs_err_stale_rem_Velocity)
   unreachable
 
 do_remove:                                        ; preds = %rem_cont
@@ -2628,8 +2953,8 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
   store i32 %next_cnt_rem, ptr %cnt_slot_rem2, align 4
   %new_ent_rem = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_ptr_rem2, i32 0, i32 3
   %new_ent_raw_rem = load ptr, ptr %new_ent_rem, align 8
-  %new_ent_elem_rem = getelementptr inbounds i32, ptr %new_ent_raw_rem, i32 %new_row_rem
-  store i32 %1, ptr %new_ent_elem_rem, align 4
+  %new_ent_elem_rem = getelementptr inbounds i64, ptr %new_ent_raw_rem, i32 %new_row_rem
+  store i64 %1, ptr %new_ent_elem_rem, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %new_arch_rem, i32 %cur_row_rem, i32 %new_row_rem)
   %cnt_slot_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 1
   %cnt_rem = load i32, ptr %cnt_slot_rem, align 4
@@ -2641,47 +2966,58 @@ after_grow_rem_arch:                              ; preds = %grow_rem_arch, %do_
 do_swap_rem:                                      ; preds = %after_grow_rem_arch
   %ent_sr_rem = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr_rem2, i32 0, i32 3
   %ent_raw_sr_rem = load ptr, ptr %ent_sr_rem, align 8
-  %last_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %last_row_rem
-  %moved_e_rem = load i32, ptr %last_ent_rem, align 4
-  %cur_ent_rem = getelementptr inbounds i32, ptr %ent_raw_sr_rem, i32 %cur_row_rem
-  store i32 %moved_e_rem, ptr %cur_ent_rem, align 4
+  %last_ent_rem = getelementptr inbounds i64, ptr %ent_raw_sr_rem, i32 %last_row_rem
+  %moved_handle_rem = load i64, ptr %last_ent_rem, align 8
+  %cur_ent_rem = getelementptr inbounds i64, ptr %ent_raw_sr_rem, i32 %cur_row_rem
+  store i64 %moved_handle_rem, ptr %cur_ent_rem, align 8
   call void @world_migrate_entity(ptr %0, i32 %cur_arch_rem, i32 %cur_arch_rem, i32 %last_row_rem, i32 %cur_row_rem)
+  %moved_id_rem = trunc i64 %moved_handle_rem to i32
   %row_arr_rem_sr = load ptr, ptr %ent_row_slot_rem, align 8
-  %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_e_rem
+  %moved_e_row_slot_rem = getelementptr inbounds i32, ptr %row_arr_rem_sr, i32 %moved_id_rem
   store i32 %cur_row_rem, ptr %moved_e_row_slot_rem, align 4
   br label %after_swap_rem
 
 after_swap_rem:                                   ; preds = %do_swap_rem, %after_grow_rem_arch
   %arch_arr_rem_tr = load ptr, ptr %ent_arch_slot_rem, align 8
-  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %1
+  %rem_arch_slot_tr = getelementptr inbounds i32, ptr %arch_arr_rem_tr, i32 %rem_id
   store i32 %new_arch_rem, ptr %rem_arch_slot_tr, align 4
   %row_arr_rem_tr = load ptr, ptr %ent_row_slot_rem, align 8
-  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %1
+  %rem_row_slot_tr = getelementptr inbounds i32, ptr %row_arr_rem_tr, i32 %rem_id
   store i32 %new_row_rem, ptr %rem_row_slot_tr, align 4
   br label %exit_remove
 }
 
-define i1 @world_has_Velocity(ptr %0, i32 %1) {
+define i1 @world_has_Velocity(ptr %0, i64 %1) {
 entry:
+  %has_id = trunc i64 %1 to i32
+  %has_gen64 = lshr i64 %1, 32
+  %has_gen = trunc i64 %has_gen64 to i32
   %ent_count_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 3
   %total_ents_has = load i32, ptr %ent_count_slot_has, align 4
-  %has_non_neg = icmp sge i32 %1, 0
-  %has_in_bounds = icmp slt i32 %1, %total_ents_has
+  %has_non_neg = icmp sge i32 %has_id, 0
+  %has_in_bounds = icmp slt i32 %has_id, %total_ents_has
   %has_is_valid_id = and i1 %has_non_neg, %has_in_bounds
-  br i1 %has_is_valid_id, label %check_arch_has, label %has_oob_error
+  br i1 %has_is_valid_id, label %check_gen_has, label %ret_false
 
-check_arch_has:                                   ; preds = %entry
+ret_false:                                        ; preds = %check_arch_has, %check_gen_has, %entry
+  ret i1 false
+
+check_gen_has:                                    ; preds = %entry
+  %ent_gen_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %gen_arr_has = load ptr, ptr %ent_gen_slot_has, align 8
+  %cur_gen_slot_has = getelementptr inbounds i32, ptr %gen_arr_has, i32 %has_id
+  %cur_gen_has = load i32, ptr %cur_gen_slot_has, align 4
+  %is_gen_match_has = icmp eq i32 %cur_gen_has, %has_gen
+  br i1 %is_gen_match_has, label %check_arch_has, label %ret_false
+
+check_arch_has:                                   ; preds = %check_gen_has
   %ent_arch_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %tables_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
   %arch_arr_has = load ptr, ptr %ent_arch_slot_has, align 8
-  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %1
+  %has_arch_slot = getelementptr inbounds i32, ptr %arch_arr_has, i32 %has_id
   %cur_arch_idx_has = load i32, ptr %has_arch_slot, align 4
   %is_alive_has = icmp sge i32 %cur_arch_idx_has, 0
   br i1 %is_alive_has, label %check_mask, label %ret_false
-
-has_oob_error:                                    ; preds = %entry
-  call void @rt_panic(ptr @ecs_err_oob_has_Velocity)
-  unreachable
 
 check_mask:                                       ; preds = %check_arch_has
   %tables_has = load ptr, ptr %tables_slot_has, align 8
@@ -2692,16 +3028,13 @@ check_mask:                                       ; preds = %check_arch_has
   %bit_and_has = and i64 %arch_mask_has, 8
   %res_has = icmp ne i64 %bit_and_has, 0
   ret i1 %res_has
-
-ret_false:                                        ; preds = %check_arch_has
-  ret i1 false
 }
 
-define void @world_cmd_set_Velocity(ptr %0, i32 %1, float %2, float %3) {
+define void @world_cmd_set_Velocity(ptr %0, i64 %1, float %2, float %3) {
 entry:
   %cmd_lock_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_cset)
-  call void @world_cmd_ensure_cap(ptr %0, i32 20)
+  call void @world_cmd_ensure_cap(ptr %0, i32 24)
   %cmd_cnt_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_cset = load i32, ptr %cmd_cnt_slot_cset, align 4
@@ -2710,26 +3043,26 @@ entry:
   %write_ptr_cset = getelementptr inbounds i8, ptr %data_ptr_cset, i64 %cur_cnt_cset64
   %op_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 0
   store i32 3, ptr %op_slot_cset, align 4
-  %e_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
-  store i32 %1, ptr %e_slot_cset, align 4
-  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 2
+  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
   store i32 3, ptr %comp_id_slot_cset, align 4
-  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 12
+  %handle_ptr_cset_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 8
+  store i64 %1, ptr %handle_ptr_cset_raw, align 8
+  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 16
   %f_slot_0 = getelementptr inbounds nuw %struct.Velocity, ptr %payload_raw, i32 0, i32 0
   store float %2, ptr %f_slot_0, align 4
   %f_slot_1 = getelementptr inbounds nuw %struct.Velocity, ptr %payload_raw, i32 0, i32 1
   store float %3, ptr %f_slot_1, align 4
-  %new_cnt_cset = add i32 %cur_cnt_cset, 20
+  %new_cnt_cset = add i32 %cur_cnt_cset, 24
   store i32 %new_cnt_cset, ptr %cmd_cnt_slot_cset, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_cset)
   ret void
 }
 
-define void @world_cmd_add_Velocity(ptr %0, i32 %1, float %2, float %3) {
+define void @world_cmd_add_Velocity(ptr %0, i64 %1, float %2, float %3) {
 entry:
   %cmd_lock_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_cset)
-  call void @world_cmd_ensure_cap(ptr %0, i32 20)
+  call void @world_cmd_ensure_cap(ptr %0, i32 24)
   %cmd_cnt_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_cset = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_cset = load i32, ptr %cmd_cnt_slot_cset, align 4
@@ -2738,26 +3071,26 @@ entry:
   %write_ptr_cset = getelementptr inbounds i8, ptr %data_ptr_cset, i64 %cur_cnt_cset64
   %op_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 0
   store i32 3, ptr %op_slot_cset, align 4
-  %e_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
-  store i32 %1, ptr %e_slot_cset, align 4
-  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 2
+  %comp_id_slot_cset = getelementptr inbounds i32, ptr %write_ptr_cset, i32 1
   store i32 3, ptr %comp_id_slot_cset, align 4
-  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 12
+  %handle_ptr_cset_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 8
+  store i64 %1, ptr %handle_ptr_cset_raw, align 8
+  %payload_raw = getelementptr inbounds i8, ptr %write_ptr_cset, i64 16
   %f_slot_0 = getelementptr inbounds nuw %struct.Velocity, ptr %payload_raw, i32 0, i32 0
   store float %2, ptr %f_slot_0, align 4
   %f_slot_1 = getelementptr inbounds nuw %struct.Velocity, ptr %payload_raw, i32 0, i32 1
   store float %3, ptr %f_slot_1, align 4
-  %new_cnt_cset = add i32 %cur_cnt_cset, 20
+  %new_cnt_cset = add i32 %cur_cnt_cset, 24
   store i32 %new_cnt_cset, ptr %cmd_cnt_slot_cset, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_cset)
   ret void
 }
 
-define void @world_cmd_remove_Velocity(ptr %0, i32 %1) {
+define void @world_cmd_remove_Velocity(ptr %0, i64 %1) {
 entry:
   %cmd_lock_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 10
   call void @AcquireSRWLockExclusive(ptr %cmd_lock_slot_crem)
-  call void @world_cmd_ensure_cap(ptr %0, i32 12)
+  call void @world_cmd_ensure_cap(ptr %0, i32 16)
   %cmd_cnt_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 7
   %cmd_data_slot_crem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 9
   %cur_cnt_crem = load i32, ptr %cmd_cnt_slot_crem, align 4
@@ -2766,11 +3099,11 @@ entry:
   %write_ptr_crem = getelementptr inbounds i8, ptr %data_ptr_crem, i64 %cur_cnt_crem64
   %op_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 0
   store i32 4, ptr %op_slot_crem, align 4
-  %e_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 1
-  store i32 %1, ptr %e_slot_crem, align 4
-  %comp_id_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 2
+  %comp_id_slot_crem = getelementptr inbounds i32, ptr %write_ptr_crem, i32 1
   store i32 3, ptr %comp_id_slot_crem, align 4
-  %new_cnt_crem = add i32 %cur_cnt_crem, 12
+  %handle_ptr_crem_raw = getelementptr inbounds i8, ptr %write_ptr_crem, i64 8
+  store i64 %1, ptr %handle_ptr_crem_raw, align 8
+  %new_cnt_crem = add i32 %cur_cnt_crem, 16
   store i32 %new_cnt_crem, ptr %cmd_cnt_slot_crem, align 4
   call void @ReleaseSRWLockExclusive(ptr %cmd_lock_slot_crem)
   ret void
@@ -2804,8 +3137,8 @@ ac_loop_body:                                     ; preds = %ac_loop_cond
   %cur_cmd_ptr = getelementptr inbounds i8, ptr %data_ptr_ac, i64 %cur_offset64
   %op_slot = getelementptr inbounds i32, ptr %cur_cmd_ptr, i32 0
   %op_val = load i32, ptr %op_slot, align 4
-  %e_slot = getelementptr inbounds i32, ptr %cur_cmd_ptr, i32 1
-  %e_val = load i32, ptr %e_slot, align 4
+  %handle_ptr_ac_raw = getelementptr inbounds i8, ptr %cur_cmd_ptr, i64 8
+  %e_val_handle = load i64, ptr %handle_ptr_ac_raw, align 8
   switch i32 %op_val, label %op_default [
     i32 1, label %op_spawn
     i32 2, label %op_despawn
@@ -2814,21 +3147,21 @@ ac_loop_body:                                     ; preds = %ac_loop_cond
   ]
 
 op_spawn:                                         ; preds = %ac_loop_body
-  call void @world_assign_a0(ptr %0, i32 %e_val)
-  %next_off_1 = add i32 %cur_offset, 8
+  call void @world_assign_a0(ptr %0, i64 %e_val_handle)
+  %next_off_1 = add i32 %cur_offset, 16
   store i32 %next_off_1, ptr %ac_offset, align 4
   br label %ac_loop_cond
 
 op_despawn:                                       ; preds = %ac_loop_body
-  call void @world_despawn(ptr %0, i32 %e_val)
-  %next_off_2 = add i32 %cur_offset, 8
+  call void @world_despawn(ptr %0, i64 %e_val_handle)
+  %next_off_2 = add i32 %cur_offset, 16
   store i32 %next_off_2, ptr %ac_offset, align 4
   br label %ac_loop_cond
 
 op_set:                                           ; preds = %ac_loop_body
-  %comp_id_slot_set = getelementptr inbounds i32, ptr %cur_cmd_ptr, i32 2
+  %comp_id_slot_set = getelementptr inbounds i32, ptr %cur_cmd_ptr, i32 1
   %comp_id_set = load i32, ptr %comp_id_slot_set, align 4
-  %payload_ptr_set = getelementptr inbounds i8, ptr %cur_cmd_ptr, i64 12
+  %payload_ptr_set = getelementptr inbounds i8, ptr %cur_cmd_ptr, i64 16
   switch i32 %comp_id_set, label %set_def [
     i32 0, label %set_case_ChildOf
     i32 1, label %set_case_Health
@@ -2837,7 +3170,7 @@ op_set:                                           ; preds = %ac_loop_body
   ]
 
 op_remove:                                        ; preds = %ac_loop_body
-  %comp_id_slot_rem = getelementptr inbounds i32, ptr %cur_cmd_ptr, i32 2
+  %comp_id_slot_rem = getelementptr inbounds i32, ptr %cur_cmd_ptr, i32 1
   %comp_id_rem = load i32, ptr %comp_id_slot_rem, align 4
   switch i32 %comp_id_rem, label %rem_def [
     i32 0, label %rem_case_ChildOf
@@ -2852,15 +3185,15 @@ op_default:                                       ; preds = %ac_loop_body
   br label %ac_loop_cond
 
 set_def:                                          ; preds = %op_set
-  %next_off_set_def = add i32 %cur_offset, 12
+  %next_off_set_def = add i32 %cur_offset, 16
   store i32 %next_off_set_def, ptr %ac_offset, align 4
   br label %ac_loop_cond
 
 set_case_ChildOf:                                 ; preds = %op_set
   %p_f_0 = getelementptr inbounds nuw %struct.ChildOf, ptr %payload_ptr_set, i32 0, i32 0
-  %f_val_0 = load i32, ptr %p_f_0, align 4
-  call void @world_set_ChildOf(ptr %0, i32 %e_val, i32 %f_val_0)
-  %next_off_set_ChildOf = add i32 %cur_offset, 16
+  %f_val_0 = load i64, ptr %p_f_0, align 8
+  call void @world_set_ChildOf(ptr %0, i64 %e_val_handle, i64 %f_val_0)
+  %next_off_set_ChildOf = add i32 %cur_offset, 24
   store i32 %next_off_set_ChildOf, ptr %ac_offset, align 4
   br label %ac_loop_cond
 
@@ -2869,8 +3202,8 @@ set_case_Health:                                  ; preds = %op_set
   %f_val_02 = load i32, ptr %p_f_01, align 4
   %p_f_1 = getelementptr inbounds nuw %struct.Health, ptr %payload_ptr_set, i32 0, i32 1
   %f_val_1 = load i32, ptr %p_f_1, align 4
-  call void @world_set_Health(ptr %0, i32 %e_val, i32 %f_val_02, i32 %f_val_1)
-  %next_off_set_Health = add i32 %cur_offset, 20
+  call void @world_set_Health(ptr %0, i64 %e_val_handle, i32 %f_val_02, i32 %f_val_1)
+  %next_off_set_Health = add i32 %cur_offset, 24
   store i32 %next_off_set_Health, ptr %ac_offset, align 4
   br label %ac_loop_cond
 
@@ -2879,8 +3212,8 @@ set_case_Position:                                ; preds = %op_set
   %f_val_04 = load float, ptr %p_f_03, align 4
   %p_f_15 = getelementptr inbounds nuw %struct.Position, ptr %payload_ptr_set, i32 0, i32 1
   %f_val_16 = load float, ptr %p_f_15, align 4
-  call void @world_set_Position(ptr %0, i32 %e_val, float %f_val_04, float %f_val_16)
-  %next_off_set_Position = add i32 %cur_offset, 20
+  call void @world_set_Position(ptr %0, i64 %e_val_handle, float %f_val_04, float %f_val_16)
+  %next_off_set_Position = add i32 %cur_offset, 24
   store i32 %next_off_set_Position, ptr %ac_offset, align 4
   br label %ac_loop_cond
 
@@ -2889,37 +3222,37 @@ set_case_Velocity:                                ; preds = %op_set
   %f_val_08 = load float, ptr %p_f_07, align 4
   %p_f_19 = getelementptr inbounds nuw %struct.Velocity, ptr %payload_ptr_set, i32 0, i32 1
   %f_val_110 = load float, ptr %p_f_19, align 4
-  call void @world_set_Velocity(ptr %0, i32 %e_val, float %f_val_08, float %f_val_110)
-  %next_off_set_Velocity = add i32 %cur_offset, 20
+  call void @world_set_Velocity(ptr %0, i64 %e_val_handle, float %f_val_08, float %f_val_110)
+  %next_off_set_Velocity = add i32 %cur_offset, 24
   store i32 %next_off_set_Velocity, ptr %ac_offset, align 4
   br label %ac_loop_cond
 
 rem_def:                                          ; preds = %op_remove
-  %next_off_rem_def = add i32 %cur_offset, 12
+  %next_off_rem_def = add i32 %cur_offset, 16
   store i32 %next_off_rem_def, ptr %ac_offset, align 4
   br label %ac_loop_cond
 
 rem_case_ChildOf:                                 ; preds = %op_remove
-  call void @world_remove_ChildOf(ptr %0, i32 %e_val)
-  %next_off_rem_ChildOf = add i32 %cur_offset, 12
+  call void @world_remove_ChildOf(ptr %0, i64 %e_val_handle)
+  %next_off_rem_ChildOf = add i32 %cur_offset, 16
   store i32 %next_off_rem_ChildOf, ptr %ac_offset, align 4
   br label %ac_loop_cond
 
 rem_case_Health:                                  ; preds = %op_remove
-  call void @world_remove_Health(ptr %0, i32 %e_val)
-  %next_off_rem_Health = add i32 %cur_offset, 12
+  call void @world_remove_Health(ptr %0, i64 %e_val_handle)
+  %next_off_rem_Health = add i32 %cur_offset, 16
   store i32 %next_off_rem_Health, ptr %ac_offset, align 4
   br label %ac_loop_cond
 
 rem_case_Position:                                ; preds = %op_remove
-  call void @world_remove_Position(ptr %0, i32 %e_val)
-  %next_off_rem_Position = add i32 %cur_offset, 12
+  call void @world_remove_Position(ptr %0, i64 %e_val_handle)
+  %next_off_rem_Position = add i32 %cur_offset, 16
   store i32 %next_off_rem_Position, ptr %ac_offset, align 4
   br label %ac_loop_cond
 
 rem_case_Velocity:                                ; preds = %op_remove
-  call void @world_remove_Velocity(ptr %0, i32 %e_val)
-  %next_off_rem_Velocity = add i32 %cur_offset, 12
+  call void @world_remove_Velocity(ptr %0, i64 %e_val_handle)
+  %next_off_rem_Velocity = add i32 %cur_offset, 16
   store i32 %next_off_rem_Velocity, ptr %ac_offset, align 4
   br label %ac_loop_cond
 }
@@ -2996,8 +3329,8 @@ d_init_cond:                                      ; preds = %d_init_body, %do_so
 d_init_body:                                      ; preds = %d_init_cond
   %child_elem = getelementptr inbounds %struct.ChildOf, ptr %co_col_raw, i32 %cur_init_i
   %parent_gep = getelementptr inbounds nuw %struct.ChildOf, ptr %child_elem, i32 0, i32 0
-  %parent_id = load i32, ptr %parent_gep, align 4
-  %is_root = icmp slt i32 %parent_id, 0
+  %parent_handle = load i64, ptr %parent_gep, align 8
+  %is_root = icmp eq i64 %parent_handle, 0
   %depth_val = select i1 %is_root, i32 0, i32 1
   %depth_slot = getelementptr inbounds i32, ptr %depths_raw, i32 %cur_init_i
   store i32 %depth_val, ptr %depth_slot, align 4
@@ -3047,15 +3380,17 @@ do_swap_row:                                      ; preds = %sort_inner_body
   store i32 %di, ptr %dj_slot, align 4
   %ent_slot_sh = getelementptr inbounds nuw %struct.Archetype, ptr %cur_a, i32 0, i32 3
   %ent_raw_sh = load ptr, ptr %ent_slot_sh, align 8
-  %ei_slot = getelementptr inbounds i32, ptr %ent_raw_sh, i32 %cur_sort_i
-  %ej_slot = getelementptr inbounds i32, ptr %ent_raw_sh, i32 %cur_sort_j
-  %ei = load i32, ptr %ei_slot, align 4
-  %ej = load i32, ptr %ej_slot, align 4
-  store i32 %ej, ptr %ei_slot, align 4
-  store i32 %ei, ptr %ej_slot, align 4
+  %ei_slot = getelementptr inbounds i64, ptr %ent_raw_sh, i32 %cur_sort_i
+  %ej_slot = getelementptr inbounds i64, ptr %ent_raw_sh, i32 %cur_sort_j
+  %ei_handle = load i64, ptr %ei_slot, align 8
+  %ej_handle = load i64, ptr %ej_slot, align 8
+  store i64 %ej_handle, ptr %ei_slot, align 8
+  store i64 %ei_handle, ptr %ej_slot, align 8
+  %ei_id = trunc i64 %ei_handle to i32
+  %ej_id = trunc i64 %ej_handle to i32
   %row_arr_sh = load ptr, ptr %ent_row_slot_sh, align 8
-  %ei_row_slot = getelementptr inbounds i32, ptr %row_arr_sh, i32 %ei
-  %ej_row_slot = getelementptr inbounds i32, ptr %row_arr_sh, i32 %ej
+  %ei_row_slot = getelementptr inbounds i32, ptr %row_arr_sh, i32 %ei_id
+  %ej_row_slot = getelementptr inbounds i32, ptr %row_arr_sh, i32 %ej_id
   store i32 %cur_sort_j, ptr %ei_row_slot, align 4
   store i32 %cur_sort_i, ptr %ej_row_slot, align 4
   %mask_w_ChildOf_sh = getelementptr inbounds [1 x i64], ptr %m_slot, i32 0, i32 0
@@ -3074,9 +3409,9 @@ sw_sh_ChildOf:                                    ; preds = %do_swap_row
   %sw_sh_raw_ChildOf = load ptr, ptr %sw_sh_col_ChildOf, align 8
   %elem_i_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_sh_raw_ChildOf, i32 %cur_sort_i
   %elem_j_ChildOf = getelementptr inbounds %struct.ChildOf, ptr %sw_sh_raw_ChildOf, i32 %cur_sort_j
-  %1 = call ptr @memcpy(ptr %temp_ChildOf, ptr %elem_i_ChildOf, i64 4)
-  %2 = call ptr @memcpy(ptr %elem_i_ChildOf, ptr %elem_j_ChildOf, i64 4)
-  %3 = call ptr @memcpy(ptr %elem_j_ChildOf, ptr %temp_ChildOf, i64 4)
+  %1 = call ptr @memcpy(ptr %temp_ChildOf, ptr %elem_i_ChildOf, i64 8)
+  %2 = call ptr @memcpy(ptr %elem_i_ChildOf, ptr %elem_j_ChildOf, i64 8)
+  %3 = call ptr @memcpy(ptr %elem_j_ChildOf, ptr %temp_ChildOf, i64 8)
   br label %skip_sw_sh_ChildOf
 
 skip_sw_sh_ChildOf:                               ; preds = %sw_sh_ChildOf, %do_swap_row
@@ -3656,9 +3991,9 @@ check_clear:                                      ; preds = %entry
 define i32 @main() {
 entry:
   %tick = alloca i32, align 4
-  %tower = alloca i32, align 4
-  %scout = alloca i32, align 4
-  %hero = alloca i32, align 4
+  %tower = alloca i64, align 8
+  %scout = alloca i64, align 8
+  %hero = alloca i64, align 8
   %world = alloca ptr, align 8
   %0 = call i32 @SetConsoleOutputCP(i32 65001)
   %1 = call i32 @SetConsoleCP(i32 65001)
@@ -3672,57 +4007,57 @@ entry:
   call void @world_set_TimeStep(ptr %world4, float 5.000000e-01)
   %puts_call5 = call i32 @puts(ptr @str_lit.9)
   %world6 = load ptr, ptr %world, align 8
-  %spawn_call = call i32 @world_spawn(ptr %world6)
-  store i32 %spawn_call, ptr %hero, align 4
+  %spawn_call = call i64 @world_spawn(ptr %world6)
+  store i64 %spawn_call, ptr %hero, align 8
   %world7 = load ptr, ptr %world, align 8
-  %hero8 = load i32, ptr %hero, align 4
-  call void @world_set_Position(ptr %world7, i32 %hero8, float 0.000000e+00, float 0.000000e+00)
+  %hero8 = load i64, ptr %hero, align 8
+  call void @world_set_Position(ptr %world7, i64 %hero8, float 0.000000e+00, float 0.000000e+00)
   %world9 = load ptr, ptr %world, align 8
-  %hero10 = load i32, ptr %hero, align 4
-  call void @world_set_Velocity(ptr %world9, i32 %hero10, float 1.000000e+01, float 5.000000e+00)
+  %hero10 = load i64, ptr %hero, align 8
+  call void @world_set_Velocity(ptr %world9, i64 %hero10, float 1.000000e+01, float 5.000000e+00)
   %world11 = load ptr, ptr %world, align 8
-  %hero12 = load i32, ptr %hero, align 4
-  call void @world_set_Health(ptr %world11, i32 %hero12, i32 100, i32 100)
+  %hero12 = load i64, ptr %hero, align 8
+  call void @world_set_Health(ptr %world11, i64 %hero12, i32 100, i32 100)
   %world13 = load ptr, ptr %world, align 8
-  %spawn_call14 = call i32 @world_spawn(ptr %world13)
-  store i32 %spawn_call14, ptr %scout, align 4
+  %spawn_call14 = call i64 @world_spawn(ptr %world13)
+  store i64 %spawn_call14, ptr %scout, align 8
   %world15 = load ptr, ptr %world, align 8
-  %scout16 = load i32, ptr %scout, align 4
-  call void @world_set_Position(ptr %world15, i32 %scout16, float 5.000000e+01, float 1.000000e+02)
+  %scout16 = load i64, ptr %scout, align 8
+  call void @world_set_Position(ptr %world15, i64 %scout16, float 5.000000e+01, float 1.000000e+02)
   %world17 = load ptr, ptr %world, align 8
-  %scout18 = load i32, ptr %scout, align 4
-  call void @world_set_Velocity(ptr %world17, i32 %scout18, float -2.000000e+01, float 1.500000e+01)
+  %scout18 = load i64, ptr %scout, align 8
+  call void @world_set_Velocity(ptr %world17, i64 %scout18, float -2.000000e+01, float 1.500000e+01)
   %world19 = load ptr, ptr %world, align 8
-  %scout20 = load i32, ptr %scout, align 4
-  call void @world_set_Health(ptr %world19, i32 %scout20, i32 60, i32 60)
+  %scout20 = load i64, ptr %scout, align 8
+  call void @world_set_Health(ptr %world19, i64 %scout20, i32 60, i32 60)
   %world21 = load ptr, ptr %world, align 8
-  %spawn_call22 = call i32 @world_spawn(ptr %world21)
-  store i32 %spawn_call22, ptr %tower, align 4
+  %spawn_call22 = call i64 @world_spawn(ptr %world21)
+  store i64 %spawn_call22, ptr %tower, align 8
   %world23 = load ptr, ptr %world, align 8
-  %tower24 = load i32, ptr %tower, align 4
-  call void @world_set_Position(ptr %world23, i32 %tower24, float 2.000000e+02, float 2.000000e+02)
+  %tower24 = load i64, ptr %tower, align 8
+  call void @world_set_Position(ptr %world23, i64 %tower24, float 2.000000e+02, float 2.000000e+02)
   %world25 = load ptr, ptr %world, align 8
-  %tower26 = load i32, ptr %tower, align 4
-  call void @world_set_Health(ptr %world25, i32 %tower26, i32 500, i32 500)
+  %tower26 = load i64, ptr %tower, align 8
+  call void @world_set_Health(ptr %world25, i64 %tower26, i32 500, i32 500)
   %world_wptr = load ptr, ptr %world, align 8
-  %hero27 = load i32, ptr %hero, align 4
-  %str_i32 = call ptr @rt_to_string_i32(ptr %world_wptr, i32 %hero27)
+  %hero27 = load i64, ptr %hero, align 8
+  %str_i64 = call ptr @rt_to_string_i64(ptr %world_wptr, i64 %hero27)
   %world_wptr28 = load ptr, ptr %world, align 8
-  %str_add = call ptr @rt_str_concat(ptr %world_wptr28, ptr @str_lit.10, ptr %str_i32)
+  %str_add = call ptr @rt_str_concat(ptr %world_wptr28, ptr @str_lit.10, ptr %str_i64)
   %world_wptr29 = load ptr, ptr %world, align 8
   %str_add30 = call ptr @rt_str_concat(ptr %world_wptr29, ptr %str_add, ptr @str_lit.11)
   %world_wptr31 = load ptr, ptr %world, align 8
-  %scout32 = load i32, ptr %scout, align 4
-  %str_i3233 = call ptr @rt_to_string_i32(ptr %world_wptr31, i32 %scout32)
+  %scout32 = load i64, ptr %scout, align 8
+  %str_i6433 = call ptr @rt_to_string_i64(ptr %world_wptr31, i64 %scout32)
   %world_wptr34 = load ptr, ptr %world, align 8
-  %str_add35 = call ptr @rt_str_concat(ptr %world_wptr34, ptr %str_add30, ptr %str_i3233)
+  %str_add35 = call ptr @rt_str_concat(ptr %world_wptr34, ptr %str_add30, ptr %str_i6433)
   %world_wptr36 = load ptr, ptr %world, align 8
   %str_add37 = call ptr @rt_str_concat(ptr %world_wptr36, ptr %str_add35, ptr @str_lit.12)
   %world_wptr38 = load ptr, ptr %world, align 8
-  %tower39 = load i32, ptr %tower, align 4
-  %str_i3240 = call ptr @rt_to_string_i32(ptr %world_wptr38, i32 %tower39)
+  %tower39 = load i64, ptr %tower, align 8
+  %str_i6440 = call ptr @rt_to_string_i64(ptr %world_wptr38, i64 %tower39)
   %world_wptr41 = load ptr, ptr %world, align 8
-  %str_add42 = call ptr @rt_str_concat(ptr %world_wptr41, ptr %str_add37, ptr %str_i3240)
+  %str_add42 = call ptr @rt_str_concat(ptr %world_wptr41, ptr %str_add37, ptr %str_i6440)
   %world_wptr43 = load ptr, ptr %world, align 8
   %str_add44 = call ptr @rt_str_concat(ptr %world_wptr43, ptr %str_add42, ptr @str_lit.13)
   %puts_call45 = call i32 @puts(ptr %str_add44)
@@ -3738,14 +4073,14 @@ for_cond:                                         ; preds = %for_inc, %entry
 for_body:                                         ; preds = %for_cond
   %world_wptr48 = load ptr, ptr %world, align 8
   %tick49 = load i32, ptr %tick, align 4
-  %str_i3250 = call ptr @rt_to_string_i32(ptr %world_wptr48, i32 %tick49)
-  %world_wptr51 = load ptr, ptr %world, align 8
-  %str_add52 = call ptr @rt_str_concat(ptr %world_wptr51, ptr @str_lit.15, ptr %str_i3250)
-  %world_wptr53 = load ptr, ptr %world, align 8
-  %str_add54 = call ptr @rt_str_concat(ptr %world_wptr53, ptr %str_add52, ptr @str_lit.16)
-  %puts_call55 = call i32 @puts(ptr %str_add54)
-  %world56 = load ptr, ptr %world, align 8
-  call void @pipeline_SimulationPipeline(ptr %world56)
+  %str_i32 = call ptr @rt_to_string_i32(ptr %world_wptr48, i32 %tick49)
+  %world_wptr50 = load ptr, ptr %world, align 8
+  %str_add51 = call ptr @rt_str_concat(ptr %world_wptr50, ptr @str_lit.15, ptr %str_i32)
+  %world_wptr52 = load ptr, ptr %world, align 8
+  %str_add53 = call ptr @rt_str_concat(ptr %world_wptr52, ptr %str_add51, ptr @str_lit.16)
+  %puts_call54 = call i32 @puts(ptr %str_add53)
+  %world55 = load ptr, ptr %world, align 8
+  call void @pipeline_SimulationPipeline(ptr %world55)
   br label %for_inc
 
 for_inc:                                          ; preds = %for_body
@@ -3755,8 +4090,8 @@ for_inc:                                          ; preds = %for_body
   br label %for_cond
 
 for_exit:                                         ; preds = %for_cond
-  %puts_call57 = call i32 @puts(ptr @str_lit.17)
-  %puts_call58 = call i32 @puts(ptr @str_lit.18)
+  %puts_call56 = call i32 @puts(ptr @str_lit.17)
+  %puts_call57 = call i32 @puts(ptr @str_lit.18)
   %h_stdin = call ptr @GetStdHandle(i32 -10)
   %2 = call i32 @FlushConsoleInputBuffer(ptr %h_stdin)
   %key_input = call i32 @_getch()
@@ -3853,7 +4188,7 @@ entry:
 
 define void @system_StatusSystem(ptr %world) {
 entry:
-  %e_alloca = alloca i32, align 4
+  %e_alloca = alloca i64, align 8
   %world_alloca = alloca ptr, align 8
   store ptr %world, ptr %world_alloca, align 8
   %world_arch_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %world, i32 0, i32 0
@@ -3906,9 +4241,9 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %cols_arr = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 4
   %e_arr_slot = getelementptr inbounds nuw %struct.Archetype, ptr %cur_arch_ptr, i32 0, i32 3
   %e_arr_raw = load ptr, ptr %e_arr_slot, align 8
-  %e_elem_ptr = getelementptr inbounds i32, ptr %e_arr_raw, i32 %cur_row
-  %e_val = load i32, ptr %e_elem_ptr, align 4
-  store i32 %e_val, ptr %e_alloca, align 4
+  %e_elem_ptr = getelementptr inbounds i64, ptr %e_arr_raw, i32 %cur_row
+  %e_val = load i64, ptr %e_elem_ptr, align 8
+  store i64 %e_val, ptr %e_alloca, align 8
   %pos_col_slot = getelementptr inbounds [4 x ptr], ptr %cols_arr, i32 0, i32 2
   %pos_raw = load ptr, ptr %pos_col_slot, align 8
   %pos_elem = getelementptr inbounds %struct.Position, ptr %pos_raw, i32 %cur_row
@@ -3916,10 +4251,10 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %hp_raw = load ptr, ptr %hp_col_slot, align 8
   %hp_elem = getelementptr inbounds %struct.Health, ptr %hp_raw, i32 %cur_row
   %world_wptr = load ptr, ptr %world_alloca, align 8
-  %e = load i32, ptr %e_alloca, align 4
-  %str_i32 = call ptr @rt_to_string_i32(ptr %world_wptr, i32 %e)
+  %e = load i64, ptr %e_alloca, align 8
+  %str_i64 = call ptr @rt_to_string_i64(ptr %world_wptr, i64 %e)
   %world_wptr1 = load ptr, ptr %world_alloca, align 8
-  %str_add = call ptr @rt_str_concat(ptr %world_wptr1, ptr @str_lit, ptr %str_i32)
+  %str_add = call ptr @rt_str_concat(ptr %world_wptr1, ptr @str_lit, ptr %str_i64)
   %world_wptr2 = load ptr, ptr %world_alloca, align 8
   %str_add3 = call ptr @rt_str_concat(ptr %world_wptr2, ptr %str_add, ptr @str_lit.1)
   %world_wptr4 = load ptr, ptr %world_alloca, align 8
@@ -3941,27 +4276,27 @@ ent_loop_body:                                    ; preds = %ent_loop_cond
   %world_wptr15 = load ptr, ptr %world_alloca, align 8
   %hp_hp = getelementptr inbounds nuw %struct.Health, ptr %hp_elem, i32 0, i32 0
   %hp_val = load i32, ptr %hp_hp, align 4
-  %str_i3216 = call ptr @rt_to_string_i32(ptr %world_wptr15, i32 %hp_val)
-  %world_wptr17 = load ptr, ptr %world_alloca, align 8
-  %str_add18 = call ptr @rt_str_concat(ptr %world_wptr17, ptr %str_add14, ptr %str_i3216)
-  %world_wptr19 = load ptr, ptr %world_alloca, align 8
-  %str_add20 = call ptr @rt_str_concat(ptr %world_wptr19, ptr %str_add18, ptr @str_lit.4)
-  %world_wptr21 = load ptr, ptr %world_alloca, align 8
+  %str_i32 = call ptr @rt_to_string_i32(ptr %world_wptr15, i32 %hp_val)
+  %world_wptr16 = load ptr, ptr %world_alloca, align 8
+  %str_add17 = call ptr @rt_str_concat(ptr %world_wptr16, ptr %str_add14, ptr %str_i32)
+  %world_wptr18 = load ptr, ptr %world_alloca, align 8
+  %str_add19 = call ptr @rt_str_concat(ptr %world_wptr18, ptr %str_add17, ptr @str_lit.4)
+  %world_wptr20 = load ptr, ptr %world_alloca, align 8
   %hp_max_hp = getelementptr inbounds nuw %struct.Health, ptr %hp_elem, i32 0, i32 1
   %max_hp_val = load i32, ptr %hp_max_hp, align 4
-  %str_i3222 = call ptr @rt_to_string_i32(ptr %world_wptr21, i32 %max_hp_val)
-  %world_wptr23 = load ptr, ptr %world_alloca, align 8
-  %str_add24 = call ptr @rt_str_concat(ptr %world_wptr23, ptr %str_add20, ptr %str_i3222)
-  %puts_call = call i32 @puts(ptr %str_add24)
+  %str_i3221 = call ptr @rt_to_string_i32(ptr %world_wptr20, i32 %max_hp_val)
+  %world_wptr22 = load ptr, ptr %world_alloca, align 8
+  %str_add23 = call ptr @rt_str_concat(ptr %world_wptr22, ptr %str_add19, ptr %str_i3221)
+  %puts_call = call i32 @puts(ptr %str_add23)
   %next_row = add i32 %cur_row, 1
   store i32 %next_row, ptr %row, align 4
   br label %ent_loop_cond
 }
 
-define ptr @rt_to_string_i32(ptr %0, i32 %1) {
+define ptr @rt_to_string_i64(ptr %0, i64 %1) {
 entry:
   %arena_buf = call ptr @rt_world_string_arena_alloc(ptr %0, i64 32)
-  %2 = call i32 (ptr, ptr, ...) @sprintf(ptr %arena_buf, ptr @fmt_d, i32 %1)
+  %2 = call i32 (ptr, ptr, ...) @sprintf(ptr %arena_buf, ptr @fmt_lld, i64 %1)
   ret ptr %arena_buf
 }
 
@@ -4037,6 +4372,13 @@ entry:
   %val_dbl = fpext float %1 to double
   %arena_buf = call ptr @rt_world_string_arena_alloc(ptr %0, i64 32)
   %2 = call i32 (ptr, ptr, ...) @sprintf(ptr %arena_buf, ptr @fmt_f, double %val_dbl)
+  ret ptr %arena_buf
+}
+
+define ptr @rt_to_string_i32(ptr %0, i32 %1) {
+entry:
+  %arena_buf = call ptr @rt_world_string_arena_alloc(ptr %0, i64 32)
+  %2 = call i32 (ptr, ptr, ...) @sprintf(ptr %arena_buf, ptr @fmt_d, i32 %1)
   ret ptr %arena_buf
 }
 

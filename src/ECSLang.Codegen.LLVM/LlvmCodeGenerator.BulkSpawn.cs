@@ -194,22 +194,28 @@ public sealed partial class LlvmCodeGenerator
         var nextCnt = builder.BuildAdd(row, LLVMValueRef.CreateConstInt(context.Int32Type, 1), "next_cnt");
         builder.BuildStore(nextCnt, cntSlotCont);
 
-        // 6. Set arch.entities[row] = eVal
-        var entSlot = builder.BuildStructGEP2(archStructType, archPtrCont, 3, "ent_slot");
-        var entRaw = builder.BuildLoad2(LLVMTypeRef.CreatePointer(context.Int8Type, 0), entSlot, "ent_raw");
-        var entTyped = builder.BuildBitCast(entRaw, LLVMTypeRef.CreatePointer(context.Int32Type, 0), "ent_typed");
-        var entElem = builder.BuildInBoundsGEP2(context.Int32Type, entTyped, new[] { row }, "ent_elem");
+        // 6. Set arch.entities[row] = eVal (i64 handle)
+        var entSlot = builder.BuildStructGEP2(worldStructType, targetVal, 2, "tables_slot_bs"); // reuse or reload
+        var archTablesBaseBs = builder.BuildLoad2(archPtrType, archTablesSlot, "tables_base_bs");
+        var archPtrBs = builder.BuildInBoundsGEP2(archStructType, archTablesBaseBs, new[] { archIdx }, "arch_ptr_bs");
+        var entSlotCont = builder.BuildStructGEP2(archStructType, archPtrBs, 3, "ent_slot_bs");
+        var entRaw = builder.BuildLoad2(LLVMTypeRef.CreatePointer(context.Int8Type, 0), entSlotCont, "ent_raw");
+        var entTyped = builder.BuildBitCast(entRaw, LLVMTypeRef.CreatePointer(context.Int64Type, 0), "ent_typed");
+        var entElem = builder.BuildInBoundsGEP2(context.Int64Type, entTyped, new[] { row }, "ent_elem");
         builder.BuildStore(eVal, entElem);
 
-        // 7. Update world entity tracking: world.entity_arch[eVal] = archIdx, world.entity_row[eVal] = row
+        // Extract 32-bit slot id from 64-bit handle: id = trunc eVal to i32
+        var eId = builder.BuildTrunc(eVal, context.Int32Type, "e_id");
+
+        // 7. Update world entity tracking: world.entity_arch[eId] = archIdx, world.entity_row[eId] = row
         var entArchSlot = builder.BuildStructGEP2(worldStructType, targetVal, 5, "ent_arch_slot");
         var entArchArr = builder.BuildLoad2(LLVMTypeRef.CreatePointer(context.Int32Type, 0), entArchSlot, "ent_arch_arr");
-        var eArchElem = builder.BuildInBoundsGEP2(context.Int32Type, entArchArr, new[] { eVal }, "e_arch_elem");
+        var eArchElem = builder.BuildInBoundsGEP2(context.Int32Type, entArchArr, new[] { eId }, "e_arch_elem");
         builder.BuildStore(archIdx, eArchElem);
 
         var entRowSlot = builder.BuildStructGEP2(worldStructType, targetVal, 6, "ent_row_slot");
         var entRowArr = builder.BuildLoad2(LLVMTypeRef.CreatePointer(context.Int32Type, 0), entRowSlot, "ent_row_arr");
-        var eRowElem = builder.BuildInBoundsGEP2(context.Int32Type, entRowArr, new[] { eVal }, "e_row_elem");
+        var eRowElem = builder.BuildInBoundsGEP2(context.Int32Type, entRowArr, new[] { eId }, "e_row_elem");
         builder.BuildStore(row, eRowElem);
 
         // 8. Write component columns directly at row

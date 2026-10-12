@@ -271,7 +271,7 @@ public sealed partial class TypeChecker
 
         if (call.Callee == "world_spawn")
         {
-            return TypeSymbol.I32;
+            return TypeSymbol.Entity;
         }
 
         if (call.Callee.StartsWith("world_has_"))

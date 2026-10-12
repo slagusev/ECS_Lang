@@ -1,0 +1,20 @@
+component Position {
+    x: f32,
+    y: f32,
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+
+    // Perform 100,000 spawn/despawn cycles
+    let mut i = 0;
+    while i < 100000 {
+        let e = world.spawn();
+        world.set_Position(e, 1.0, 2.0);
+        world.despawn(e);
+        i = i + 1;
+    }
+
+    println("Completed 100,000 cycles.");
+    return 0;
+}

@@ -211,7 +211,8 @@ public sealed partial class TypeChecker
     {
         if (expected == actual) return true;
         if (expected == TypeSymbol.Unknown || actual == TypeSymbol.Unknown) return true;
-        if ((expected == TypeSymbol.Entity && actual == TypeSymbol.I32) || (expected == TypeSymbol.I32 && actual == TypeSymbol.Entity)) return true;
+        if ((expected == TypeSymbol.Entity && (actual == TypeSymbol.I64 || actual == TypeSymbol.I32)) ||
+            ((expected == TypeSymbol.I64 || expected == TypeSymbol.I32) && actual == TypeSymbol.Entity)) return true;
         if (expected.IsDynamicArray && actual.Name == "[]") return true;
         if (expected.IsDynamicArray && actual.IsDynamicArray)
         {

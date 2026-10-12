@@ -732,7 +732,7 @@ public sealed partial class LlvmCodeGenerator
             "str_view" => context.GetStructType(new[] { LLVMTypeRef.CreatePointer(context.Int8Type, 0), context.Int32Type }, false),
             "World" or "world" => ecs != null ? LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0) : LLVMTypeRef.CreatePointer(context.Int8Type, 0),
             "Commands" or "commands" => ecs != null ? LLVMTypeRef.CreatePointer(ecs.GetWorldStructType(), 0) : LLVMTypeRef.CreatePointer(context.Int8Type, 0),
-            "Entity" or "entity" => context.Int32Type,
+            "Entity" or "entity" => context.Int64Type,
             "void" => context.VoidType,
             _ => context.Int32Type
         };

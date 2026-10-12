@@ -9,7 +9,7 @@ public sealed partial class TypeChecker
     {
         _components["ChildOf"] = new ComponentSymbol("ChildOf", new[]
         {
-            new ComponentFieldSymbol("parent", TypeSymbol.I32, SourceSpan.None)
+            new ComponentFieldSymbol("parent", TypeSymbol.Entity, SourceSpan.None)
         }, SourceSpan.None);
     }
 

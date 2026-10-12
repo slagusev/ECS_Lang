@@ -1,0 +1,46 @@
+component Position {
+    x: f32,
+    y: f32,
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+
+    // Check Null entity convention: 0UL
+    let has_null = world.has_Position(0);
+    if has_null {
+        println("INVARIANT VIOLATION: has_Position returned true on Null entity (0)!");
+        return 0;
+    }
+    println("has_Position(0) returned false as required for Null entity.");
+
+    // Step 1: Spawn e1 (slot 0, gen 1)
+    let e1 = world.spawn();
+    world.set_Position(e1, 10.0, 20.0);
+    println("Entity e1 spawned and initialized.");
+
+    // Step 2: Despawn e1 (slot 0 pushed to free_entities, gen becomes 2)
+    world.despawn(e1);
+    println("Entity e1 despawned.");
+
+    // Step 3: Spawn e2 (recycles slot 0, gen is 2)
+    let e2 = world.spawn();
+    world.set_Position(e2, 30.0, 40.0);
+    println("Entity e2 spawned into recycled slot.");
+
+    // Step 4: Verification with stale handle e1 (id=0, gen=1) while slot 0 is alive (gen=2):
+    // Queries on stale handle must return false
+    let has_stale = world.has_Position(e1);
+    if has_stale {
+        println("INVARIANT VIOLATION: has_Position returned true on stale handle e1!");
+        return 0;
+    }
+    println("has_Position(e1) returned false on stale handle as required.");
+
+    // Step 5: Mutation via stale handle e1 must abort with ABA prevented panic!
+    println("Attempting set_Position on recycled alive entity with stale handle e1...");
+    world.set_Position(e1, 99.0, 99.0);
+
+    println("INVARIANT VIOLATION: Stale handle mutation succeeded without ABA detection!");
+    return 0;
+}
