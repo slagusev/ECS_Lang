@@ -30,6 +30,59 @@ Write-Host "Clang: $clangVerStr"
 $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ("ecslang_asan_" + [System.Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
 
+# Compile headless Raylib stubs for console and profiler runtime calls
+$stubsSrc = Join-Path $tempDir "raylib_headless_stubs.c"
+$stubsObj = Join-Path $tempDir "raylib_headless_stubs.o"
+@'
+#include <stdint.h>
+void InitWindow(int32_t w, int32_t h, const char* t) {}
+int8_t IsWindowReady(void) { return 0; }
+int8_t WindowShouldClose(void) { return 1; }
+void CloseWindow(void) {}
+void SetTargetFPS(int32_t fps) {}
+int32_t GetFPS(void) { return 60; }
+float GetFrameTime(void) { return 0.016f; }
+double GetTime(void) { return 0.0; }
+void BeginDrawing(void) {}
+void EndDrawing(void) {}
+void ClearBackground(int32_t c) {}
+void DrawText(const char* t, int32_t x, int32_t y, int32_t s, int32_t c) {}
+void DrawRectangle(int32_t x, int32_t y, int32_t w, int32_t h, int32_t c) {}
+void DrawRectangleLines(int32_t x, int32_t y, int32_t w, int32_t h, int32_t c) {}
+void DrawCircle(int32_t x, int32_t y, float r, int32_t c) {}
+void DrawLine(int32_t x1, int32_t y1, int32_t x2, int32_t y2, int32_t c) {}
+int8_t IsKeyDown(int32_t k) { return 0; }
+int8_t IsKeyPressed(int32_t k) { return 0; }
+int8_t IsKeyReleased(int32_t k) { return 0; }
+int8_t IsKeyUp(int32_t k) { return 0; }
+int32_t GetMouseX(void) { return 0; }
+int32_t GetMouseY(void) { return 0; }
+int8_t IsMouseButtonDown(int32_t b) { return 0; }
+int8_t IsMouseButtonPressed(int32_t b) { return 0; }
+void LoadTexture(void* out, const char* p) {}
+void DrawTexture(void* t, int32_t x, int32_t y, int32_t c) {}
+void DrawTexturePro(void* t, void* src, void* dst, int64_t o, float rot, int32_t tint) {}
+void UnloadTexture(void* t) {}
+void InitAudioDevice(void) {}
+void CloseAudioDevice(void) {}
+int8_t IsAudioDeviceReady(void) { return 0; }
+void LoadSound(void* out, const char* p) {}
+void PlaySound(void* s) {}
+void StopSound(void* s) {}
+void PauseSound(void* s) {}
+void ResumeSound(void* s) {}
+int8_t IsSoundPlaying(void* s) { return 0; }
+void SetSoundVolume(void* s, float v) {}
+void UnloadSound(void* s) {}
+void BeginMode2D(void* c) {}
+void EndMode2D(void) {}
+'@ | Out-File -FilePath $stubsSrc -Encoding ascii
+
+& $ClangCmd -c $stubsSrc -o $stubsObj
+if ($LASTEXITCODE -ne 0) {
+    throw "Failed to compile Raylib headless stubs"
+}
+
 $testList = @(
     # 1. Primary stress test: 72 components, 2 words, all migration/SoA dynamic addressing paths
     @{ Name = "canary_70_components"; Path = "tests/canary_70_components.ecs"; ExpectedExit = 0 },
@@ -94,7 +147,7 @@ foreach ($t in $testList) {
         [System.IO.File]::WriteAllText($llPath, $cleanContent)
     }
 
-    $clangOut = & $ClangCmd -fsanitize=address $llPath -o $binPath -lm -lpthread -ldl -lrt 2>&1
+    $clangOut = & $ClangCmd -fsanitize=address $llPath $stubsObj -o $binPath -lm -lpthread -ldl -lrt 2>&1
     if ($LASTEXITCODE -ne 0) {
         Write-Host " [ASAN COMPILE FAIL]" -ForegroundColor Red
         Write-Host $clangOut
