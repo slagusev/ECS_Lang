@@ -141,7 +141,7 @@ fn main(): i32 {
     let udp_client_port = 39873;
 
     // 2. Factory Functions: Spawn TCP Server Entity (Result<entity, string>)
-    let mut tcp_srv_ent = 0;
+    let mut tcp_srv_ent: entity = 0;
     match net_spawn_tcp_listener(world, tcp_port) {
         Ok(ent) => {
             tcp_srv_ent = ent;
@@ -154,7 +154,7 @@ fn main(): i32 {
     }
 
     // 3. Factory Functions: Spawn UDP Server Entity
-    let mut udp_srv_ent = 0;
+    let mut udp_srv_ent: entity = 0;
     match net_spawn_udp_connected_socket(world, udp_server_port, "127.0.0.1", udp_client_port) {
         Ok(ent) => {
             udp_srv_ent = ent;
@@ -167,7 +167,7 @@ fn main(): i32 {
     }
 
     // 4. Factory Functions: Spawn TCP Client Entity
-    let mut tcp_cl_ent = 0;
+    let mut tcp_cl_ent: entity = 0;
     match net_spawn_tcp_client(world, "127.0.0.1", tcp_port) {
         Ok(ent) => {
             tcp_cl_ent = ent;
@@ -181,7 +181,7 @@ fn main(): i32 {
     }
 
     // 5. Factory Functions: Spawn UDP Client Entity
-    let mut udp_cl_ent = 0;
+    let mut udp_cl_ent: entity = 0;
     match net_spawn_udp_connected_socket(world, udp_client_port, "127.0.0.1", udp_server_port) {
         Ok(ent) => {
             udp_cl_ent = ent;

@@ -1852,7 +1852,9 @@ public sealed partial class EcsRuntimeEmitter
             var childElem = _builder.BuildInBoundsGEP2(_compStructTypes["ChildOf"], coColTyped, new[] { curInitI }, "child_elem");
             var parentGEP = _builder.BuildStructGEP2(_compStructTypes["ChildOf"], childElem, 0, "parent_gep");
             var parentHandle = _builder.BuildLoad2(_context.Int64Type, parentGEP, "parent_handle");
-            var isRoot = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, parentHandle, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), "is_root");
+            var isNullRoot = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, parentHandle, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), "is_null_root");
+            var isLegacyNegOne = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, parentHandle, LLVMValueRef.CreateConstInt(_context.Int64Type, unchecked((ulong)-1L)), "is_neg_one_root");
+            var isRoot = _builder.BuildOr(isNullRoot, isLegacyNegOne, "is_root");
             var depthVal = _builder.BuildSelect(isRoot, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "depth_val");
             var depthsTyped = _builder.BuildBitCast(depthsRaw, i32PtrType, "depths_typed");
             var depthSlot = _builder.BuildInBoundsGEP2(_context.Int32Type, depthsTyped, new[] { curInitI }, "depth_slot");

@@ -466,6 +466,18 @@ public sealed partial class LlvmCodeGenerator
                                 {
                                     ctorArgs.Add(CompileExpression(context, module, builder, function, arg, locals, varTypes, ecs!, putsType, putsFunc, printfType, printfFunc));
                                 }
+                                for (int i = 0; i < ctorArgs.Count && i < (int)ctorFunc.ParamsCount; i++)
+                                {
+                                    var expectedType = ctorFunc.GetParam((uint)i).TypeOf;
+                                    if (expectedType == context.Int64Type && ctorArgs[i].TypeOf == context.Int32Type)
+                                    {
+                                        ctorArgs[i] = builder.BuildZExt(ctorArgs[i], context.Int64Type, "zext_ctor_i64");
+                                    }
+                                    else if (expectedType == context.Int32Type && ctorArgs[i].TypeOf == context.Int64Type)
+                                    {
+                                        ctorArgs[i] = builder.BuildTrunc(ctorArgs[i], context.Int32Type, "trunc_ctor_i32");
+                                    }
+                                }
                                 var ctorFuncType = (LLVMTypeRef)LlvmApi.GlobalGetValueType(ctorFunc);
                                 return builder.BuildCall2(ctorFuncType, ctorFunc, ctorArgs.ToArray(), "");
                             }
@@ -493,6 +505,10 @@ public sealed partial class LlvmCodeGenerator
                     if (expectedParamType == context.Int64Type && mArgs[i].TypeOf == context.Int32Type)
                     {
                         mArgs[i] = builder.BuildZExt(mArgs[i], context.Int64Type, "zext_m_i64");
+                    }
+                    else if (expectedParamType == context.Int32Type && mArgs[i].TypeOf == context.Int64Type)
+                    {
+                        mArgs[i] = builder.BuildTrunc(mArgs[i], context.Int32Type, "trunc_m_i32");
                     }
                 }
                 string mCallName = mFuncType.ReturnType == context.VoidType ? "" : $"{methodCall.MethodName}_call";

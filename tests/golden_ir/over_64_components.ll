@@ -43771,7 +43771,9 @@ d_init_body:                                      ; preds = %d_init_cond
   %child_elem = getelementptr inbounds %struct.ChildOf, ptr %co_col_raw, i32 %cur_init_i
   %parent_gep = getelementptr inbounds nuw %struct.ChildOf, ptr %child_elem, i32 0, i32 0
   %parent_handle = load i64, ptr %parent_gep, align 8
-  %is_root = icmp eq i64 %parent_handle, 0
+  %is_null_root = icmp eq i64 %parent_handle, 0
+  %is_neg_one_root = icmp eq i64 %parent_handle, -1
+  %is_root = or i1 %is_null_root, %is_neg_one_root
   %depth_val = select i1 %is_root, i32 0, i32 1
   %depth_slot = getelementptr inbounds i32, ptr %depths_raw, i32 %cur_init_i
   store i32 %depth_val, ptr %depth_slot, align 4
