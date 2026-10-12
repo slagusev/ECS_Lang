@@ -1,0 +1,51 @@
+// Target Benchmark for Step B4: Multi-archetype lookup and spawn stress
+// Tests performance across 128 distinct archetypes created from combinations of 7 components.
+
+component C0 { v: i32 }
+component C1 { v: i32 }
+component C2 { v: i32 }
+component C3 { v: i32 }
+component C4 { v: i32 }
+component C5 { v: i32 }
+component C6 { v: i32 }
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+    let start = stopwatch_start();
+
+    // Pass 1: Create 128 distinct archetypes by spawning entities with combinations
+    let mut i = 0;
+    while (i < 128) {
+        let e = world.spawn();
+        if ((i % 2) != 0) { world.set_C0(e, i); }
+        if (((i / 2) % 2) != 0) { world.set_C1(e, i); }
+        if (((i / 4) % 2) != 0) { world.set_C2(e, i); }
+        if (((i / 8) % 2) != 0) { world.set_C3(e, i); }
+        if (((i / 16) % 2) != 0) { world.set_C4(e, i); }
+        if (((i / 32) % 2) != 0) { world.set_C5(e, i); }
+        if (((i / 64) % 2) != 0) { world.set_C6(e, i); }
+        i = i + 1;
+    }
+
+    // Pass 2: Repeated lookups across all 128 archetypes (200 iterations * 128 = 25,600 archetype lookups)
+    let mut iter = 0;
+    while (iter < 200) {
+        let mut k = 0;
+        while (k < 128) {
+            let e = world.spawn();
+            if ((k % 2) != 0) { world.set_C0(e, k); }
+            if (((k / 2) % 2) != 0) { world.set_C1(e, k); }
+            if (((k / 4) % 2) != 0) { world.set_C2(e, k); }
+            if (((k / 8) % 2) != 0) { world.set_C3(e, k); }
+            if (((k / 16) % 2) != 0) { world.set_C4(e, k); }
+            if (((k / 32) % 2) != 0) { world.set_C5(e, k); }
+            if (((k / 64) % 2) != 0) { world.set_C6(e, k); }
+            k = k + 1;
+        }
+        iter = iter + 1;
+    }
+
+    let elapsed = stopwatch_ms(start);
+    println($"Archetype heavy benchmark (128 archetypes, 25.6k lookups): {elapsed} ms");
+    return 0;
+}

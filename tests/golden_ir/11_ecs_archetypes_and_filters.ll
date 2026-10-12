@@ -4,7 +4,7 @@ target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:
 target triple = "x86_64-pc-windows-msvc"
 
 %struct.ComponentDesc = type { i64, i64, i32, i32 }
-%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, ptr, ptr, i32, i32, ptr, ptr }
+%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, ptr, ptr, i32, i32, ptr, ptr, ptr, i32 }
 %struct.Archetype = type { [1 x i64], i32, i32, ptr, [6 x ptr] }
 %struct.ChildOf = type { i32 }
 %struct.Frozen = type { float }
@@ -251,60 +251,187 @@ declare void @CloseThreadpoolWork(ptr)
 
 declare i32 @GetTickCount()
 
+define void @world_grow_arch_index(ptr %0) {
+entry:
+  %gi_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 0
+  %gi_tables_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %gi_entries_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 17
+  %gi_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 18
+  %gi_count = load i32, ptr %gi_count_slot, align 4
+  %gi_cap = load i32, ptr %gi_cap_slot, align 4
+  %gi_old_entries = load ptr, ptr %gi_entries_slot, align 8
+  %gi_tables = load ptr, ptr %gi_tables_slot, align 8
+  %gi_is_zero = icmp eq i32 %gi_cap, 0
+  %gi_double_cap = mul i32 %gi_cap, 2
+  %gi_new_cap = select i1 %gi_is_zero, i32 32, i32 %gi_double_cap
+  %gi_new_cap64 = zext i32 %gi_new_cap to i64
+  %gi_alloc_bytes = mul i64 %gi_new_cap64, 4
+  %gi_new_raw = call ptr @malloc(i64 %gi_alloc_bytes)
+  %1 = call ptr @memset(ptr %gi_new_raw, i32 255, i64 %gi_alloc_bytes)
+  %gi_has_existing = icmp sgt i32 %gi_count, 0
+  %gi_i = alloca i32, align 4
+  store i32 0, ptr %gi_i, align 4
+  br i1 %gi_has_existing, label %gi_rehash_cond, label %gi_finish
+
+gi_rehash_cond:                                   ; preds = %gi_slot_found, %entry
+  %gi_cur_i = load i32, ptr %gi_i, align 4
+  %gi_more = icmp slt i32 %gi_cur_i, %gi_count
+  br i1 %gi_more, label %gi_rehash_body, label %gi_finish
+
+gi_rehash_body:                                   ; preds = %gi_rehash_cond
+  %gi_arch_elem = getelementptr inbounds %struct.Archetype, ptr %gi_tables, i32 %gi_cur_i
+  %gi_mask_gep = getelementptr inbounds nuw %struct.Archetype, ptr %gi_arch_elem, i32 0, i32 0
+  %gi_wptr_0 = getelementptr inbounds [1 x i64], ptr %gi_mask_gep, i32 0, i32 0
+  %gi_wval_0 = load i64, ptr %gi_wptr_0, align 8
+  %gi_hxor_0 = xor i64 -3750763034362895579, %gi_wval_0
+  %gi_hmul_0 = mul i64 %gi_hxor_0, 1099511628211
+  %gi_hshift_0 = lshr i64 %gi_hmul_0, 32
+  %gi_hmix_0 = xor i64 %gi_hmul_0, %gi_hshift_0
+  %gi_h32 = trunc i64 %gi_hmix_0 to i32
+  %gi_new_mask = sub i32 %gi_new_cap, 1
+  %gi_init_slot = and i32 %gi_h32, %gi_new_mask
+  %gi_slot = alloca i32, align 4
+  store i32 %gi_init_slot, ptr %gi_slot, align 4
+  br label %gi_probe
+
+gi_finish:                                        ; preds = %gi_rehash_cond, %entry
+  br i1 %gi_is_zero, label %gi_done, label %gi_free_old
+
+gi_probe:                                         ; preds = %gi_slot_next, %gi_rehash_body
+  %gi_cur_slot = load i32, ptr %gi_slot, align 4
+  %gi_slot_ptr = getelementptr inbounds i32, ptr %gi_new_raw, i32 %gi_cur_slot
+  %gi_slot_val = load i32, ptr %gi_slot_ptr, align 4
+  %gi_slot_empty = icmp eq i32 %gi_slot_val, -1
+  br i1 %gi_slot_empty, label %gi_slot_found, label %gi_slot_next
+
+gi_slot_found:                                    ; preds = %gi_probe
+  store i32 %gi_cur_i, ptr %gi_slot_ptr, align 4
+  %gi_next_i = add i32 %gi_cur_i, 1
+  store i32 %gi_next_i, ptr %gi_i, align 4
+  br label %gi_rehash_cond
+
+gi_slot_next:                                     ; preds = %gi_probe
+  %gi_next_slot = add i32 %gi_cur_slot, 1
+  %gi_wrapped_slot = and i32 %gi_next_slot, %gi_new_mask
+  store i32 %gi_wrapped_slot, ptr %gi_slot, align 4
+  br label %gi_probe
+
+gi_free_old:                                      ; preds = %gi_finish
+  call void @free(ptr %gi_old_entries)
+  br label %gi_done
+
+gi_done:                                          ; preds = %gi_free_old, %gi_finish
+  store ptr %gi_new_raw, ptr %gi_entries_slot, align 8
+  store i32 %gi_new_cap, ptr %gi_cap_slot, align 4
+  ret void
+}
+
 define i32 @world_get_or_create_archetype(ptr %0, ptr %1) {
 entry:
   %arch_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 0
   %arch_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 1
   %arch_tables_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
+  %arch_entries_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 17
+  %arch_index_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 18
+  %cur_cap = load i32, ptr %arch_index_cap_slot, align 4
+  %is_cap_zero = icmp eq i32 %cur_cap, 0
+  br i1 %is_cap_zero, label %init_cap, label %hash_bb
+
+init_cap:                                         ; preds = %entry
+  call void @world_grow_arch_index(ptr %0)
+  br label %hash_bb
+
+hash_bb:                                          ; preds = %init_cap, %entry
+  %cur_cap_now = load i32, ptr %arch_index_cap_slot, align 4
+  %cur_entries = load ptr, ptr %arch_entries_slot, align 8
+  %tgt_wptr_0 = getelementptr inbounds [1 x i64], ptr %1, i32 0, i32 0
+  %tgt_wval_0 = load i64, ptr %tgt_wptr_0, align 8
+  %tgt_hxor_0 = xor i64 -3750763034362895579, %tgt_wval_0
+  %tgt_hmul_0 = mul i64 %tgt_hxor_0, 1099511628211
+  %tgt_hshift_0 = lshr i64 %tgt_hmul_0, 32
+  %tgt_hmix_0 = xor i64 %tgt_hmul_0, %tgt_hshift_0
+  %h32 = trunc i64 %tgt_hmix_0 to i32
+  %mask_val = sub i32 %cur_cap_now, 1
+  %init_slot = and i32 %h32, %mask_val
+  %slot_alloca = alloca i32, align 4
+  store i32 %init_slot, ptr %slot_alloca, align 4
+  br label %probe_loop
+
+probe_loop:                                       ; preds = %probe_next, %hash_bb
+  %cur_slot = load i32, ptr %slot_alloca, align 4
+  %slot_ptr = getelementptr inbounds i32, ptr %cur_entries, i32 %cur_slot
+  %slot_val = load i32, ptr %slot_ptr, align 4
+  %is_slot_empty = icmp eq i32 %slot_val, -1
+  br i1 %is_slot_empty, label %not_found, label %check_match
+
+ret_found:                                        ; preds = %check_match
+  ret i32 %slot_val
+
+not_found:                                        ; preds = %probe_loop
   %cur_count = load i32, ptr %arch_count_slot, align 4
-  %i = alloca i32, align 4
-  store i32 0, ptr %i, align 4
-  br label %search_cond
+  %cur_tables_cap = load i32, ptr %arch_cap_slot, align 4
+  %need_grow_tables = icmp sge i32 %cur_count, %cur_tables_cap
+  br i1 %need_grow_tables, label %grow_tables, label %check_index_grow
 
-search_cond:                                      ; preds = %search_next, %entry
-  %cur_i = load i32, ptr %i, align 4
-  %has_more = icmp slt i32 %cur_i, %cur_count
-  br i1 %has_more, label %search_body, label %not_found
-
-search_body:                                      ; preds = %search_cond
+check_match:                                      ; preds = %probe_loop
   %tables_base = load ptr, ptr %arch_tables_slot, align 8
-  %arch_elem = getelementptr inbounds %struct.Archetype, ptr %tables_base, i32 %cur_i
-  %mask_gep = getelementptr inbounds nuw %struct.Archetype, ptr %arch_elem, i32 0, i32 0
-  %ex_w0 = getelementptr inbounds [1 x i64], ptr %mask_gep, i32 0, i32 0
+  %cand_arch = getelementptr inbounds %struct.Archetype, ptr %tables_base, i32 %slot_val
+  %cand_mask = getelementptr inbounds nuw %struct.Archetype, ptr %cand_arch, i32 0, i32 0
+  %ex_w0 = getelementptr inbounds [1 x i64], ptr %cand_mask, i32 0, i32 0
   %existing_mask = load i64, ptr %ex_w0, align 8
   %tgt_w0 = getelementptr inbounds [1 x i64], ptr %1, i32 0, i32 0
   %target_mask = load i64, ptr %tgt_w0, align 8
   %is_match = icmp eq i64 %existing_mask, %target_mask
-  br i1 %is_match, label %return_found, label %search_next
+  br i1 %is_match, label %ret_found, label %probe_next
 
-not_found:                                        ; preds = %search_cond
-  %cur_cap = load i32, ptr %arch_cap_slot, align 4
-  %need_grow = icmp sge i32 %cur_count, %cur_cap
-  br i1 %need_grow, label %grow_tables, label %init_arch
-
-return_found:                                     ; preds = %search_body
-  ret i32 %cur_i
-
-search_next:                                      ; preds = %search_body
-  %next_i = add i32 %cur_i, 1
-  store i32 %next_i, ptr %i, align 4
-  br label %search_cond
+probe_next:                                       ; preds = %check_match
+  %next_slot = add i32 %cur_slot, 1
+  %wrapped_slot = and i32 %next_slot, %mask_val
+  store i32 %wrapped_slot, ptr %slot_alloca, align 4
+  br label %probe_loop
 
 grow_tables:                                      ; preds = %not_found
-  %cap_zero = icmp eq i32 %cur_cap, 0
-  %double_cap = mul i32 %cur_cap, 2
-  %new_cap = select i1 %cap_zero, i32 8, i32 %double_cap
-  store i32 %new_cap, ptr %arch_cap_slot, align 4
-  %new_cap64 = zext i32 %new_cap to i64
-  %alloc_bytes = mul i64 %new_cap64, 72
+  %cap_zero = icmp eq i32 %cur_tables_cap, 0
+  %double_tables_cap = mul i32 %cur_tables_cap, 2
+  %new_tables_cap = select i1 %cap_zero, i32 8, i32 %double_tables_cap
+  store i32 %new_tables_cap, ptr %arch_cap_slot, align 4
+  %new_tables_cap64 = zext i32 %new_tables_cap to i64
+  %alloc_bytes_tables = mul i64 %new_tables_cap64, 72
   %cur_tables_raw = load ptr, ptr %arch_tables_slot, align 8
-  %new_tables_i8 = call ptr @realloc(ptr %cur_tables_raw, i64 %alloc_bytes)
+  %new_tables_i8 = call ptr @realloc(ptr %cur_tables_raw, i64 %alloc_bytes_tables)
   store ptr %new_tables_i8, ptr %arch_tables_slot, align 8
-  br label %init_arch
+  br label %check_index_grow
 
-init_arch:                                        ; preds = %grow_tables, %not_found
-  %next_count = add i32 %cur_count, 1
-  store i32 %next_count, ptr %arch_count_slot, align 4
+check_index_grow:                                 ; preds = %grow_tables, %not_found
+  %next_cnt = add i32 %cur_count, 1
+  %dbl_next_cnt = mul i32 %next_cnt, 2
+  %need_grow_index = icmp sge i32 %dbl_next_cnt, %cur_cap_now
+  br i1 %need_grow_index, label %grow_index, label %insert_bb
+
+grow_index:                                       ; preds = %check_index_grow
+  call void @world_grow_arch_index(ptr %0)
+  br label %insert_bb
+
+insert_bb:                                        ; preds = %grow_index, %check_index_grow
+  %latest_cap = load i32, ptr %arch_index_cap_slot, align 4
+  %latest_entries = load ptr, ptr %arch_entries_slot, align 8
+  %latest_mask = sub i32 %latest_cap, 1
+  %ins_slot_init = and i32 %h32, %latest_mask
+  %ins_slot_alloca = alloca i32, align 4
+  store i32 %ins_slot_init, ptr %ins_slot_alloca, align 4
+  br label %find_empty
+
+find_empty:                                       ; preds = %adv_ins, %insert_bb
+  %s_ins = load i32, ptr %ins_slot_alloca, align 4
+  %s_ins_ptr = getelementptr inbounds i32, ptr %latest_entries, i32 %s_ins
+  %s_ins_val = load i32, ptr %s_ins_ptr, align 4
+  %s_is_empty = icmp eq i32 %s_ins_val, -1
+  br i1 %s_is_empty, label %do_insert, label %adv_ins
+
+do_insert:                                        ; preds = %find_empty
+  store i32 %cur_count, ptr %s_ins_ptr, align 4
+  %next_count_final = add i32 %cur_count, 1
+  store i32 %next_count_final, ptr %arch_count_slot, align 4
   %latest_tables = load ptr, ptr %arch_tables_slot, align 8
   %new_arch_elem = getelementptr inbounds %struct.Archetype, ptr %latest_tables, i32 %cur_count
   %m_gep = getelementptr inbounds nuw %struct.Archetype, ptr %new_arch_elem, i32 0, i32 0
@@ -332,6 +459,12 @@ init_arch:                                        ; preds = %grow_tables, %not_f
   %col_slot_5 = getelementptr inbounds [6 x ptr], ptr %cols_gep, i32 0, i32 5
   store ptr null, ptr %col_slot_5, align 8
   ret i32 %cur_count
+
+adv_ins:                                          ; preds = %find_empty
+  %next_ins_slot = add i32 %s_ins, 1
+  %wrapped_ins_slot = and i32 %next_ins_slot, %latest_mask
+  store i32 %wrapped_ins_slot, ptr %ins_slot_alloca, align 4
+  br label %find_empty
 }
 
 define void @world_grow_archetype(ptr %0, i32 %1) {
@@ -443,8 +576,8 @@ m_w0_bit_loop:                                    ; preds = %m_w0_bit_loop, %m_w
 
 define ptr @ecs_create_world() {
 entry:
-  %raw_world = call ptr @malloc(i64 104)
-  %0 = call ptr @memset(ptr %raw_world, i32 0, i64 104)
+  %raw_world = call ptr @malloc(i64 120)
+  %0 = call ptr @memset(ptr %raw_world, i32 0, i64 120)
   %a0_init = call i32 @world_get_or_create_archetype(ptr %raw_world, ptr @_ecs_zero_mask)
   ret ptr %raw_world
 }

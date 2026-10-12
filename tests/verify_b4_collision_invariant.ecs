@@ -1,0 +1,90 @@
+// Invariant Level 2 Test for Step B4: Constructive Hash Collision & Multi-Archetype Resolution
+// Declares components C01..C34 (bit 1 through bit 34, with ChildOf at bit 0).
+// Tests collision-prone masks such as {C01, C33} vs Empty Archetype 0,
+// and verifies full mask equality, archetype identity consistency, and migration paths.
+
+component C01 { v: i32 }
+component C02 { v: i32 }
+component C03 { v: i32 }
+component C04 { v: i32 }
+component C05 { v: i32 }
+component C06 { v: i32 }
+component C07 { v: i32 }
+component C08 { v: i32 }
+component C09 { v: i32 }
+component C10 { v: i32 }
+component C11 { v: i32 }
+component C12 { v: i32 }
+component C13 { v: i32 }
+component C14 { v: i32 }
+component C15 { v: i32 }
+component C16 { v: i32 }
+component C17 { v: i32 }
+component C18 { v: i32 }
+component C19 { v: i32 }
+component C20 { v: i32 }
+component C21 { v: i32 }
+component C22 { v: i32 }
+component C23 { v: i32 }
+component C24 { v: i32 }
+component C25 { v: i32 }
+component C26 { v: i32 }
+component C27 { v: i32 }
+component C28 { v: i32 }
+component C29 { v: i32 }
+component C30 { v: i32 }
+component C31 { v: i32 }
+component C32 { v: i32 }
+component C33 { v: i32 }
+component C34 { v: i32 }
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+
+    // 1. Empty Archetype 0
+    let e_empty = world.spawn();
+    if (world.has_C01(e_empty)) { println("FAIL: e_empty has C01"); return 1; }
+    if (world.has_C33(e_empty)) { println("FAIL: e_empty has C33"); return 2; }
+
+    // 2. Spawn entity with {C01, C33} (bits 1 and 33)
+    let e_pair = world.spawn_with(C01(100), C33(200));
+    if (!world.has_C01(e_pair)) { println("FAIL: e_pair missing C01"); return 3; }
+    if (!world.has_C33(e_pair)) { println("FAIL: e_pair missing C33"); return 4; }
+    if (world.has_C02(e_pair)) { println("FAIL: e_pair has unexpected C02"); return 5; }
+
+    // Verify empty entity did not get resurrected or mutated
+    if (world.has_C01(e_empty)) { println("FAIL: e_empty falsely matched e_pair"); return 6; }
+
+    // 3. Spawn entity with only C01
+    let e_c01 = world.spawn_with(C01(10));
+    if (!world.has_C01(e_c01)) { println("FAIL: e_c01 missing C01"); return 7; }
+    if (world.has_C33(e_c01)) { println("FAIL: e_c01 falsely has C33"); return 8; }
+
+    // 4. Spawn entity with only C33
+    let e_c33 = world.spawn_with(C33(20));
+    if (world.has_C01(e_c33)) { println("FAIL: e_c33 falsely has C01"); return 9; }
+    if (!world.has_C33(e_c33)) { println("FAIL: e_c33 missing C33"); return 10; }
+
+    // 5. Test migrations across collision-adjacent archetypes
+    // Migrate e_pair from {C01, C33} -> remove C33 -> {C01}
+    world.remove_C33(e_pair);
+    if (!world.has_C01(e_pair)) { println("FAIL: e_pair lost C01 after remove C33"); return 11; }
+    if (world.has_C33(e_pair)) { println("FAIL: e_pair still has C33 after remove"); return 12; }
+
+    // Add C02 to e_pair: {C01} -> {C01, C02}
+    world.set_C02(e_pair, 999);
+    if (!world.has_C01(e_pair) || !world.has_C02(e_pair)) {
+        println("FAIL: e_pair missing C01 or C02 after migration");
+        return 13;
+    }
+
+    // 6. Spawn another entity into {C01, C33} to verify lookup into existing archetype
+    let e_pair2 = world.spawn_with(C01(300), C33(400));
+    if (!world.has_C01(e_pair2) || !world.has_C33(e_pair2)) {
+        println("FAIL: e_pair2 failed to find/join {C01, C33} archetype");
+        return 14;
+    }
+
+    println("B4 Archetype hash collision invariant verified successfully.");
+    return 0;
+}

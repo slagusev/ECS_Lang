@@ -37,7 +37,124 @@ public sealed partial class EcsRuntimeEmitter
         int totalComps = compNames.Count;
 
         // =========================================================================
-        // Helper: world_get_or_create_archetype(ptr world, ptr mask) -> i32 arch_idx
+        // =========================================================================
+        // Helper: world_grow_arch_index(ptr world) -> void (Step B4)
+        // =========================================================================
+        var growIdxType = LLVMTypeRef.CreateFunction(_context.VoidType, new[] { worldPtrType }, false);
+        var growIdxFunc = _module.AddFunction("world_grow_arch_index", growIdxType);
+        var giEntryBB = growIdxFunc.AppendBasicBlock("entry");
+        var giBuilder = _context.CreateBuilder();
+        giBuilder.PositionAtEnd(giEntryBB);
+
+        var giWorld = growIdxFunc.GetParam(0);
+        var giCountSlot = giBuilder.BuildStructGEP2(_worldStructType, giWorld, 0, "gi_count_slot");
+        var giTablesSlot = giBuilder.BuildStructGEP2(_worldStructType, giWorld, 2, "gi_tables_slot");
+        var giEntriesSlot = giBuilder.BuildStructGEP2(_worldStructType, giWorld, (uint)_archIndexEntriesWorldOffset, "gi_entries_slot");
+        var giCapSlot = giBuilder.BuildStructGEP2(_worldStructType, giWorld, (uint)_archIndexCapWorldOffset, "gi_cap_slot");
+
+        var giCount = giBuilder.BuildLoad2(_context.Int32Type, giCountSlot, "gi_count");
+        var giCap = giBuilder.BuildLoad2(_context.Int32Type, giCapSlot, "gi_cap");
+        var giOldEntries = giBuilder.BuildLoad2(i32PtrType, giEntriesSlot, "gi_old_entries");
+        var giTables = giBuilder.BuildLoad2(archPtrType, giTablesSlot, "gi_tables");
+
+        var giIsZero = giBuilder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, giCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "gi_is_zero");
+        var giDoubleCap = giBuilder.BuildMul(giCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 2), "gi_double_cap");
+        var giNewCap = giBuilder.BuildSelect(giIsZero, LLVMValueRef.CreateConstInt(_context.Int32Type, 32), giDoubleCap, "gi_new_cap");
+
+        var giNewCap64 = giBuilder.BuildZExt(giNewCap, _context.Int64Type, "gi_new_cap64");
+        var giAllocBytes = giBuilder.BuildMul(giNewCap64, LLVMValueRef.CreateConstInt(_context.Int64Type, 4), "gi_alloc_bytes");
+        var giNewEntriesRaw = giBuilder.BuildCall2(mallocType, mallocFunc, new[] { giAllocBytes }, "gi_new_raw");
+        giBuilder.BuildCall2(memsetType, memsetFunc, new[] { giNewEntriesRaw, LLVMValueRef.CreateConstInt(_context.Int32Type, 255), giAllocBytes }, "");
+        var giNewEntries = giBuilder.BuildBitCast(giNewEntriesRaw, i32PtrType, "gi_new_entries");
+
+        // Rehash existing archetypes if giCount > 0
+        var giHasExisting = giBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSGT, giCount, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "gi_has_existing");
+        var giRehashCondBB = growIdxFunc.AppendBasicBlock("gi_rehash_cond");
+        var giRehashBodyBB = growIdxFunc.AppendBasicBlock("gi_rehash_body");
+        var giFinishBB = growIdxFunc.AppendBasicBlock("gi_finish");
+
+        var giIAlloca = giBuilder.BuildAlloca(_context.Int32Type, "gi_i");
+        giBuilder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, 0), giIAlloca);
+
+        giBuilder.BuildCondBr(giHasExisting, giRehashCondBB, giFinishBB);
+
+        // Rehash loop: for (i = 0; i < giCount; i++)
+        giBuilder.PositionAtEnd(giRehashCondBB);
+        var giCurI = giBuilder.BuildLoad2(_context.Int32Type, giIAlloca, "gi_cur_i");
+        var giMore = giBuilder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, giCurI, giCount, "gi_more");
+        giBuilder.BuildCondBr(giMore, giRehashBodyBB, giFinishBB);
+
+        giBuilder.PositionAtEnd(giRehashBodyBB);
+        var giArchElem = giBuilder.BuildInBoundsGEP2(_archStructType, giTables, new[] { giCurI }, "gi_arch_elem");
+        var giMaskGEP = giBuilder.BuildStructGEP2(_archStructType, giArchElem, 0, "gi_mask_gep");
+
+        // FNV hash of giMaskGEP
+        var fnvPrime64 = LLVMValueRef.CreateConstInt(_context.Int64Type, 1099511628211UL);
+        var hVal = LLVMValueRef.CreateConstInt(_context.Int64Type, 14695981039346656037UL);
+        for (int w = 0; w < _maskWords; w++)
+        {
+            var wPtr = giBuilder.BuildInBoundsGEP2(_maskArrayType, giMaskGEP, new[]
+            {
+                LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)w)
+            }, $"gi_wptr_{w}");
+            var wVal = giBuilder.BuildLoad2(_context.Int64Type, wPtr, $"gi_wval_{w}");
+            hVal = giBuilder.BuildXor(hVal, wVal, $"gi_hxor_{w}");
+            hVal = giBuilder.BuildMul(hVal, fnvPrime64, $"gi_hmul_{w}");
+            var hShift = giBuilder.BuildLShr(hVal, LLVMValueRef.CreateConstInt(_context.Int64Type, 32), $"gi_hshift_{w}");
+            hVal = giBuilder.BuildXor(hVal, hShift, $"gi_hmix_{w}");
+        }
+        var giH32 = giBuilder.BuildTrunc(hVal, _context.Int32Type, "gi_h32");
+        var giNewMask = giBuilder.BuildSub(giNewCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "gi_new_mask");
+        var giInitSlot = giBuilder.BuildAnd(giH32, giNewMask, "gi_init_slot");
+
+        var giSlotAlloca = giBuilder.BuildAlloca(_context.Int32Type, "gi_slot");
+        giBuilder.BuildStore(giInitSlot, giSlotAlloca);
+
+        var giProbeBB = growIdxFunc.AppendBasicBlock("gi_probe");
+        giBuilder.BuildBr(giProbeBB);
+
+        giBuilder.PositionAtEnd(giProbeBB);
+        var giCurSlot = giBuilder.BuildLoad2(_context.Int32Type, giSlotAlloca, "gi_cur_slot");
+        var giSlotPtr = giBuilder.BuildInBoundsGEP2(_context.Int32Type, giNewEntries, new[] { giCurSlot }, "gi_slot_ptr");
+        var giSlotVal = giBuilder.BuildLoad2(_context.Int32Type, giSlotPtr, "gi_slot_val");
+        var giSlotEmpty = giBuilder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, giSlotVal, LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1), true), "gi_slot_empty");
+
+        var giSlotFoundBB = growIdxFunc.AppendBasicBlock("gi_slot_found");
+        var giSlotNextBB = growIdxFunc.AppendBasicBlock("gi_slot_next");
+        giBuilder.BuildCondBr(giSlotEmpty, giSlotFoundBB, giSlotNextBB);
+
+        giBuilder.PositionAtEnd(giSlotNextBB);
+        var giNextSlot = giBuilder.BuildAdd(giCurSlot, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "gi_next_slot");
+        var giWrappedSlot = giBuilder.BuildAnd(giNextSlot, giNewMask, "gi_wrapped_slot");
+        giBuilder.BuildStore(giWrappedSlot, giSlotAlloca);
+        giBuilder.BuildBr(giProbeBB);
+
+        giBuilder.PositionAtEnd(giSlotFoundBB);
+        giBuilder.BuildStore(giCurI, giSlotPtr);
+        var giNextI = giBuilder.BuildAdd(giCurI, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "gi_next_i");
+        giBuilder.BuildStore(giNextI, giIAlloca);
+        giBuilder.BuildBr(giRehashCondBB);
+
+        // Finish: free old buffer if not null, store new buffer and cap
+        giBuilder.PositionAtEnd(giFinishBB);
+        var giFreeOldBB = growIdxFunc.AppendBasicBlock("gi_free_old");
+        var giDoneBB = growIdxFunc.AppendBasicBlock("gi_done");
+        giBuilder.BuildCondBr(giIsZero, giDoneBB, giFreeOldBB);
+
+        giBuilder.PositionAtEnd(giFreeOldBB);
+        var giOldEntriesRaw = giBuilder.BuildBitCast(giOldEntries, i8PtrType, "gi_old_raw");
+        giBuilder.BuildCall2(freeType, freeFunc, new[] { giOldEntriesRaw }, "");
+        giBuilder.BuildBr(giDoneBB);
+
+        giBuilder.PositionAtEnd(giDoneBB);
+        giBuilder.BuildStore(giNewEntries, giEntriesSlot);
+        giBuilder.BuildStore(giNewCap, giCapSlot);
+        giBuilder.BuildRetVoid();
+        giBuilder.Dispose();
+
+        // =========================================================================
+        // Helper: world_get_or_create_archetype(ptr world, ptr mask) -> i32 arch_idx (Step B4)
         // =========================================================================
         var maskPtrType = LLVMTypeRef.CreatePointer(_maskArrayType, 0);
         var getArchType = LLVMTypeRef.CreateFunction(_context.Int32Type, new[] { worldPtrType, maskPtrType }, false);
@@ -51,30 +168,68 @@ public sealed partial class EcsRuntimeEmitter
         var archCountSlot = _builder.BuildStructGEP2(_worldStructType, worldParamG, 0, "arch_count_slot");
         var archCapSlot = _builder.BuildStructGEP2(_worldStructType, worldParamG, 1, "arch_cap_slot");
         var archTablesSlot = _builder.BuildStructGEP2(_worldStructType, worldParamG, 2, "arch_tables_slot");
+        var entriesSlot = _builder.BuildStructGEP2(_worldStructType, worldParamG, (uint)_archIndexEntriesWorldOffset, "arch_entries_slot");
+        var capSlot = _builder.BuildStructGEP2(_worldStructType, worldParamG, (uint)_archIndexCapWorldOffset, "arch_index_cap_slot");
 
-        var curCount = _builder.BuildLoad2(_context.Int32Type, archCountSlot, "cur_count");
-        var iAlloca = _builder.BuildAlloca(_context.Int32Type, "i");
-        _builder.BuildStore(LLVMValueRef.CreateConstInt(_context.Int32Type, 0), iAlloca);
+        var curCap = _builder.BuildLoad2(_context.Int32Type, capSlot, "cur_cap");
+        var isCapZero = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "is_cap_zero");
+        var initCapBB = getArchFunc.AppendBasicBlock("init_cap");
+        var hashBB = getArchFunc.AppendBasicBlock("hash_bb");
 
-        var sCondBB = getArchFunc.AppendBasicBlock("search_cond");
-        var sBodyBB = getArchFunc.AppendBasicBlock("search_body");
-        var sNotFoundBB = getArchFunc.AppendBasicBlock("not_found");
-        var sRetBB = getArchFunc.AppendBasicBlock("return_found");
+        _builder.BuildCondBr(isCapZero, initCapBB, hashBB);
 
-        _builder.BuildBr(sCondBB);
+        _builder.PositionAtEnd(initCapBB);
+        _builder.BuildCall2(growIdxType, growIdxFunc, new[] { worldParamG }, "");
+        _builder.BuildBr(hashBB);
 
-        // Search loop
-        _builder.PositionAtEnd(sCondBB);
-        var curI = _builder.BuildLoad2(_context.Int32Type, iAlloca, "cur_i");
-        var hasMore = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSLT, curI, curCount, "has_more");
-        _builder.BuildCondBr(hasMore, sBodyBB, sNotFoundBB);
+        _builder.PositionAtEnd(hashBB);
+        var curCapNow = _builder.BuildLoad2(_context.Int32Type, capSlot, "cur_cap_now");
+        var curEntries = _builder.BuildLoad2(i32PtrType, entriesSlot, "cur_entries");
 
-        _builder.PositionAtEnd(sBodyBB);
+        // FNV hash of targetMask
+        var fnvPrime64G = LLVMValueRef.CreateConstInt(_context.Int64Type, 1099511628211UL);
+        var hValG = LLVMValueRef.CreateConstInt(_context.Int64Type, 14695981039346656037UL);
+        for (int w = 0; w < _maskWords; w++)
+        {
+            var wPtr = _builder.BuildInBoundsGEP2(_maskArrayType, targetMask, new[]
+            {
+                LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)w)
+            }, $"tgt_wptr_{w}");
+            var wVal = _builder.BuildLoad2(_context.Int64Type, wPtr, $"tgt_wval_{w}");
+            hValG = _builder.BuildXor(hValG, wVal, $"tgt_hxor_{w}");
+            hValG = _builder.BuildMul(hValG, fnvPrime64G, $"tgt_hmul_{w}");
+            var hShift = _builder.BuildLShr(hValG, LLVMValueRef.CreateConstInt(_context.Int64Type, 32), $"tgt_hshift_{w}");
+            hValG = _builder.BuildXor(hValG, hShift, $"tgt_hmix_{w}");
+        }
+        var h32G = _builder.BuildTrunc(hValG, _context.Int32Type, "h32");
+        var maskVal = _builder.BuildSub(curCapNow, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "mask_val");
+        var initSlot = _builder.BuildAnd(h32G, maskVal, "init_slot");
+
+        var slotAlloca = _builder.BuildAlloca(_context.Int32Type, "slot_alloca");
+        _builder.BuildStore(initSlot, slotAlloca);
+
+        var probeLoopBB = getArchFunc.AppendBasicBlock("probe_loop");
+        var retFoundBB = getArchFunc.AppendBasicBlock("ret_found");
+        var notFoundBB = getArchFunc.AppendBasicBlock("not_found");
+        _builder.BuildBr(probeLoopBB);
+
+        _builder.PositionAtEnd(probeLoopBB);
+        var curSlot = _builder.BuildLoad2(_context.Int32Type, slotAlloca, "cur_slot");
+        var slotPtr = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntries, new[] { curSlot }, "slot_ptr");
+        var slotVal = _builder.BuildLoad2(_context.Int32Type, slotPtr, "slot_val");
+        var isSlotEmpty = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, slotVal, LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1), true), "is_slot_empty");
+
+        var checkMatchBB = getArchFunc.AppendBasicBlock("check_match");
+        var probeNextBB = getArchFunc.AppendBasicBlock("probe_next");
+        _builder.BuildCondBr(isSlotEmpty, notFoundBB, checkMatchBB);
+
+        _builder.PositionAtEnd(checkMatchBB);
         var tablesBase = _builder.BuildLoad2(archPtrType, archTablesSlot, "tables_base");
-        var existingArchPtr = _builder.BuildInBoundsGEP2(_archStructType, tablesBase, new[] { curI }, "arch_elem");
-        var maskGEP = _builder.BuildStructGEP2(_archStructType, existingArchPtr, 0, "mask_gep");
+        var candArchPtr = _builder.BuildInBoundsGEP2(_archStructType, tablesBase, new[] { slotVal }, "cand_arch");
+        var candMaskGEP = _builder.BuildStructGEP2(_archStructType, candArchPtr, 0, "cand_mask");
 
-        var exW0Ptr = _builder.BuildInBoundsGEP2(_maskArrayType, maskGEP, new[]
+        var exW0Ptr = _builder.BuildInBoundsGEP2(_maskArrayType, candMaskGEP, new[]
         {
             LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
             LLVMValueRef.CreateConstInt(_context.Int32Type, 0)
@@ -90,7 +245,7 @@ public sealed partial class EcsRuntimeEmitter
 
         for (int w = 1; w < _maskWords; w++)
         {
-            var exWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, maskGEP, new[]
+            var exWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, candMaskGEP, new[]
             {
                 LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
                 LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)w)
@@ -105,46 +260,90 @@ public sealed partial class EcsRuntimeEmitter
             var wMatch = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, exW, tgtW, $"is_match_{w}");
             isMatch = _builder.BuildAnd(isMatch, wMatch, $"is_match_comb_{w}");
         }
+        _builder.BuildCondBr(isMatch, retFoundBB, probeNextBB);
 
-        var sNextBB = getArchFunc.AppendBasicBlock("search_next");
-        _builder.BuildCondBr(isMatch, sRetBB, sNextBB);
+        _builder.PositionAtEnd(probeNextBB);
+        var nextSlot = _builder.BuildAdd(curSlot, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_slot");
+        var wrappedSlot = _builder.BuildAnd(nextSlot, maskVal, "wrapped_slot");
+        _builder.BuildStore(wrappedSlot, slotAlloca);
+        _builder.BuildBr(probeLoopBB);
 
-        _builder.PositionAtEnd(sNextBB);
-        var nextI = _builder.BuildAdd(curI, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_i");
-        _builder.BuildStore(nextI, iAlloca);
-        _builder.BuildBr(sCondBB);
+        _builder.PositionAtEnd(retFoundBB);
+        _builder.BuildRet(slotVal);
 
-        _builder.PositionAtEnd(sRetBB);
-        _builder.BuildRet(curI);
+        // Not found: allocate new archetype and insert into index
+        _builder.PositionAtEnd(notFoundBB);
+        var curCount = _builder.BuildLoad2(_context.Int32Type, archCountSlot, "cur_count");
+        var curTablesCap = _builder.BuildLoad2(_context.Int32Type, archCapSlot, "cur_tables_cap");
+        var needGrowTables = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curCount, curTablesCap, "need_grow_tables");
+        var growTablesBB = getArchFunc.AppendBasicBlock("grow_tables");
+        var checkIndexGrowBB = getArchFunc.AppendBasicBlock("check_index_grow");
 
-        // Not found: allocate new archetype
-        _builder.PositionAtEnd(sNotFoundBB);
-        var curCap = _builder.BuildLoad2(_context.Int32Type, archCapSlot, "cur_cap");
-        var needGrow = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, curCount, curCap, "need_grow");
-        var growBB = getArchFunc.AppendBasicBlock("grow_tables");
-        var initArchBB = getArchFunc.AppendBasicBlock("init_arch");
+        _builder.BuildCondBr(needGrowTables, growTablesBB, checkIndexGrowBB);
 
-        _builder.BuildCondBr(needGrow, growBB, initArchBB);
+        _builder.PositionAtEnd(growTablesBB);
+        var capIsZero = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curTablesCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "cap_zero");
+        var doubleTablesCap = _builder.BuildMul(curTablesCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 2), "double_tables_cap");
+        var newTablesCap = _builder.BuildSelect(capIsZero, LLVMValueRef.CreateConstInt(_context.Int32Type, 8), doubleTablesCap, "new_tables_cap");
+        _builder.BuildStore(newTablesCap, archCapSlot);
 
-        _builder.PositionAtEnd(growBB);
-        var capIsZero = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 0), "cap_zero");
-        var doubleCap = _builder.BuildMul(curCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 2), "double_cap");
-        var newCap = _builder.BuildSelect(capIsZero, LLVMValueRef.CreateConstInt(_context.Int32Type, 8), doubleCap, "new_cap");
-        _builder.BuildStore(newCap, archCapSlot);
-
-        var newCap64 = _builder.BuildZExt(newCap, _context.Int64Type, "new_cap64");
-        var allocBytes = _builder.BuildMul(newCap64, archStructSizeVal, "alloc_bytes");
+        var newTablesCap64 = _builder.BuildZExt(newTablesCap, _context.Int64Type, "new_tables_cap64");
+        var allocBytesTables = _builder.BuildMul(newTablesCap64, archStructSizeVal, "alloc_bytes_tables");
         var curTablesRaw = _builder.BuildLoad2(archPtrType, archTablesSlot, "cur_tables_raw");
         var curTablesI8 = _builder.BuildBitCast(curTablesRaw, i8PtrType, "cur_tables_i8");
-        var reallocCall = _builder.BuildCall2(reallocType, reallocFunc, new[] { curTablesI8, allocBytes }, "new_tables_i8");
+        var reallocCall = _builder.BuildCall2(reallocType, reallocFunc, new[] { curTablesI8, allocBytesTables }, "new_tables_i8");
         var newTablesTyped = _builder.BuildBitCast(reallocCall, archPtrType, "new_tables_typed");
         _builder.BuildStore(newTablesTyped, archTablesSlot);
-        _builder.BuildBr(initArchBB);
+        _builder.BuildBr(checkIndexGrowBB);
 
-        _builder.PositionAtEnd(initArchBB);
+        _builder.PositionAtEnd(checkIndexGrowBB);
+        // Check load factor of hash index: if (curCount + 1) * 2 >= curCapNow -> grow index
+        var nextCountVal = _builder.BuildAdd(curCount, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_cnt");
+        var doubleNextCount = _builder.BuildMul(nextCountVal, LLVMValueRef.CreateConstInt(_context.Int32Type, 2), "dbl_next_cnt");
+        var needGrowIndex = _builder.BuildICmp(LLVMIntPredicate.LLVMIntSGE, doubleNextCount, curCapNow, "need_grow_index");
+        var growIndexBB = getArchFunc.AppendBasicBlock("grow_index");
+        var insertBB = getArchFunc.AppendBasicBlock("insert_bb");
+
+        _builder.BuildCondBr(needGrowIndex, growIndexBB, insertBB);
+
+        _builder.PositionAtEnd(growIndexBB);
+        _builder.BuildCall2(growIdxType, growIdxFunc, new[] { worldParamG }, "");
+        _builder.BuildBr(insertBB);
+
+        _builder.PositionAtEnd(insertBB);
+        var latestCap = _builder.BuildLoad2(_context.Int32Type, capSlot, "latest_cap");
+        var latestEntries = _builder.BuildLoad2(i32PtrType, entriesSlot, "latest_entries");
+        var latestMask = _builder.BuildSub(latestCap, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "latest_mask");
+        var insSlotInit = _builder.BuildAnd(h32G, latestMask, "ins_slot_init");
+
+        var insSlotAlloca = _builder.BuildAlloca(_context.Int32Type, "ins_slot_alloca");
+        _builder.BuildStore(insSlotInit, insSlotAlloca);
+
+        var findEmptyBB = getArchFunc.AppendBasicBlock("find_empty");
+        var doInsertBB = getArchFunc.AppendBasicBlock("do_insert");
+        _builder.BuildBr(findEmptyBB);
+
+        _builder.PositionAtEnd(findEmptyBB);
+        var sIns = _builder.BuildLoad2(_context.Int32Type, insSlotAlloca, "s_ins");
+        var sInsPtr = _builder.BuildInBoundsGEP2(_context.Int32Type, latestEntries, new[] { sIns }, "s_ins_ptr");
+        var sInsVal = _builder.BuildLoad2(_context.Int32Type, sInsPtr, "s_ins_val");
+        var sIsEmpty = _builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, sInsVal, LLVMValueRef.CreateConstInt(_context.Int32Type, unchecked((ulong)-1), true), "s_is_empty");
+
+        var advInsBB = getArchFunc.AppendBasicBlock("adv_ins");
+        _builder.BuildCondBr(sIsEmpty, doInsertBB, advInsBB);
+
+        _builder.PositionAtEnd(advInsBB);
+        var nextInsSlot = _builder.BuildAdd(sIns, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_ins_slot");
+        var wrappedInsSlot = _builder.BuildAnd(nextInsSlot, latestMask, "wrapped_ins_slot");
+        _builder.BuildStore(wrappedInsSlot, insSlotAlloca);
+        _builder.BuildBr(findEmptyBB);
+
+        _builder.PositionAtEnd(doInsertBB);
         var newIdx = curCount;
-        var nextCount = _builder.BuildAdd(curCount, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_count");
-        _builder.BuildStore(nextCount, archCountSlot);
+        _builder.BuildStore(newIdx, sInsPtr);
+
+        var nextCountFinal = _builder.BuildAdd(curCount, LLVMValueRef.CreateConstInt(_context.Int32Type, 1), "next_count_final");
+        _builder.BuildStore(nextCountFinal, archCountSlot);
 
         var latestTables = _builder.BuildLoad2(archPtrType, archTablesSlot, "latest_tables");
         var newArchElem = _builder.BuildInBoundsGEP2(_archStructType, latestTables, new[] { newIdx }, "new_arch_elem");

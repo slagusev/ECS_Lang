@@ -34,6 +34,8 @@ public sealed partial class EcsRuntimeEmitter
     private int _nameIndexWorldOffset = -1;
     private int _stringArenaHeadWorldOffset = -1;
     private int _stringArenaChunksWorldOffset = -1;
+    private int _archIndexEntriesWorldOffset = -1;
+    private int _archIndexCapWorldOffset = -1;
 
     // Component Descriptor Table (Step B7)
     private LLVMTypeRef _compDescStructType;
@@ -51,6 +53,8 @@ public sealed partial class EcsRuntimeEmitter
     public int NameIndexWorldOffset => _nameIndexWorldOffset;
     public int StringArenaHeadWorldOffset => _stringArenaHeadWorldOffset;
     public int StringArenaChunksWorldOffset => _stringArenaChunksWorldOffset;
+    public int ArchIndexEntriesWorldOffset => _archIndexEntriesWorldOffset;
+    public int ArchIndexCapWorldOffset => _archIndexCapWorldOffset;
 
     public EcsRuntimeEmitter(
         LLVMContextRef context,
@@ -356,6 +360,14 @@ public sealed partial class EcsRuntimeEmitter
         worldFields.Add(i8PtrType);
         _stringArenaChunksWorldOffset = worldFields.Count;
         worldFields.Add(i8PtrType);
+
+        // Archetype Hash Index (Step B4):
+        // arch_index_entries: ptr to i32 array of slots (-1 = empty, >= 0 = arch_idx)
+        // arch_index_cap: i32 capacity of the hash table (power of 2)
+        _archIndexEntriesWorldOffset = worldFields.Count;
+        worldFields.Add(LLVMTypeRef.CreatePointer(_context.Int32Type, 0));
+        _archIndexCapWorldOffset = worldFields.Count;
+        worldFields.Add(_context.Int32Type);
 
         _worldStructType = _context.CreateNamedStruct("struct.EcsWorld");
         _worldStructType.StructSetBody(worldFields.ToArray(), false);

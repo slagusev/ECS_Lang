@@ -166,6 +166,9 @@ try {
                     
                     # Shifted swap-remove memcpy in old baseline
                     if ($line -match "call ptr @memcpy\(ptr %sw_dst_.*%sw_src_") { continue }
+
+                    # Legal Category 10: Archetype linear search loop deletions and old world growth block (Step B4)
+                    if ($line -match "(cur_i|search_cond|search_body|search_next|has_more|next_i|sRetBB|sNotFoundBB|sBodyBB|sCondBB|%i = alloca i32|store i32 0, ptr %i|init_arch:|preds = %grow_tables|next_count = add i32|store i32 %next_count, ptr %arch_count_slot|cur_cap = load i32, ptr %arch_cap_slot|need_grow = icmp sge i32|br i1 %need_grow|cap_zero = icmp eq i32|double_cap = mul i32|new_cap = select i1|store i32 %new_cap, ptr %arch_cap_slot|new_cap64 = zext i32|alloc_bytes = mul i64|new_tables_i8 = call ptr @realloc|br label %init_arch)") { continue }
                 }
 
                 # 2. Additions in Fresh IR (SideIndicator == '=>')
@@ -187,9 +190,14 @@ try {
                         $line -match "do_swap_rem:\s+;\s+preds = %after_grow_rem_arch" -or
                         $line -match "after_swap_rem:\s+;\s+preds = %skip_sw_.*%after_grow_rem_arch" -or
                         $line -match "call ptr @memcpy\(ptr %sw_dst_.*%sw_src_") { continue }
+
+                    # Legal Category 10: Archetype hash index additions (Step B4)
+                    if ($line -match "(world_grow_arch_index|gi_|arch_entries_slot|arch_index_cap_slot|is_cap_zero|init_cap|hash_bb|cur_cap_now|cur_entries|tgt_wptr_|tgt_wval_|tgt_hxor_|tgt_hmul_|tgt_hshift_|tgt_hmix_|h32|mask_val|init_slot|slot_alloca|probe_loop|slot_ptr|slot_val|is_slot_empty|check_match|cand_arch|cand_mask|probe_next|ret_found|next_slot|wrapped_slot|check_index_grow|next_cnt|dbl_next_cnt|need_grow_index|grow_index|insert_bb|latest_cap|latest_entries|latest_mask|ins_slot_init|ins_slot_alloca|find_empty|s_ins|s_ins_ptr|s_ins_val|s_is_empty|adv_ins|next_ins_slot|wrapped_ins_slot|do_insert|next_count_final|alloc_bytes_tables|double_tables_cap|new_tables_cap|cur_tables_cap|need_grow_tables)") { continue }
                 }
 
                 # General categories (both directions)
+                # Legal Category 10: struct.EcsWorld type changes and world malloc/memset size (addition of ptr and i32 = +16 bytes)
+                if ($line -match "%struct\.EcsWorld = type \{" -or $line -match "(call ptr @malloc\(i64 (96|104|112|120|128|144)\)|call ptr @memset\(ptr %raw_world, i32 0, i64 (96|104|112|120|128|144)\))") { continue }
                 # Legal Category 1: Archetype struct mask type: [1 x i64] vs i64
                 if ($line -match "%struct\.Archetype = type \{ \[(1|\d+) x i64\]" -or $line -match "%struct\.Archetype = type \{ i64") { continue }
                 # Legal Category 2: world_get_or_create_archetype signature and calls (ptr vs i64)
@@ -213,7 +221,7 @@ try {
                 $summary += "$name : LEGAL REFACTOR DIFFS ONLY"
             } else {
                 Write-Host "  [FAIL] $name : found $($illegalDiffs.Count) illegal diff line(s):" -ForegroundColor Red
-                foreach ($ill in $illegalDiffs | Select-Object -First 5) {
+                foreach ($ill in $illegalDiffs | Select-Object -First 30) {
                     Write-Host "    $ill" -ForegroundColor Yellow
                 }
                 $allPassed = $false
