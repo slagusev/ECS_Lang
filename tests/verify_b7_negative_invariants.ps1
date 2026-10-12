@@ -47,8 +47,8 @@ $LegacyPatterns = [ordered]@{
         "sw_raw_\w+"
         "sw_src_\w+"
         "sw_dst_\w+"
-        "swap_\w+:"
-        "skip_sw_\w+:"
+        "swap_(?!rem_row|row|events|remove|ds|rem)\w+:\s+;\s+preds"
+        "skip_sw_(?!sh_|rem_)\w+:\s+;\s+preds"
     )
     "B7.4_GrowArchetypeCopy" = @(
         "grow_col_\w+"

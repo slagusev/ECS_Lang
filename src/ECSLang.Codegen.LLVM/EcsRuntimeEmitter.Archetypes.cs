@@ -224,47 +224,81 @@ public sealed partial class EcsRuntimeEmitter
         var newEntRaw = _builder.BuildCall2(reallocType, reallocFunc, new[] { curEntRaw, entBytes }, "new_ent_raw");
         _builder.BuildStore(newEntRaw, entSlotGr);
 
-        // Reallocate active component columns
+        // Intrinsic llvm.cttz.i64 for bit scanning
+        var cttzType = LLVMTypeRef.CreateFunction(_context.Int64Type, new[] { _context.Int64Type, _context.Int1Type }, false);
+        var cttzFunc = _module.GetNamedFunction("llvm.cttz.i64");
+        if (cttzFunc.Handle == IntPtr.Zero)
+        {
+            cttzFunc = _module.AddFunction("llvm.cttz.i64", cttzType);
+        }
+
+        // Reallocate active component columns via compact mask bit loop
         var maskSlotGr = _builder.BuildStructGEP2(_archStructType, archElemGr, 0, "mask_slot");
         var colsArrGr = _builder.BuildStructGEP2(_archStructType, archElemGr, 4, "cols_arr");
 
-        for (int k = 0; k < totalComps; k++)
+        for (int w = 0; w < _maskWords; w++)
         {
-            var compName = compNames[k];
-            ulong compSize = _compSizes[compName];
-            int wordIdx = k >> 6;
-            int bitIdx = k & 63;
-            ulong compBit = 1UL << bitIdx;
-
             var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, maskSlotGr, new[]
             {
                 LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)wordIdx)
-            }, $"mask_w_{compName}");
-            var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"arch_mask_{compName}");
+                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)w)
+            }, $"gr_mask_w{w}_ptr");
+            var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"gr_mask_w{w}_val");
 
-            var bitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, compBit);
-            var andRes = _builder.BuildAnd(maskWVal, bitVal, $"has_{compName}");
-            var hasComp = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, andRes, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_has_{compName}");
+            var hasBits = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, maskWVal, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"gr_has_bits_w{w}");
+            var wordLoopBB = growArchFunc.AppendBasicBlock($"gr_word_{w}_loop");
+            var nextWordBB = growArchFunc.AppendBasicBlock($"gr_word_{w}_next");
+            _builder.BuildCondBr(hasBits, wordLoopBB, nextWordBB);
 
-            var growColBB = growArchFunc.AppendBasicBlock($"grow_col_{compName}");
-            var skipColBB = growArchFunc.AppendBasicBlock($"skip_col_{compName}");
+            _builder.PositionAtEnd(wordLoopBB);
+            var curMaskAlloca = _builder.BuildAlloca(_context.Int64Type, $"gr_cur_mask_alloca_w{w}");
+            _builder.BuildStore(maskWVal, curMaskAlloca);
 
-            _builder.BuildCondBr(hasComp, growColBB, skipColBB);
+            var bitLoopBB = growArchFunc.AppendBasicBlock($"gr_w{w}_bit_loop");
+            _builder.BuildBr(bitLoopBB);
 
-            _builder.PositionAtEnd(growColBB);
-            var colSlotK = _builder.BuildInBoundsGEP2(_colArrayType, colsArrGr, new[]
+            _builder.PositionAtEnd(bitLoopBB);
+            var curMaskVal = _builder.BuildLoad2(_context.Int64Type, curMaskAlloca, "gr_cur_mask_val");
+
+            // ctz to find lowest set bit index (0..63)
+            var ctzVal = _builder.BuildCall2(cttzType, cttzFunc, new[]
+            {
+                curMaskVal,
+                LLVMValueRef.CreateConstInt(_context.Int1Type, 1) // is_zero_undef = true
+            }, "gr_ctz");
+            var ctz32 = _builder.BuildTrunc(ctzVal, _context.Int32Type, "gr_tz32");
+            var wOffset = LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)(w * 64));
+            var compId = _builder.BuildAdd(wOffset, ctz32, "gr_comp_id");
+
+            // Descriptor lookup: &_ecs_component_descriptors[compId].size
+            var descSlot = _builder.BuildInBoundsGEP2(_compDescArrayType, _compDescriptorsGlobal, new[]
             {
                 LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)k)
-            }, $"col_slot_{compName}");
-            var curColRaw = _builder.BuildLoad2(i8PtrType, colSlotK, $"cur_col_{compName}");
-            var colBytes = _builder.BuildMul(newArchCap64, LLVMValueRef.CreateConstInt(_context.Int64Type, compSize), $"col_bytes_{compName}");
-            var newColRaw = _builder.BuildCall2(reallocType, reallocFunc, new[] { curColRaw, colBytes }, $"new_col_{compName}");
-            _builder.BuildStore(newColRaw, colSlotK);
-            _builder.BuildBr(skipColBB);
+                compId
+            }, "gr_desc_slot");
+            var sizeSlot = _builder.BuildStructGEP2(_compDescStructType, descSlot, 1, "gr_size_slot");
+            var compSize = _builder.BuildLoad2(_context.Int64Type, sizeSlot, "gr_comp_size");
 
-            _builder.PositionAtEnd(skipColBB);
+            // Reallocate column: cols[compId]
+            var colSlot = _builder.BuildInBoundsGEP2(_colArrayType, colsArrGr, new[]
+            {
+                LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
+                compId
+            }, "gr_col_slot");
+            var curColRaw = _builder.BuildLoad2(i8PtrType, colSlot, "gr_cur_col");
+            var colBytes = _builder.BuildMul(newArchCap64, compSize, "gr_col_bytes");
+            var newColRaw = _builder.BuildCall2(reallocType, reallocFunc, new[] { curColRaw, colBytes }, "gr_new_col");
+            _builder.BuildStore(newColRaw, colSlot);
+
+            // Clear lowest bit: curMask = curMask & (curMask - 1)
+            var maskSub1 = _builder.BuildSub(curMaskVal, LLVMValueRef.CreateConstInt(_context.Int64Type, 1), "gr_mask_sub1");
+            var nextMask = _builder.BuildAnd(curMaskVal, maskSub1, "gr_next_mask");
+            _builder.BuildStore(nextMask, curMaskAlloca);
+
+            var moreBits = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, nextMask, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), "gr_more_bits");
+            _builder.BuildCondBr(moreBits, bitLoopBB, nextWordBB);
+
+            _builder.PositionAtEnd(nextWordBB);
         }
 
         _builder.BuildRetVoid();
@@ -306,13 +340,8 @@ public sealed partial class EcsRuntimeEmitter
         var mOldColsSlot = _builder.BuildStructGEP2(_archStructType, mOldArchPtr, 4, "m_old_cols");
         var mNewColsSlot = _builder.BuildStructGEP2(_archStructType, mNewArchPtr, 4, "m_new_cols");
 
-        // Intrinsic llvm.cttz.i64
-        var cttzType = LLVMTypeRef.CreateFunction(_context.Int64Type, new[] { _context.Int64Type, _context.Int1Type }, false);
-        var cttzFunc = _module.GetNamedFunction("llvm.cttz.i64");
-        if (cttzFunc.Handle == IntPtr.Zero)
-        {
-            cttzFunc = _module.AddFunction("llvm.cttz.i64", cttzType);
-        }
+        // Intrinsic llvm.cttz.i64 (already declared earlier in EmitWorldArchetypeFunctions)
+
 
         // Loop through each mask word
         for (int w = 0; w < _maskWords; w++)
@@ -746,50 +775,8 @@ public sealed partial class EcsRuntimeEmitter
         var curEntElemDs = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntTypedDs, new[] { curRowDs }, "cur_ent_elem_ds");
         _builder.BuildStore(movedEDs, curEntElemDs);
 
-        // Copy all active components from lastRow to curRow
-        var curMaskSlotDs = _builder.BuildStructGEP2(_archStructType, curArchPtrDs, 0, "cur_mask_slot_ds");
-        var curColsArrDs = _builder.BuildStructGEP2(_archStructType, curArchPtrDs, 4, "cur_cols_arr_ds");
-
-        for (int c = 0; c < totalComps; c++)
-        {
-            var cName = compNames[c];
-            int wordIdx = c >> 6;
-            int bitIdx = c & 63;
-            ulong cBit = 1UL << bitIdx;
-            ulong cSize = _compSizes[cName];
-
-            var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlotDs, new[]
-            {
-                LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)wordIdx)
-            }, $"mask_w_{cName}_ds");
-            var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"cur_mask_{cName}_ds");
-
-            var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
-            var cAnd = _builder.BuildAnd(maskWVal, cBitVal, $"has_sw_ds_{cName}");
-            var hasC = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, cAnd, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_has_sw_ds_{cName}");
-
-            var swapCBB = despawnFunc.AppendBasicBlock($"swap_ds_{cName}");
-            var skipSwCBB = despawnFunc.AppendBasicBlock($"skip_sw_ds_{cName}");
-            _builder.BuildCondBr(hasC, swapCBB, skipSwCBB);
-
-            _builder.PositionAtEnd(swapCBB);
-            var colSlot = _builder.BuildInBoundsGEP2(_colArrayType, curColsArrDs, new[]
-            {
-                LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)c)
-            }, $"sw_col_ds_{cName}");
-            var colRaw = _builder.BuildLoad2(i8PtrType, colSlot, $"sw_raw_ds_{cName}");
-            var compTyped = _builder.BuildBitCast(colRaw, LLVMTypeRef.CreatePointer(_compStructTypes[cName], 0), $"sw_typed_ds_{cName}");
-            var srcElem = _builder.BuildInBoundsGEP2(_compStructTypes[cName], compTyped, new[] { lastRowDs }, $"sw_src_ds_{cName}");
-            var dstElem = _builder.BuildInBoundsGEP2(_compStructTypes[cName], compTyped, new[] { curRowDs }, $"sw_dst_ds_{cName}");
-            var srcI8 = _builder.BuildBitCast(srcElem, i8PtrType, "sw_src_ds_i8");
-            var dstI8 = _builder.BuildBitCast(dstElem, i8PtrType, "sw_dst_ds_i8");
-            _builder.BuildCall2(memcpyType, memcpyFunc, new[] { dstI8, srcI8, LLVMValueRef.CreateConstInt(_context.Int64Type, cSize) }, "");
-            _builder.BuildBr(skipSwCBB);
-
-            _builder.PositionAtEnd(skipSwCBB);
-        }
+        // Copy all active components from lastRow to curRow via generic migration core
+        _builder.BuildCall2(migrateFuncType, migrateFunc, new[] { wArgDs, curArchIdxDs, curArchIdxDs, lastRowDs, curRowDs }, "");
 
         // Update world.entity_row[movedEDs] = curRowDs
         var movedERowSlotDs = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrDs, new[] { movedEDs }, "moved_e_row_slot_ds");
@@ -989,11 +976,6 @@ public sealed partial class EcsRuntimeEmitter
                 var newEntElem2 = _builder.BuildInBoundsGEP2(_context.Int32Type, newEntTyped2, new[] { newRow }, "new_ent_elem2");
                 _builder.BuildStore(eParam, newEntElem2);
 
-                // Copy all existing components from curArch[curRow] to newArch[newRow]
-                var curColsArr = _builder.BuildStructGEP2(_archStructType, curArchPtr2, 4, "cur_cols_arr");
-                var newColsArr = _builder.BuildStructGEP2(_archStructType, newArchPtr2, 4, "new_cols_arr");
-                var curMaskSlot2 = _builder.BuildStructGEP2(_archStructType, curArchPtr2, 0, "cur_mask_slot2");
-
                 // Migrate all active components common to curArch and newArch via generic descriptor core
                 _builder.BuildCall2(migrateFuncType, migrateFunc, new[] { worldParamSet, curArchIdx, newArchIdx, curRow, newRow }, "");
 
@@ -1018,47 +1000,8 @@ public sealed partial class EcsRuntimeEmitter
                 var curEntElemSr = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntTypedSr, new[] { curRow }, "cur_ent_elem_sr");
                 _builder.BuildStore(movedE, curEntElemSr);
 
-                // Copy all components from lastRow to curRow
-                for (int c = 0; c < totalComps; c++)
-                {
-                    var cName = compNames[c];
-                    int cWord = c >> 6;
-                    int cBitIdx = c & 63;
-                    ulong cBit = 1UL << cBitIdx;
-                    ulong cSize = _compSizes[cName];
-                    var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
-
-                    var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlot2, new[]
-                    {
-                        LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                        LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)cWord)
-                    }, $"mask_w_{cName}_sw_set");
-                    var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"cur_mask_{cName}_sw_set");
-
-                    var cAnd = _builder.BuildAnd(maskWVal, cBitVal, $"has_sw_{cName}");
-                    var hasC = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, cAnd, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_has_sw_{cName}");
-
-                    var swapCBB = setFunc.AppendBasicBlock($"swap_{cName}");
-                    var skipSwCBB = setFunc.AppendBasicBlock($"skip_sw_{cName}");
-                    _builder.BuildCondBr(hasC, swapCBB, skipSwCBB);
-
-                    _builder.PositionAtEnd(swapCBB);
-                    var colSlot = _builder.BuildInBoundsGEP2(_colArrayType, curColsArr, new[]
-                    {
-                        LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                        LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)c)
-                    }, $"sw_col_{cName}");
-                    var colRaw = _builder.BuildLoad2(i8PtrType, colSlot, $"sw_raw_{cName}");
-                    var compTyped = _builder.BuildBitCast(colRaw, LLVMTypeRef.CreatePointer(_compStructTypes[cName], 0), $"sw_typed_{cName}");
-                    var srcElem = _builder.BuildInBoundsGEP2(_compStructTypes[cName], compTyped, new[] { lastRow }, $"sw_src_{cName}");
-                    var dstElem = _builder.BuildInBoundsGEP2(_compStructTypes[cName], compTyped, new[] { curRow }, $"sw_dst_{cName}");
-                    var srcI8 = _builder.BuildBitCast(srcElem, i8PtrType, "sw_src_i8");
-                    var dstI8 = _builder.BuildBitCast(dstElem, i8PtrType, "sw_dst_i8");
-                    _builder.BuildCall2(memcpyType, memcpyFunc, new[] { dstI8, srcI8, LLVMValueRef.CreateConstInt(_context.Int64Type, cSize) }, "");
-                    _builder.BuildBr(skipSwCBB);
-
-                    _builder.PositionAtEnd(skipSwCBB);
-                }
+                // Copy all components from lastRow to curRow via generic migration core
+                _builder.BuildCall2(migrateFuncType, migrateFunc, new[] { worldParamSet, curArchIdx, curArchIdx, lastRow, curRow }, "");
 
                 // Update world.entity_row[movedE] = curRow
                 var rowArrSr = _builder.BuildLoad2(i32PtrType, entRowSlotSet, "row_arr_sr");
@@ -1241,9 +1184,6 @@ public sealed partial class EcsRuntimeEmitter
             var newEntElemRem2 = _builder.BuildInBoundsGEP2(_context.Int32Type, newEntTypedRem2, new[] { newRowRem }, "new_ent_elem_rem");
             _builder.BuildStore(remE, newEntElemRem2);
 
-            var curColsArrRem = _builder.BuildStructGEP2(_archStructType, curArchPtrRem2, 4, "cur_cols_rem");
-            var curMaskSlotRem2 = _builder.BuildStructGEP2(_archStructType, curArchPtrRem2, 0, "cur_mask_slot_rem2");
-
             // Migrate active components remaining in newArch via generic descriptor core
             _builder.BuildCall2(migrateFuncType, migrateFunc, new[] { worldParamRem, curArchIdxRem, newArchIdxRem, curRowRem, newRowRem }, "");
 
@@ -1267,47 +1207,8 @@ public sealed partial class EcsRuntimeEmitter
             var curEntElemRemSr = _builder.BuildInBoundsGEP2(_context.Int32Type, curEntTypedRemSr, new[] { curRowRem }, "cur_ent_rem");
             _builder.BuildStore(movedERem, curEntElemRemSr);
 
-            // Copy components of curArch from lastRow to curRow
-            for (int c = 0; c < totalComps; c++)
-            {
-                var cName = compNames[c];
-                int cWord = c >> 6;
-                int cBitIdx = c & 63;
-                ulong cBit = 1UL << cBitIdx;
-                ulong cSize = _compSizes[cName];
-                var cBitVal = LLVMValueRef.CreateConstInt(_context.Int64Type, cBit);
-
-                var maskWPtr = _builder.BuildInBoundsGEP2(_maskArrayType, curMaskSlotRem2, new[]
-                {
-                    LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                    LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)cWord)
-                }, $"mask_w_{cName}_sw_rem");
-                var maskWVal = _builder.BuildLoad2(_context.Int64Type, maskWPtr, $"cur_mask_{cName}_sw_rem");
-
-                var cAnd = _builder.BuildAnd(maskWVal, cBitVal, $"sw_rem_has_{cName}");
-                var hasC = _builder.BuildICmp(LLVMIntPredicate.LLVMIntNE, cAnd, LLVMValueRef.CreateConstInt(_context.Int64Type, 0), $"is_sw_rem_{cName}");
-
-                var swapRemCBB = remFunc.AppendBasicBlock($"swap_rem_{cName}");
-                var skipSwRemCBB = remFunc.AppendBasicBlock($"skip_sw_rem_{cName}");
-                _builder.BuildCondBr(hasC, swapRemCBB, skipSwRemCBB);
-
-                _builder.PositionAtEnd(swapRemCBB);
-                var colSlot = _builder.BuildInBoundsGEP2(_colArrayType, curColsArrRem, new[]
-                {
-                    LLVMValueRef.CreateConstInt(_context.Int32Type, 0),
-                    LLVMValueRef.CreateConstInt(_context.Int32Type, (ulong)c)
-                }, $"sw_col_rem_{cName}");
-                var colRaw = _builder.BuildLoad2(i8PtrType, colSlot, $"sw_raw_rem_{cName}");
-                var compTyped = _builder.BuildBitCast(colRaw, LLVMTypeRef.CreatePointer(_compStructTypes[cName], 0), $"sw_typed_rem_{cName}");
-                var srcElem = _builder.BuildInBoundsGEP2(_compStructTypes[cName], compTyped, new[] { lastRowRem }, $"sw_src_rem_{cName}");
-                var dstElem = _builder.BuildInBoundsGEP2(_compStructTypes[cName], compTyped, new[] { curRowRem }, $"sw_dst_rem_{cName}");
-                var srcI8 = _builder.BuildBitCast(srcElem, i8PtrType, "sw_src_rem_i8");
-                var dstI8 = _builder.BuildBitCast(dstElem, i8PtrType, "sw_dst_rem_i8");
-                _builder.BuildCall2(memcpyType, memcpyFunc, new[] { dstI8, srcI8, LLVMValueRef.CreateConstInt(_context.Int64Type, cSize) }, "");
-                _builder.BuildBr(skipSwRemCBB);
-
-                _builder.PositionAtEnd(skipSwRemCBB);
-            }
+            // Copy components of curArch from lastRow to curRow via generic migration core
+            _builder.BuildCall2(migrateFuncType, migrateFunc, new[] { worldParamRem, curArchIdxRem, curArchIdxRem, lastRowRem, curRowRem }, "");
 
             var rowArrRemSr = _builder.BuildLoad2(i32PtrType, entRowSlotRem, "row_arr_rem_sr");
             var movedERowSlotRem = _builder.BuildInBoundsGEP2(_context.Int32Type, rowArrRemSr, new[] { movedERem }, "moved_e_row_slot_rem");
