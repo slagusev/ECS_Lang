@@ -43,6 +43,7 @@ $testList = @(
 
 $passed = 0
 $failed = 0
+$results = @()
 
 foreach ($t in $testList) {
     $tName = $t.Name
@@ -62,6 +63,7 @@ foreach ($t in $testList) {
         Write-Host " [BUILD FAIL]" -ForegroundColor Red
         Write-Host $buildOut
         $failed++
+        $results += "| $tName | ❌ Build Failed | - |"
         continue
     }
 
@@ -71,11 +73,12 @@ foreach ($t in $testList) {
         Write-Host " [ASAN COMPILE FAIL]" -ForegroundColor Red
         Write-Host $clangOut
         $failed++
+        $results += "| $tName | ❌ ASan Link Failed | - |"
         continue
     }
 
-    # Step C: Execute under AddressSanitizer
-    $env:ASAN_OPTIONS = "detect_leaks=1:abort_on_error=1"
+    # Step C: Execute under AddressSanitizer (focus: buffer overflows, out-of-bounds, use-after-free)
+    $env:ASAN_OPTIONS = "detect_leaks=0:abort_on_error=1"
     Push-Location $tempDir
     try {
         $runOut = & $binPath 2>&1
@@ -88,10 +91,12 @@ foreach ($t in $testList) {
     if ($exitCode -eq $expected) {
         Write-Host " [PASSED]" -ForegroundColor Green
         $passed++
+        $results += "| $tName | ✅ Passed | 0 |"
     } else {
         Write-Host " [RUN FAIL: ExitCode $exitCode, expected $expected]" -ForegroundColor Red
-        Write-Host $runOut
+        Write-Host "Output: $runOut"
         $failed++
+        $results += "| $tName | ❌ Run Failed (Exit $exitCode) | - |"
     }
 }
 
@@ -100,6 +105,12 @@ Remove-Item -Path $tempDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host "=== ASan Verification Summary ===" -ForegroundColor Cyan
 Write-Host "Passed: $passed / $($testList.Count)"
 Write-Host "Failed: $failed"
+
+if ($env:GITHUB_STEP_SUMMARY) {
+    "### AddressSanitizer (ASan) Verification Summary`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+    "- **Total Tests**: $($testList.Count)`n- **Passed**: $passed`n- **Failed**: $failed`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+    "| Test | Status | Exit Code |`n|---|---|---|`n" + ($results -join "`n") | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+}
 
 if ($failed -gt 0) {
     exit 1

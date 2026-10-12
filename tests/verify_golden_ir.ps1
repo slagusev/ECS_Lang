@@ -231,6 +231,12 @@ foreach ($s in $summary) {
     Write-Host "  $s"
 }
 
+if ($env:GITHUB_STEP_SUMMARY) {
+    "### Cross-Host Golden IR Verification (Strict 7/7)`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+    ($summary | ForEach-Object { "- $_" }) -join "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+    "`n" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+}
+
 if (-not $allPassed) {
     Write-Host "Golden IR Verification FAILED!" -ForegroundColor Red
     exit 1
