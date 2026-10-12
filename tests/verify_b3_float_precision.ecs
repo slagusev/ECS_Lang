@@ -55,24 +55,58 @@ fn test_f32_precision(): i32 {
         return 6;
     }
 
+    // 7. f32 Negate literal: -2.5
+    let f_neg_lit: f32 = -2.5;
+    let s_f_neg_lit = f"{f_neg_lit}";
+    if (s_f_neg_lit != "-2.5") {
+        println($"FAIL: f32 -2.5 expected '-2.5', got '{s_f_neg_lit}'");
+        return 7;
+    }
+
+    // 8. f32 Negate computed expression: -x
+    let f_computed: f32 = 1.25 * 2.0;
+    let f_neg_x: f32 = -f_computed;
+    let s_f_neg_x = f"{f_neg_x}";
+    if (s_f_neg_x != "-2.5") {
+        println($"FAIL: f32 -f_computed expected '-2.5', got '{s_f_neg_x}'");
+        return 8;
+    }
+
     return 0;
 }
 
 fn test_f64_precision(): i32 {
-    // 7. f64 0.1 via double arithmetic (1.0 / 10.0)
+    // 9. f64 0.1 via double arithmetic (1.0 / 10.0)
     let d_0_1: f64 = (1.0 as f64) / (10.0 as f64);
     let s_d_0_1 = f"{d_0_1}";
     if (s_d_0_1 != "0.10000000000000001") {
         println($"FAIL: f64 0.1 expected '0.10000000000000001', got '{s_d_0_1}'");
-        return 7;
+        return 9;
     }
 
-    // 8. f64 -0.0
+    // 10. f64 -0.0
     let d_neg_zero: f64 = -0.0 as f64;
     let s_d_neg_zero = f"{d_neg_zero}";
     if (s_d_neg_zero != "-0") {
         println($"FAIL: f64 -0.0 expected '-0', got '{s_d_neg_zero}'");
-        return 8;
+        return 10;
+    }
+
+    // 11. f64 Negate literal: -2.5
+    let d_neg_lit: f64 = -2.5 as f64;
+    let s_d_neg_lit = f"{d_neg_lit}";
+    if (s_d_neg_lit != "-2.5") {
+        println($"FAIL: f64 -2.5 expected '-2.5', got '{s_d_neg_lit}'");
+        return 11;
+    }
+
+    // 12. f64 Negate computed expression: -d_computed (validates fneg fix for DoubleType)
+    let d_computed: f64 = (1.25 as f64) * (2.0 as f64);
+    let d_neg_x: f64 = -d_computed;
+    let s_d_neg_x = f"{d_neg_x}";
+    if (s_d_neg_x != "-2.5") {
+        println($"FAIL: f64 -d_computed expected '-2.5', got '{s_d_neg_x}'");
+        return 12;
     }
 
     return 0;
