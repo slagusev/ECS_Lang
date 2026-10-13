@@ -165,18 +165,17 @@ public sealed partial class LlvmCodeGenerator
                         builder.BuildCall2(voidFuncType, sysFunc, new[] { worldParam });
                         builder.BuildBr(contBB);
 
-                        // Success block: thread started in background
+                        // Success block: thread started in background - load spawned thread ID
                         builder.PositionAtEnd(spawnOkBB);
+                        var spawnedTidVal = builder.BuildLoad2(context.Int64Type, threadIdAlloca, $"tid_val_{sName}");
                         builder.BuildBr(contBB);
 
                         builder.PositionAtEnd(contBB);
 
-                        // Store tid for joining only if spawned successfully:
-                        // Load threadId in join phase if spawned, or track via PHI
-                        var threadIdVal = builder.BuildLoad2(context.Int64Type, threadIdAlloca, $"tid_val_{sName}");
+                        // PHI node must be the FIRST instruction in contBB:
                         var joinTidPhi = builder.BuildPhi(context.Int64Type, $"join_tid_{sName}");
                         joinTidPhi.AddIncoming(
-                            new[] { threadIdVal, LLVMValueRef.CreateConstInt(context.Int64Type, 0) },
+                            new[] { spawnedTidVal, LLVMValueRef.CreateConstInt(context.Int64Type, 0) },
                             new[] { spawnOkBB, fallbackBB },
                             2);
 
