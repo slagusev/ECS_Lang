@@ -41,3 +41,9 @@ jobs:
         shell: pwsh
         run: |
           pwsh -File tests/run_asan_linux.ps1 -CliDll src/ECSLang.CLI/bin/Release/net9.0/ECSLang.CLI.dll
+
+      - name: Run ThreadSanitizer (TSan) Verification Suite
+        shell: pwsh
+        run: |
+          pwsh -File tests/run_tsan_linux.ps1 -CliDll src/ECSLang.CLI/bin/Release/net9.0/ECSLang.CLI.dll
+

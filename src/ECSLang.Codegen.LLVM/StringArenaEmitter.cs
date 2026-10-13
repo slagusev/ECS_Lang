@@ -100,6 +100,11 @@ public sealed class StringArenaEmitter
         var worldStructType = ecs.WorldStructType;
         var worldTyped = builder.BuildBitCast(worldParam, LLVMTypeRef.CreatePointer(worldStructType, 0), "world_typed");
 
+        // Synchronize arena bump-pointer allocation under leaf string_arena_lock
+        var lockSlot = builder.BuildStructGEP2(worldStructType, worldTyped, (uint)ecs.StringArenaLockWorldOffset, "arena_lock_slot");
+        var lockPtr = builder.BuildBitCast(lockSlot, i8PtrType, "arena_lock_ptr");
+        builder.BuildCall2(ecs.SrwFuncType, ecs.SrwAcquireFunc, new[] { lockPtr }, "");
+
         var headSlot = builder.BuildStructGEP2(worldStructType, worldTyped, (uint)ecs.StringArenaHeadWorldOffset, "head_slot");
         var curHeadRaw = builder.BuildLoad2(i8PtrType, headSlot, "cur_head_raw");
         var isHeadNull = builder.BuildICmp(LLVMIntPredicate.LLVMIntEQ, curHeadRaw, nullPtr, "is_head_null");
@@ -128,6 +133,7 @@ public sealed class StringArenaEmitter
 
         var nextUsed = builder.BuildAdd(curUsed, alignedSize, "next_used");
         builder.BuildStore(nextUsed, usedSlot);
+        builder.BuildCall2(ecs.SrwFuncType, ecs.SrwReleaseFunc, new[] { lockPtr }, "");
         builder.BuildRet(resPtrFit);
 
         // --- newChunkBB ---
@@ -160,6 +166,8 @@ public sealed class StringArenaEmitter
         builder.BuildStore(newChunkRaw, chunksListSlot);
         // world.head = newChunkRaw
         builder.BuildStore(newChunkRaw, headSlot);
+
+        builder.BuildCall2(ecs.SrwFuncType, ecs.SrwReleaseFunc, new[] { lockPtr }, "");
 
         // return newChunkRaw + 24
         var resPtrNew = builder.BuildInBoundsGEP2(_context.Int8Type, newChunkRaw, new[] { header24 }, "res_new");
@@ -195,6 +203,10 @@ public sealed class StringArenaEmitter
         builder.PositionAtEnd(workBB);
         var worldStructType = ecs.WorldStructType;
         var worldTyped = builder.BuildBitCast(worldParam, LLVMTypeRef.CreatePointer(worldStructType, 0), "world_typed");
+        var resetLockSlot = builder.BuildStructGEP2(worldStructType, worldTyped, (uint)ecs.StringArenaLockWorldOffset, "reset_lock_slot");
+        var resetLockPtr = builder.BuildBitCast(resetLockSlot, i8PtrType, "reset_lock_ptr");
+        builder.BuildCall2(ecs.SrwFuncType, ecs.SrwAcquireFunc, new[] { resetLockPtr }, "");
+
         var chunksListSlot = builder.BuildStructGEP2(worldStructType, worldTyped, (uint)ecs.StringArenaChunksWorldOffset, "chunks_list_slot");
         var firstChunkRaw = builder.BuildLoad2(i8PtrType, chunksListSlot, "first_chunk_raw");
 
@@ -227,6 +239,7 @@ public sealed class StringArenaEmitter
         builder.PositionAtEnd(resetDoneBB);
         var headSlot = builder.BuildStructGEP2(worldStructType, worldTyped, (uint)ecs.StringArenaHeadWorldOffset, "head_slot");
         builder.BuildStore(firstChunkRaw, headSlot);
+        builder.BuildCall2(ecs.SrwFuncType, ecs.SrwReleaseFunc, new[] { resetLockPtr }, "");
         builder.BuildBr(exitBB);
 
         // exitBB:
@@ -263,6 +276,10 @@ public sealed class StringArenaEmitter
         builder.PositionAtEnd(workBB);
         var worldStructType = ecs.WorldStructType;
         var worldTyped = builder.BuildBitCast(worldParam, LLVMTypeRef.CreatePointer(worldStructType, 0), "world_typed");
+        var freeLockSlot = builder.BuildStructGEP2(worldStructType, worldTyped, (uint)ecs.StringArenaLockWorldOffset, "free_lock_slot");
+        var freeLockPtr = builder.BuildBitCast(freeLockSlot, i8PtrType, "free_lock_ptr");
+        builder.BuildCall2(ecs.SrwFuncType, ecs.SrwAcquireFunc, new[] { freeLockPtr }, "");
+
         var chunksListSlot = builder.BuildStructGEP2(worldStructType, worldTyped, (uint)ecs.StringArenaChunksWorldOffset, "chunks_list_slot");
         var firstChunkRaw = builder.BuildLoad2(i8PtrType, chunksListSlot, "first_chunk_raw");
 
@@ -294,6 +311,7 @@ public sealed class StringArenaEmitter
         builder.BuildStore(nullPtr, chunksListSlot);
         var headSlot = builder.BuildStructGEP2(worldStructType, worldTyped, (uint)ecs.StringArenaHeadWorldOffset, "head_slot");
         builder.BuildStore(nullPtr, headSlot);
+        builder.BuildCall2(ecs.SrwFuncType, ecs.SrwReleaseFunc, new[] { freeLockPtr }, "");
         builder.BuildBr(exitBB);
 
         // exitBB:

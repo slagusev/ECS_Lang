@@ -153,11 +153,17 @@
 - **Критерий приёмки**: Уровень 3 (ребейзлайн) + компиляция $N=1025$ в Release -O3 $< 70$ с.
 - **Шаблон коммита**: `perf(codegen): factor out common runtime guard helpers to slim component wrappers`
 
-#### Шаг B7.7 — Fast-path SoA миграции для малых компонентов (4/8/16 байт)
-- **Объём**: Устранение +28% накладных расходов миграции при спавне (цена genericity: чтение дескриптора `desc.size` и вычисление смещения). Внедрение специализированного fast-path для $WORDS = 1$ и тривиальных размеров компонентов (4/8/16 байт) в `world_migrate_entity` без обращения к таблице дескрипторов. Триггер реализации: спавн-тяжёлые сценарии.
+#### Шаг B7.7 — Fast-path SoA миграции и адаптивный лукап архетипов
+- **Леджер накладных расходов спавна**: Накопленное замедление спавна `particles_100k` составило ~21 мс $\to$ 32.4 мс (+55%):
+  - B7: +6.1 мс (чтение дескрипторов и обобщённая миграция);
+  - B4: +4.7 мс (накладные расходы хэширования маски на микро-мирах);
+  - B2: +3.85 мс (валидация поколений и работа с фрилистом — фундаментальная safety-цена, несжимаема).
+- **Расширенный объём B7.7**:
+  1. **SoA Fast-path компонентов 4/8/16 байт**: специализированный путь копирования без обращения к таблице дескрипторов `desc.size` для $WORDS = 1$ и тривиальных размеров — режет долю B7.
+  2. **Адаптивный лукап архетипа**: при `world.archetype_count < 8` линейный скан компактного массива масок дешевле вычисления FNV-хэша и зондирования хэш-таблицы — режет долю B4 на микро-мирах (включая сценарий `particles_100k`).
 - **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`.
-- **Критерий приёмки**: Уровень 4 (`tests/perf_baseline.ps1` возвращает медиану Spawn к $\le 21$ ms).
-- **Шаблон коммита**: `perf(runtime): add specialized fast-path for small component migrations`
+- **Критерий приёмки**: Уровень 4 (`tests/perf_baseline.ps1` возвращает медиану Spawn к реалистичной цели **~24–25 мс**, возвращая доли B7+B4 при сохранении safety-цены B2).
+- **Шаблон коммита**: `perf(runtime): small component fast-path and adaptive archetype lookup (Step B7.7)`
 
 #### Шаг B6 — Флаг компилятора `--pause-on-exit`
 - **Объём**: Исключение безусловного авто-вызова `@_getch()` / `@puts(@prompt_exit)` перед выходом из `main`. Генерация ожидания нажатия клавиши строго при наличии CLI-флага `--pause-on-exit` (алиасы `--wait-key`, `--pause`). По умолчанию отключено: консольные программы завершаются мгновенно без зависаний. Сохранение `--no-wait` как no-op для обратной совместимости.
@@ -226,13 +232,22 @@
 - **Объём**: 3 программы (`08_ecs_basics`, `09_ecs_command_buffer`, `13_multithreading_benchmark`) компилируются с `--target x86_64-unknown-linux-gnu --emit-llvm` $\to$ эталоны `tests/golden_ir_posix/`. Верификация: strict/refactor-режимы аналогично Windows-сету. Систематизирует ad-hoc проверку `verify_b1_pause`: регрессии POSIX-пути (`pause`, `getchar`, будущий пул) ловятся на Ур. 3.
 - **Шаблон коммита**: `test(posix): establish POSIX-target golden IR baselines`
 
-##### Фаза B5.1 — Рантайм параллелизма (эмиссия как IR)
+##### Фаза B5.1 — POSIX-параллелизм и безопасность арены строк
 - **Объём**:
-  - `B5.1a` (MVP): parallel-батч = `pthread_create` $N$ + `pthread_join` — просто, корректно; временно допустимая цена $\sim 20$ мкс/поток.
-  - `B5.1b`: постоянный пул, эмитится в модуль: `pthread_mutex` + `pthread_cond` + очередь job-функций + счётчик pending; инициализация по guard-флагу перед первым parallel-блоком; барьер = cond-broadcast + ожидание `pending == 0`.
-  - Сигнатура `job_{System}` адаптируется под POSIX; batch-of-one $\to$ прямой вызов (переносится бесплатно). Внешние объявления `pthread_*` — как CRT; `ClangGccLinker` уже передаёт `-lpthread -lm -ldl -lrt` — линк-флаги готовы.
-- **Критерий приёмки**: Ур. 2 — инвариант «результат parallel == результат последовательного выполнения» (тест-программа со сверкой значений) + Ур. 4 — стресс по образцу P0.3S.
-- **Шаблон коммита**: `feat(runtime): pthread-based parallel execution (MVP)` / `feat(runtime): persistent pthread worker pool`
+  - Реализация кроссплатформенного параллелизма для Linux через `pthread_create` / `pthread_join` с graceful fallback на синхронное инлайн-исполнение при ошибках спавна и выборочным join.
+  - Адаптация сигнатуры callback `job_{System}` под целевую платформу: Windows (`void (i8*, i8*, i8*)`) vs POSIX (`i8* (i8*)`).
+  - Устранение латентной гонки за строковой ареной (`world.string_arena`): встраивание `string_arena_lock` (`SRWLOCK` на Windows, `i8*` спинлок на Linux) в `%struct.EcsWorld` с защитой критических секций `rt_world_string_arena_alloc`, `rt_world_string_arena_reset` и `rt_world_string_arena_free_all`.
+  - Доказательство модели Leaf-Lock: замок арены строк является строго внутренним замком-листом и не конкурирует с `cmd_lock` и `emit_lock`.
+  - Внедрение отдельного контура верификации ThreadSanitizer (TSan) в CI (`tests/run_tsan_linux.ps1`, `clang -fsanitize=thread`) с критерием 0 race reports.
+- **Файлы**: `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.cs`, `src/ECSLang.Codegen.LLVM/EcsRuntimeEmitter.Archetypes.cs`, `src/ECSLang.Codegen.LLVM/StringArenaEmitter.cs`, `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Ecs.cs`, `src/ECSLang.Codegen.LLVM/LlvmCodeGenerator.Pipelines.cs`, `tests/verify_b5_1_parallel_invariant.ecs`, `tests/verify_b5_1_parallel_invariant.ps1`, `tests/stress_parallel_string_arena.ecs`, `tests/stress_parallel_string_arena.ps1`, `tests/run_asan_linux.ps1`, `tests/run_tsan_linux.ps1`, `.github/workflows/ecs-linux.yml`, `tests/verify_golden_ir.ps1`, `tests/golden_ir/*`, `ARCHITECTURE.md`, `REFERENCE.md`, `docs/ROADMAP.md`.
+- **Критерий приёмки**:
+  1. Уровень 2 Parallel Invariant Test (`tests/verify_b5_1_parallel_invariant.ps1`): 100 000 сущностей с 4 компонентами в 10 тиках `parallel { Movement; Regen; Scoring; }` сопоставлены с детерминированными инвариантами.
+  2. Уровень 4 Stress Test (`tests/stress_parallel_string_arena.ps1`): 50 000 параллельных итераций с агрессивной строковой интерполяцией `$"..."` из 4 параллельных систем под замком `string_arena_lock` без повреждения памяти и взаимных блокировок.
+  3. Уровень 3 Golden IR: strict exact match 7/7 подтверждён (категория `Legal Category 12: String Arena Lock and shifted world offsets`).
+  4. Примеры: 29/29 собраны, 23/23 выполнены с кодом 0 (включая параллельные `13_multithreading_benchmark`, `parallel_auto_test`, `olap_bigdata_analyzer`).
+  5. Бинарная канарейка (`canary_70_components.ecs`): успешно собрана в Release -O3 и выполнена с кодом 0.
+- **Статус**: **ВЫПОЛНЕНО (условно: Linux-джобы не исполнены)**
+- **Шаблон коммита**: `feat(runtime): implement POSIX pthreads parallel dispatch and string arena synchronization (Step B5.1)`
 
 ##### Фаза B5.2 — Linux-контур «линк + запуск» (GitHub Actions)
 - **Объём**: Workflow `.github/workflows/ecs-linux.yml` (`ubuntu-latest`, push + ночной):
@@ -245,11 +260,15 @@
 - **Шаблон коммита**: `ci(linux): establish ubuntu verification workflow`
 - **Скоуп-ограничения**: Raylib-примеры вне B5 (консольных достаточно); кросс-линк lld + musl из Windows — отдельный будущий пункт, не B5; ручная глубокая проверка перед релизами — Live USB.
 
-#### Шаг D2 — Сквозной ASan-прогон всех тестов и примеров
-- **Объём**: Сборка с флагом `-fsanitize=address` под Clang/MSVC, полный прогон сьюта Уровня 1.
-- **Файлы**: `tests/run_asan_suite.ps1`.
-- **Критерий приёмки**: Уровень 4 (0 утечек памяти, 0 use-after-free, 0 buffer overflows).
-- **Шаблон коммита**: `ci(sanitizer): integrate address sanitizer stress verification suite`
+#### Шаг D2 / CI v2 — Полный кроссплатформенный контур верификации Linux (поглощение D2)
+- **Объём**: Слияние шага D2 с расширенным контуром CI v2. Поскольку ASan (20+ тестов) и TSan (параллельные стрессы) уже интегрированы в CI шагами B5.2-lite и B5.1, остаток скоупа D2 формирует единый CI v2:
+  - Портирование всех `verify_*.ps1` инвариантных тестов на Linux;
+  - Запуск граничных программ (63, 64, 65, 127, 128, 129 компонентов) в облаке;
+  - Полный сквозной прогон инвариантного сьюта (A1, A6, B2, B3, B4, B5.1) под ASan и TSan на Linux-раннерах.
+- **Файлы**: `.github/workflows/ecs-linux.yml`, `tests/run_asan_linux.ps1`, `tests/run_tsan_linux.ps1`.
+- **Критерий приёмки**: Уровень 4 (0 OOB, 0 UAF, 0 race reports на полном сьюте в облаке).
+- **Статус**: ЗАПЛАНИРОВАНО (объединён с CI v2).
+- **Шаблон коммита**: `ci(linux): expand CI v2 with full invariant suite and boundary tests`
 
 ---
 

@@ -1,0 +1,93 @@
+component MetricA {
+    val: f32,
+}
+
+component MetricB {
+    val: f32,
+}
+
+component MetricC {
+    val: f32,
+}
+
+component MetricD {
+    val: f32,
+}
+
+// 4 parallel systems formatting strings concurrently via $"..."
+// Each system allocates from world string arena under string_arena_lock
+system SystemA {
+    query(mut a: MetricA) {
+        a.val += 0.5;
+        let s = $"SystemA_tag_{a.val}";
+        if s.len() == 0 {
+            println("error");
+        }
+    }
+}
+
+system SystemB {
+    query(mut b: MetricB) {
+        b.val += 1.0;
+        let s = $"SystemB_formatted_metric_{b.val}_active";
+        if s.len() == 0 {
+            println("error");
+        }
+    }
+}
+
+system SystemC {
+    query(mut c: MetricC) {
+        c.val += 1.5;
+        let s = $"SystemC_hash_{c.val}_chunk_id";
+        if s.len() == 0 {
+            println("error");
+        }
+    }
+}
+
+system SystemD {
+    query(mut d: MetricD) {
+        d.val += 2.0;
+        let s = $"SystemD_sensor_value_{d.val}_ok";
+        if s.len() == 0 {
+            println("error");
+        }
+    }
+}
+
+pipeline ParallelStressPipeline {
+    stage Stress {
+        parallel {
+            SystemA;
+            SystemB;
+            SystemC;
+            SystemD;
+        }
+    }
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+
+    // Spawn 100 entities with all 4 metrics
+    for i in 0..100 {
+        let e = world.spawn();
+        world.set_MetricA(e, 0.0);
+        world.set_MetricB(e, 0.0);
+        world.set_MetricC(e, 0.0);
+        world.set_MetricD(e, 0.0);
+    }
+
+    println("Starting parallel string arena stress test (50,000 iterations)...");
+    for iter in 0..50000 {
+        ParallelStressPipeline(world);
+        // Reset string arena periodically to test reset under lock
+        if (iter % 1000) == 0 {
+            world.reset_string_arena();
+        }
+    }
+
+    println("STRESS TEST COMPLETED: 50000 parallel iterations without corruption or deadlocks!");
+    return 0;
+}

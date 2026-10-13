@@ -4,7 +4,7 @@ target datalayout = "e-m:w-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:
 target triple = "x86_64-pc-windows-msvc"
 
 %struct.ComponentDesc = type { i64, i64, i32, i32 }
-%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, ptr, ptr, i32, i32, ptr, ptr, ptr, i32, ptr, ptr, i32, i32 }
+%struct.EcsWorld = type { i32, i32, ptr, i32, i32, ptr, ptr, i32, i32, ptr, ptr, ptr, ptr, i32, i32, ptr, ptr, ptr, ptr, i32, ptr, ptr, i32, i32 }
 %struct.Archetype = type { [1 x i64], i32, i32, ptr, [3 x ptr] }
 %struct.ChildOf = type { i64 }
 %struct.Position = type { float, float }
@@ -206,8 +206,8 @@ define void @world_grow_arch_index(ptr %0) {
 entry:
   %gi_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 0
   %gi_tables_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
-  %gi_entries_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 17
-  %gi_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 18
+  %gi_entries_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 18
+  %gi_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
   %gi_count = load i32, ptr %gi_count_slot, align 4
   %gi_cap = load i32, ptr %gi_cap_slot, align 4
   %gi_old_entries = load ptr, ptr %gi_entries_slot, align 8
@@ -282,8 +282,8 @@ entry:
   %arch_count_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 0
   %arch_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 1
   %arch_tables_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 2
-  %arch_entries_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 17
-  %arch_index_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 18
+  %arch_entries_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 18
+  %arch_index_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
   %cur_cap = load i32, ptr %arch_index_cap_slot, align 4
   %is_cap_zero = icmp eq i32 %cur_cap, 0
   br i1 %is_cap_zero, label %init_cap, label %hash_bb
@@ -521,8 +521,8 @@ m_w0_bit_loop:                                    ; preds = %m_w0_bit_loop, %m_w
 
 define ptr @ecs_create_world() {
 entry:
-  %raw_world = call ptr @malloc(i64 144)
-  %0 = call ptr @memset(ptr %raw_world, i32 0, i64 144)
+  %raw_world = call ptr @malloc(i64 152)
+  %0 = call ptr @memset(ptr %raw_world, i32 0, i64 152)
   %a0_init = call i32 @world_get_or_create_archetype(ptr %raw_world, ptr @_ecs_zero_mask)
   ret ptr %raw_world
 }
@@ -546,10 +546,10 @@ entry:
   %ent_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 4
   %ent_arch_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 5
   %ent_row_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 6
-  %ent_gen_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
-  %free_ents_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
-  %free_cnt_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 21
-  %free_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 22
+  %ent_gen_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
+  %free_ents_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 21
+  %free_cnt_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 22
+  %free_cap_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 23
   %cur_free_cnt = load i32, ptr %free_cnt_slot, align 4
   %has_free_slot = icmp sgt i32 %cur_free_cnt, 0
   br i1 %has_free_slot, label %pop_free, label %grow_and_alloc
@@ -702,7 +702,7 @@ ds_dead_panic:                                    ; preds = %ds_check_liveness
   br i1 %is_dead_ds, label %ds_dead_real, label %ds_pend_real
 
 ds_check_gen:                                     ; preds = %ds_check_liveness
-  %ent_gen_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_ds = load ptr, ptr %ent_gen_slot_ds, align 8
   %cur_gen_slot_ds = getelementptr inbounds i32, ptr %gen_arr_ds, i32 %e_id_ds
   %cur_gen_ds = load i32, ptr %cur_gen_slot_ds, align 4
@@ -752,9 +752,9 @@ after_swap_ds:                                    ; preds = %do_swap_ds, %do_des
   store i32 -2, ptr %e_row_slot_ds_inst, align 4
   %next_gen_val = add i32 %cur_gen_ds, 1
   store i32 %next_gen_val, ptr %cur_gen_slot_ds, align 4
-  %free_ents_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
-  %free_cnt_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 21
-  %free_cap_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 22
+  %free_ents_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 21
+  %free_cnt_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 22
+  %free_cap_slot_ds = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 23
   %cur_free_cnt_ds = load i32, ptr %free_cnt_slot_ds, align 4
   %cur_free_cap_ds = load i32, ptr %free_cap_slot_ds, align 4
   %need_grow_free = icmp sge i32 %cur_free_cnt_ds, %cur_free_cap_ds
@@ -889,7 +889,7 @@ set_err_entity:                                   ; preds = %check_liveness_set
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 check_gen_set:                                    ; preds = %check_liveness_set
-  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
   %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
   %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
@@ -1039,7 +1039,7 @@ set_err_entity:                                   ; preds = %check_liveness_set
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 check_gen_set:                                    ; preds = %check_liveness_set
-  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
   %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
   %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
@@ -1187,7 +1187,7 @@ rem_err_entity:                                   ; preds = %check_liveness_rem
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
 check_gen_rem:                                    ; preds = %check_liveness_rem
-  %ent_gen_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_rem = load ptr, ptr %ent_gen_slot_rem, align 8
   %cur_gen_slot_rem = getelementptr inbounds i32, ptr %gen_arr_rem, i32 %rem_id
   %cur_gen_rem = load i32, ptr %cur_gen_slot_rem, align 4
@@ -1303,7 +1303,7 @@ ret_false:                                        ; preds = %check_arch_has, %ch
   ret i1 false
 
 check_gen_has:                                    ; preds = %entry
-  %ent_gen_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_has = load ptr, ptr %ent_gen_slot_has, align 8
   %cur_gen_slot_has = getelementptr inbounds i32, ptr %gen_arr_has, i32 %has_id
   %cur_gen_has = load i32, ptr %cur_gen_slot_has, align 4
@@ -1438,7 +1438,7 @@ set_err_entity:                                   ; preds = %check_liveness_set
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 check_gen_set:                                    ; preds = %check_liveness_set
-  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
   %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
   %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
@@ -1590,7 +1590,7 @@ set_err_entity:                                   ; preds = %check_liveness_set
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 check_gen_set:                                    ; preds = %check_liveness_set
-  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
   %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
   %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
@@ -1740,7 +1740,7 @@ rem_err_entity:                                   ; preds = %check_liveness_rem
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
 check_gen_rem:                                    ; preds = %check_liveness_rem
-  %ent_gen_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_rem = load ptr, ptr %ent_gen_slot_rem, align 8
   %cur_gen_slot_rem = getelementptr inbounds i32, ptr %gen_arr_rem, i32 %rem_id
   %cur_gen_rem = load i32, ptr %cur_gen_slot_rem, align 4
@@ -1856,7 +1856,7 @@ ret_false:                                        ; preds = %check_arch_has, %ch
   ret i1 false
 
 check_gen_has:                                    ; preds = %entry
-  %ent_gen_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_has = load ptr, ptr %ent_gen_slot_has, align 8
   %cur_gen_slot_has = getelementptr inbounds i32, ptr %gen_arr_has, i32 %has_id
   %cur_gen_has = load i32, ptr %cur_gen_slot_has, align 4
@@ -1995,7 +1995,7 @@ set_err_entity:                                   ; preds = %check_liveness_set
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 check_gen_set:                                    ; preds = %check_liveness_set
-  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
   %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
   %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
@@ -2147,7 +2147,7 @@ set_err_entity:                                   ; preds = %check_liveness_set
   br i1 %is_dead, label %set_dead_entity_error, label %set_pending_entity_error
 
 check_gen_set:                                    ; preds = %check_liveness_set
-  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_set = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_set = load ptr, ptr %ent_gen_slot_set, align 8
   %cur_gen_slot_set = getelementptr inbounds i32, ptr %gen_arr_set, i32 %e_id_set
   %cur_gen_set = load i32, ptr %cur_gen_slot_set, align 4
@@ -2297,7 +2297,7 @@ rem_err_entity:                                   ; preds = %check_liveness_rem
   br i1 %is_dead_rem, label %rem_dead_entity_error, label %rem_pending_entity_error
 
 check_gen_rem:                                    ; preds = %check_liveness_rem
-  %ent_gen_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_rem = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_rem = load ptr, ptr %ent_gen_slot_rem, align 8
   %cur_gen_slot_rem = getelementptr inbounds i32, ptr %gen_arr_rem, i32 %rem_id
   %cur_gen_rem = load i32, ptr %cur_gen_slot_rem, align 4
@@ -2413,7 +2413,7 @@ ret_false:                                        ; preds = %check_arch_has, %ch
   ret i1 false
 
 check_gen_has:                                    ; preds = %entry
-  %ent_gen_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 19
+  %ent_gen_slot_has = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 20
   %gen_arr_has = load ptr, ptr %ent_gen_slot_has, align 8
   %cur_gen_slot_has = getelementptr inbounds i32, ptr %gen_arr_has, i32 %has_id
   %cur_gen_has = load i32, ptr %cur_gen_slot_has, align 4
@@ -3605,6 +3605,8 @@ null_world:                                       ; preds = %entry
 valid_world:                                      ; preds = %entry
   %sz_plus_7 = add i64 %1, 7
   %aligned_size = and i64 %sz_plus_7, -8
+  %arena_lock_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 17
+  call void @AcquireSRWLockExclusive(ptr %arena_lock_slot)
   %head_slot = getelementptr inbounds nuw %struct.EcsWorld, ptr %0, i32 0, i32 15
   %cur_head_raw = load ptr, ptr %head_slot, align 8
   %is_head_null = icmp eq ptr %cur_head_raw, null
@@ -3624,6 +3626,7 @@ fit:                                              ; preds = %check_fit
   %res_fit = getelementptr inbounds i8, ptr %cur_head_raw, i64 %byte_offset
   %next_used = add i64 %cur_used, %aligned_size
   store i64 %next_used, ptr %used_slot, align 8
+  call void @ReleaseSRWLockExclusive(ptr %arena_lock_slot)
   ret ptr %res_fit
 
 new_chunk:                                        ; preds = %check_fit, %valid_world
@@ -3641,6 +3644,7 @@ new_chunk:                                        ; preds = %check_fit, %valid_w
   store i64 %chunk_cap, ptr %n_cap_slot, align 8
   store ptr %new_chunk_raw, ptr %chunks_list_slot, align 8
   store ptr %new_chunk_raw, ptr %head_slot, align 8
+  call void @ReleaseSRWLockExclusive(ptr %arena_lock_slot)
   %res_new = getelementptr inbounds i8, ptr %new_chunk_raw, i64 24
   ret ptr %res_new
 }

@@ -1,0 +1,127 @@
+component Position {
+    x: f32,
+    y: f32,
+}
+
+component Velocity {
+    vx: f32,
+    vy: f32,
+}
+
+component Health {
+    hp: f32,
+    max_hp: f32,
+}
+
+component Score {
+    points: i32,
+}
+
+system MovementSystem {
+    query(mut pos: Position, vel: Velocity) {
+        pos.x += vel.vx;
+        pos.y += vel.vy;
+    }
+}
+
+system RegenSystem {
+    query(mut h: Health) {
+        if h.hp < h.max_hp {
+            h.hp += 1.0;
+        }
+    }
+}
+
+system ScoreSystem {
+    query(mut s: Score) {
+        s.points += 10;
+    }
+}
+
+pipeline ParallelGameLoop {
+    stage Simulation {
+        parallel {
+            MovementSystem;
+            RegenSystem;
+            ScoreSystem;
+        }
+    }
+}
+
+pipeline SequentialGameLoop {
+    stage Simulation {
+        MovementSystem;
+        RegenSystem;
+        ScoreSystem;
+    }
+}
+
+fn main(): i32 {
+    let mut world = ecs::create_world();
+
+    let count = 100000;
+    println($"Spawning {count} entities with 4 components...");
+    for i in 0..count {
+        let e = world.spawn();
+        world.set_Position(e, 0.0, 0.0);
+        world.set_Velocity(e, 1.5, -0.5);
+        world.set_Health(e, 50.0, 100.0);
+        world.set_Score(e, 0);
+    }
+
+    // Run 10 ticks in parallel
+    for tick in 0..10 {
+        ParallelGameLoop(world);
+    }
+
+    println("Verifying simulation state after 10 parallel ticks...");
+    // Sample entities across chunks
+    let e_first: u64 = 4294967296; // slot 0, gen 1
+    let e_mid: u64 = 4294967296 + 50000;
+    let e_last: u64 = 4294967296 + 99999;
+
+    let p0_x = world.get_Position_x(e_first);
+    let p0_y = world.get_Position_y(e_first);
+    let h0 = world.get_Health_hp(e_first);
+    let s0 = world.get_Score_points(e_first);
+
+    if p0_x != 15.0 {
+        println($"INVARIANT VIOLATION: e_first pos.x expected 15.0, got {p0_x}");
+        return 1;
+    }
+    if p0_y != -5.0 {
+        println($"INVARIANT VIOLATION: e_first pos.y expected -5.0, got {p0_y}");
+        return 2;
+    }
+    if h0 != 60.0 {
+        println($"INVARIANT VIOLATION: e_first hp expected 60.0, got {h0}");
+        return 3;
+    }
+    if s0 != 100 {
+        println($"INVARIANT VIOLATION: e_first score expected 100, got {s0}");
+        return 4;
+    }
+
+    let pmid_x = world.get_Position_x(e_mid);
+    let pmid_y = world.get_Position_y(e_mid);
+    let hmid = world.get_Health_hp(e_mid);
+    let smid = world.get_Score_points(e_mid);
+
+    if pmid_x != 15.0 || pmid_y != -5.0 || hmid != 60.0 || smid != 100 {
+        println("INVARIANT VIOLATION: e_mid mismatch");
+        return 5;
+    }
+
+    let plast_x = world.get_Position_x(e_last);
+    let plast_y = world.get_Position_y(e_last);
+    let hlast = world.get_Health_hp(e_last);
+    let slast = world.get_Score_points(e_last);
+
+    if plast_x != 15.0 || plast_y != -5.0 || hlast != 60.0 || slast != 100 {
+        println("INVARIANT VIOLATION: e_last mismatch");
+        return 6;
+    }
+
+    println("B5.1 Parallel Invariant: PASSED (100k entities deterministic match)");
+    return 0;
+}

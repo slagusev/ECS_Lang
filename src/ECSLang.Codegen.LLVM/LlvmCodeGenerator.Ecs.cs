@@ -374,17 +374,33 @@ public sealed partial class LlvmCodeGenerator
         builder.PositionAtEnd(sysExitBB);
         builder.BuildRetVoid();
 
-        // Generate Win32 Threadpool callback wrapper:
-        // VOID CALLBACK job_{sys.Name}(PTP_CALLBACK_INSTANCE Instance, PVOID Context, PTP_WORK Work)
-        var jobCallbackType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType, i8PtrType, i8PtrType }, false);
-        var jobFunc = module.AddFunction($"job_{sys.Name}", jobCallbackType);
-        var jobBB = jobFunc.AppendBasicBlock("entry");
-        var jobBuilder = context.CreateBuilder();
-        jobBuilder.PositionAtEnd(jobBB);
-        var contextArg = jobFunc.GetParam(1); // Context is pointer to world
-        var worldArgTyped = jobBuilder.BuildBitCast(contextArg, worldPtrType, "world_typed");
-        jobBuilder.BuildCall2(sysFuncType, sysFunc, new[] { worldArgTyped });
-        jobBuilder.BuildRetVoid();
+        // Generate thread callback wrapper:
+        // Windows (Win32 Threadpool): VOID CALLBACK job_{sys.Name}(PTP_CALLBACK_INSTANCE Instance, PVOID Context, PTP_WORK Work)
+        // POSIX (pthreads): void* job_{sys.Name}(void* Context)
+        if (_options.Target.IsWindows)
+        {
+            var jobCallbackType = LLVMTypeRef.CreateFunction(context.VoidType, new[] { i8PtrType, i8PtrType, i8PtrType }, false);
+            var jobFunc = module.AddFunction($"job_{sys.Name}", jobCallbackType);
+            var jobBB = jobFunc.AppendBasicBlock("entry");
+            var jobBuilder = context.CreateBuilder();
+            jobBuilder.PositionAtEnd(jobBB);
+            var contextArg = jobFunc.GetParam(1); // Context is pointer to world
+            var worldArgTyped = jobBuilder.BuildBitCast(contextArg, worldPtrType, "world_typed");
+            jobBuilder.BuildCall2(sysFuncType, sysFunc, new[] { worldArgTyped });
+            jobBuilder.BuildRetVoid();
+        }
+        else
+        {
+            var jobCallbackType = LLVMTypeRef.CreateFunction(i8PtrType, new[] { i8PtrType }, false);
+            var jobFunc = module.AddFunction($"job_{sys.Name}", jobCallbackType);
+            var jobBB = jobFunc.AppendBasicBlock("entry");
+            var jobBuilder = context.CreateBuilder();
+            jobBuilder.PositionAtEnd(jobBB);
+            var contextArg = jobFunc.GetParam(0); // Context is pointer to world
+            var worldArgTyped = jobBuilder.BuildBitCast(contextArg, worldPtrType, "world_typed");
+            jobBuilder.BuildCall2(sysFuncType, sysFunc, new[] { worldArgTyped });
+            jobBuilder.BuildRet(LLVMValueRef.CreateConstPointerNull(i8PtrType));
+        }
 
         builder.CurrentDebugLocation = default;
         _currentSubprogram = null;

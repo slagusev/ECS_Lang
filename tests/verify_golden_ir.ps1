@@ -197,7 +197,7 @@ try {
 
                 # General categories (both directions)
                 # Legal Category 10: struct.EcsWorld type changes and world malloc/memset size (addition of ptr and i32 = +16 bytes)
-                if ($line -match "%struct\.EcsWorld = type \{" -or $line -match "(call ptr @malloc\(i64 (96|104|112|120|128|144)\)|call ptr @memset\(ptr %raw_world, i32 0, i64 (96|104|112|120|128|144)\))") { continue }
+                if ($line -match "%struct\.EcsWorld = type \{" -or $line -match "(call ptr @malloc\(i64 (96|104|112|120|128|144|152|160|168|176)\)|call ptr @memset\(ptr %raw_world, i32 0, i64 (96|104|112|120|128|144|152|160|168|176)\))") { continue }
                 # Legal Category 1: Archetype struct mask type: [1 x i64] vs i64
                 if ($line -match "%struct\.Archetype = type \{ \[(1|\d+) x i64\]" -or $line -match "%struct\.Archetype = type \{ i64") { continue }
                 # Legal Category 2: world_get_or_create_archetype signature and calls (ptr vs i64)
@@ -221,6 +221,9 @@ try {
                 if ($line -match "(store i64 %0, ptr %parent_slot|load i64, ptr %cur_ent_slot|store i64 %moved_handle|call void @world_despawn\(ptr %0, i64 %|call void @world_despawn\(ptr %0, i32 %|call void @world_set_.*\(ptr %0, (i32|i64) %|call void @world_add_.*\(ptr %0, (i32|i64) %|call void @world_remove_.*\(ptr %0, (i32|i64) %|call i1 @world_has_.*\(ptr %0, (i32|i64) %)") { continue }
                 if ($line -match "(store i64 %e, ptr|store i64 %1, ptr|load i64, ptr %e|load i64, ptr %1|alloca i64.*%e|e_id = trunc i64|e_gen = trunc i64|e_gen64 = lshr i64|rem_id = trunc i64|rem_gen64 = lshr i64|has_id = trunc i64|has_gen64 = lshr i64|moved_id = trunc i64|eId = trunc i64)") { continue }
                 if ($line -match "(%struct\.EcsCommand = type|cmd_e = getelementptr|store i64 %|load i64, ptr %cmd_e)") { continue }
+
+                # Legal Category 12: String Arena Lock and shifted world offsets (Step B5.1)
+                if ($line -match "(arena_lock_slot|AcquireSRWLockExclusive|ReleaseSRWLockExclusive|%gi_entries_slot = getelementptr.*%struct\.EcsWorld.*(17|18)|%gi_cap_slot = getelementptr.*%struct\.EcsWorld.*(18|19)|%arch_entries_slot = getelementptr.*%struct\.EcsWorld.*(17|18)|%arch_index_cap_slot = getelementptr.*%struct\.EcsWorld.*(18|19))") { continue }
 
                 $illegalDiffs += $line
             }

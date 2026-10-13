@@ -34,12 +34,18 @@ public sealed partial class EcsRuntimeEmitter
     private int _nameIndexWorldOffset = -1;
     private int _stringArenaHeadWorldOffset = -1;
     private int _stringArenaChunksWorldOffset = -1;
+    private int _stringArenaLockWorldOffset = -1;
     private int _archIndexEntriesWorldOffset = -1;
     private int _archIndexCapWorldOffset = -1;
     private int _entityGenWorldOffset = -1;
     private int _freeEntitiesWorldOffset = -1;
     private int _freeCountWorldOffset = -1;
     private int _freeCapWorldOffset = -1;
+
+    // Synchronization primitives (Win32 SRWLock / POSIX spinlock)
+    private LLVMValueRef _srwAcquireFunc;
+    private LLVMValueRef _srwReleaseFunc;
+    private LLVMTypeRef _srwFuncType;
 
     // Component Descriptor Table (Step B7)
     private LLVMTypeRef _compDescStructType;
@@ -57,12 +63,17 @@ public sealed partial class EcsRuntimeEmitter
     public int NameIndexWorldOffset => _nameIndexWorldOffset;
     public int StringArenaHeadWorldOffset => _stringArenaHeadWorldOffset;
     public int StringArenaChunksWorldOffset => _stringArenaChunksWorldOffset;
+    public int StringArenaLockWorldOffset => _stringArenaLockWorldOffset;
     public int ArchIndexEntriesWorldOffset => _archIndexEntriesWorldOffset;
     public int ArchIndexCapWorldOffset => _archIndexCapWorldOffset;
     public int EntityGenWorldOffset => _entityGenWorldOffset;
     public int FreeEntitiesWorldOffset => _freeEntitiesWorldOffset;
     public int FreeCountWorldOffset => _freeCountWorldOffset;
     public int FreeCapWorldOffset => _freeCapWorldOffset;
+
+    public LLVMValueRef SrwAcquireFunc => _srwAcquireFunc;
+    public LLVMValueRef SrwReleaseFunc => _srwReleaseFunc;
+    public LLVMTypeRef SrwFuncType => _srwFuncType;
 
     public EcsRuntimeEmitter(
         LLVMContextRef context,
@@ -364,9 +375,12 @@ public sealed partial class EcsRuntimeEmitter
         // String Arena in World:
         // string_arena_head: ptr to current active chunk (for bump-pointer allocation)
         // string_arena_chunks: ptr to head of all allocated chunks (for reset and free)
+        // string_arena_lock: ptr to i8 (Win32 SRWLock / POSIX spinlock)
         _stringArenaHeadWorldOffset = worldFields.Count;
         worldFields.Add(i8PtrType);
         _stringArenaChunksWorldOffset = worldFields.Count;
+        worldFields.Add(i8PtrType);
+        _stringArenaLockWorldOffset = worldFields.Count;
         worldFields.Add(i8PtrType);
 
         // Archetype Hash Index (Step B4):

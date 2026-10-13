@@ -102,13 +102,18 @@ $testList = @(
     @{ Name = "10_ecs_events_and_observers"; Path = "examples/10_ecs_events_and_observers.ecs"; ExpectedExit = 0 },
     @{ Name = "11_ecs_archetypes_and_filters"; Path = "examples/11_ecs_archetypes_and_filters.ecs"; ExpectedExit = 0 },
     @{ Name = "12_ecs_multi_world"; Path = "examples/12_ecs_multi_world.ecs"; ExpectedExit = 0 },
+    @{ Name = "13_multithreading_benchmark"; Path = "examples/13_multithreading_benchmark.ecs"; ExpectedExit = 0 },
+    @{ Name = "parallel_auto_test"; Path = "examples/parallel_auto_test.ecs"; ExpectedExit = 0 },
+    @{ Name = "olap_bigdata_analyzer"; Path = "examples/olap_bigdata_analyzer.ecs"; ExpectedExit = 0 },
     @{ Name = "break_continue_test"; Path = "examples/break_continue_test.ecs"; ExpectedExit = 0 },
     @{ Name = "cast_test"; Path = "examples/cast_test.ecs"; ExpectedExit = 0 },
     @{ Name = "const_test"; Path = "examples/const_test.ecs"; ExpectedExit = 0 },
     @{ Name = "error_propagation_test"; Path = "examples/error_propagation_test.ecs"; ExpectedExit = 0 },
     @{ Name = "file_io_test"; Path = "examples/file_io_test.ecs"; ExpectedExit = 0 },
     @{ Name = "resource_main_test"; Path = "examples/resource_main_test.ecs"; ExpectedExit = 0 },
-    @{ Name = "string_ops_test"; Path = "examples/string_ops_test.ecs"; ExpectedExit = 0 }
+    @{ Name = "string_ops_test"; Path = "examples/string_ops_test.ecs"; ExpectedExit = 0 },
+    @{ Name = "verify_b5_1_parallel_invariant"; Path = "tests/verify_b5_1_parallel_invariant.ecs"; ExpectedExit = 0 },
+    @{ Name = "stress_parallel_string_arena"; Path = "tests/stress_parallel_string_arena.ecs"; ExpectedExit = 0 }
 )
 
 $passed = 0

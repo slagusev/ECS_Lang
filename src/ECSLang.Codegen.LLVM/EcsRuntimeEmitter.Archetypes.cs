@@ -735,6 +735,9 @@ public sealed partial class EcsRuntimeEmitter
                 relBuilder.BuildRetVoid();
             }
         }
+        _srwFuncType = srwFuncType;
+        _srwAcquireFunc = srwAcquireFunc;
+        _srwReleaseFunc = srwReleaseFunc;
 
         // =========================================================================
         // Helper: rt_panic(ptr msg) -> void
