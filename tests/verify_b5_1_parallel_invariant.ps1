@@ -40,7 +40,8 @@ try {
         throw "B5.1 parallel invariant test FAILED with exit code $LASTEXITCODE"
     }
 
-    if ($output -notmatch "B5.1 Parallel Invariant: PASSED") {
+    $outStr = $output -join "`n"
+    if ($outStr -notmatch "B5.1 Parallel Invariant: PASSED") {
         throw "B5.1 parallel invariant test did not produce success banner"
     }
 
