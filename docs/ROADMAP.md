@@ -246,7 +246,7 @@
   3. Уровень 3 Golden IR: strict exact match 7/7 подтверждён (категория `Legal Category 12: String Arena Lock and shifted world offsets`).
   4. Примеры: 29/29 собраны, 23/23 выполнены с кодом 0 (включая параллельные `13_multithreading_benchmark`, `parallel_auto_test`, `olap_bigdata_analyzer`).
   5. Бинарная канарейка (`canary_70_components.ecs`): успешно собрана в Release -O3 и выполнена с кодом 0.
-- **Статус**: **ВЫПОЛНЕНО (условно: Linux-джобы не исполнены)**
+- **Статус**: **ВЫПОЛНЕНО** (зелёный CI-прогон GitHub Actions Run ID: 38352640154 — Strict Golden IR 7/7, ASan 17/17, TSan 5/5, 0 race reports, 0 OOB/UAF).
 - **Шаблон коммита**: `feat(runtime): implement POSIX pthreads parallel dispatch and string arena synchronization (Step B5.1)`
 
 ##### Фаза B5.2 — Linux-контур «линк + запуск» (GitHub Actions)
