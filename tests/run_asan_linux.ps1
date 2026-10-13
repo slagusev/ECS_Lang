@@ -76,6 +76,13 @@ void SetSoundVolume(void* s, float v) {}
 void UnloadSound(void* s) {}
 void BeginMode2D(void* c) {}
 void EndMode2D(void) {}
+
+#include <time.h>
+uint32_t GetTickCount(void) {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint32_t)(ts.tv_sec * 1000 + ts.tv_nsec / 1000000);
+}
 '@ | Out-File -FilePath $stubsSrc -Encoding ascii
 
 & $ClangCmd -c $stubsSrc -o $stubsObj
